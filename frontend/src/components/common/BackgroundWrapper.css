@@ -1,0 +1,17 @@
+.background-wrapper {
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Responsive background sizing */
+@media (max-width: 768px) {
+  .background-wrapper {
+    background-size: 200px 200px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .background-wrapper {
+    background-size: 150px 150px !important;
+  }
+}

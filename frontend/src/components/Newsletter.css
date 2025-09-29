@@ -1,0 +1,215 @@
+.newsletter-signup {
+  background-color: var(--primary-color);
+  color: white;
+  padding: var(--spacing-2xl);
+  border-radius: var(--radius-lg);
+  text-align: center;
+}
+
+.newsletter-signup.footer {
+  background-color: transparent;
+  padding: 0;
+}
+
+.newsletter-content {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.newsletter-header {
+  margin-bottom: var(--spacing-xl);
+}
+
+.newsletter-icon {
+  color: white;
+  margin-bottom: var(--spacing-md);
+}
+
+.newsletter-signup.footer .newsletter-icon {
+  color: var(--primary-color);
+}
+
+.newsletter-header h3 {
+  font-size: 1.5rem;
+  font-weight: 400;
+  margin-bottom: var(--spacing-sm);
+  color: white;
+}
+
+.newsletter-signup.footer .newsletter-header h3 {
+  color: #ffffff;
+}
+
+.newsletter-header p {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 300;
+  line-height: 1.6;
+}
+
+.newsletter-signup.footer .newsletter-header p {
+  color: #b0b0b0;
+}
+
+.newsletter-form {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.newsletter-signup.footer .newsletter-form {
+  flex-direction: column;
+  max-width: 300px;
+  margin: 0 auto var(--spacing-lg);
+}
+
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.newsletter-input {
+  padding: var(--spacing-md);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-sm);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 1rem;
+  transition: all var(--transition-fast);
+}
+
+.newsletter-signup.footer .newsletter-input {
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.newsletter-input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.newsletter-signup.footer .newsletter-input::placeholder {
+  color: #b0b0b0;
+}
+
+.newsletter-input:focus {
+  outline: none;
+  border-color: white;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.newsletter-input.error {
+  border-color: #fecaca;
+}
+
+.form-error {
+  color: #fecaca;
+  font-size: 0.8rem;
+  margin-top: var(--spacing-xs);
+}
+
+.newsletter-btn {
+  background-color: white;
+  color: var(--primary-color);
+  border: none;
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 120px;
+}
+
+.newsletter-btn:hover {
+  background-color: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+}
+
+.newsletter-signup.footer .newsletter-btn {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.newsletter-signup.footer .newsletter-btn:hover {
+  background-color: var(--primary-dark);
+}
+
+.newsletter-disclaimer {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.newsletter-signup.footer .newsletter-disclaimer {
+  color: #b0b0b0;
+}
+
+.newsletter-success {
+  text-align: center;
+  padding: var(--spacing-xl);
+}
+
+.success-icon {
+  color: white;
+  margin-bottom: var(--spacing-lg);
+}
+
+.newsletter-success h3 {
+  font-size: 1.5rem;
+  font-weight: 400;
+  margin-bottom: var(--spacing-md);
+  color: white;
+}
+
+.newsletter-success p {
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+/* Inline variant for homepage */
+.newsletter-signup.inline {
+  background-color: var(--bg-light);
+  color: var(--text-primary);
+}
+
+.newsletter-signup.inline .newsletter-icon {
+  color: var(--primary-color);
+}
+
+.newsletter-signup.inline .newsletter-header h3 {
+  color: var(--text-primary);
+}
+
+.newsletter-signup.inline .newsletter-header p {
+  color: var(--text-secondary);
+}
+
+.newsletter-signup.inline .newsletter-input {
+  background-color: white;
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.newsletter-signup.inline .newsletter-input::placeholder {
+  color: var(--text-light);
+}
+
+.newsletter-signup.inline .newsletter-btn {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.newsletter-signup.inline .newsletter-disclaimer {
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .newsletter-form {
+    flex-direction: column;
+  }
+  
+  .newsletter-signup {
+    padding: var(--spacing-lg);
+  }
+}
