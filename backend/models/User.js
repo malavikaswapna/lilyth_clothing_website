@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
-  // Personal Information
+  // personal info
   firstName: {
     type: String,
     required: [true, 'First name is required'],
@@ -30,30 +30,30 @@ const userSchema = new mongoose.Schema({
     match: [/^\+?[\d\s-()]+$/, 'Please provide a valid phone number']
   },
   
-  // Authentication
+  // authentication
   password: {
     type: String,
     required: function() {
       return this.authProvider !== 'google';
     },
     minlength: [6, 'Password must be at least 6 characters'],
-    select: false // Don't include password in queries by default
+    select: false 
   },
   
-  // Authentication provider
+  // authentication provider
   authProvider: {
     type: String,
     enum: ['local', 'google'],
     default: 'local'
   },
   
-  // Firebase UID for Google OAuth users (optional)
+  // firebase UID for google 
   firebaseUid: {
     type: String,
-    sparse: true // Allow multiple null values, but unique non-null values
+    sparse: true 
   },
   
-  // Account Status
+  // account status
   role: {
     type: String,
     enum: ['customer', 'admin'],
@@ -68,9 +68,9 @@ const userSchema = new mongoose.Schema({
     default: false
   },
   
-  // Profile
+  // profile
   avatar: {
-    type: String, // URL to profile image
+    type: String, 
     default: null
   },
   dateOfBirth: {
@@ -82,7 +82,7 @@ const userSchema = new mongoose.Schema({
     default: 'prefer-not-to-say'
   },
   
-  // Addresses
+  // addresses
   addresses: [{
     type: {
       type: String,
@@ -112,7 +112,7 @@ const userSchema = new mongoose.Schema({
     country: {
       type: String,
       required: true,
-      default: 'United States'
+      default: 'India'
     },
     isDefault: {
       type: Boolean,
@@ -120,25 +120,25 @@ const userSchema = new mongoose.Schema({
     }
   }],
   
-  // Shopping Preferences
+  // shopping preferences
   preferredSizes: [{
-    category: String, // 'tops', 'bottoms', 'dresses', 'shoes'
+    category: String,
     size: String
   }],
   
-  // Wishlist
+  // wishlist
   wishlist: [{
     type: mongoose.Schema.ObjectId,
     ref: 'Product'
   }],
   
-  // Account Tokens
+  // account tokens
   emailVerificationToken: String,
   emailVerificationExpire: Date,
   passwordResetToken: String,
   passwordResetExpire: Date,
   
-  // Analytics
+  // analytics
   lastLogin: Date,
   totalOrders: {
     type: Number,
@@ -168,38 +168,37 @@ notes: [{
 }]
 
 }, {
-  timestamps: true, // Adds createdAt and updatedAt
+  timestamps: true, 
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
 
-// Virtual for full name
+// virtual for full name
 userSchema.virtual('fullName').get(function() {
   return `${this.firstName} ${this.lastName}`;
 });
 
-// Index for better query performance
-userSchema.index({ email: 1 }, { unique: true }); // Make it unique here
+// index for query performance
+userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ 'addresses.postalCode': 1 });
 
-// Pre-save middleware to hash password
+// pre-save middleware to hash password
 userSchema.pre('save', async function(next) {
-  // Only hash password if it's modified
+
   if (!this.isModified('password')) {
     return next();
   }
   
-  // Hash password with cost of 12
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
-// Instance method to check password
+// instance method to check password
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Instance method to get public profile
+// instance method to get public profile
 userSchema.methods.getPublicProfile = function() {
   const user = this.toObject();
   delete user.password;

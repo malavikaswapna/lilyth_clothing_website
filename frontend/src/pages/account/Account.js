@@ -230,7 +230,6 @@ const OrdersPage = () => {
                       </div>
                     </div>
                     
-                    {/* ADD REVIEW FUNCTIONALITY HERE */}
                     <div className="item-actions">
                       {order.status === 'delivered' && !item.hasReview && (
                         <Button

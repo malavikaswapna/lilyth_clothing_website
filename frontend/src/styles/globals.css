@@ -1,4 +1,4 @@
-/* Reset and base styles */
+/* global.css */
 * {
   margin: 0;
   padding: 0;
@@ -19,36 +19,36 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* AMOURA Brand Color Palette */
+/* LILYTH Brand Color Palette */
 :root {
-  /* Brand Colors for Lilyth */
-  --primary-color: #b87049; /* Warm brown */
-  --primary-dark: #9a5d3e; /* Darker brown */
-  --primary-light: #d4926b; /* Lighter brown */
   
-  --secondary-color: #f4f2eb; /* Cream background */
-  --accent-color: #8b6914; /* Mustard gold */
-  --accent-light: #d4af37; /* Gold */
+  --primary-color: #b87049; 
+  --primary-dark: #9a5d3e; 
+  --primary-light: #d4926b; 
   
-  /* Text Colors */
-  --text-primary: #2c1810; /* Dark brown */
-  --text-secondary: #5a4037; /* Medium brown */
-  --text-light: #8b7355; /* Light brown */
+  --secondary-color: #f4f2eb; 
+  --accent-color: #8b6914; 
+  --accent-light: #d4af37; 
   
-  /* Background Colors */
-  --bg-primary: #f4f2eb; /* Cream */
-  --bg-light: #faf9f6; /* Very light cream */
-  --bg-card: rgba(244, 242, 235, 0.9); /* Semi-transparent cream */
+  /* text colors */
+  --text-primary: #2c1810; 
+  --text-secondary: #5a4037;
+  --text-light: #8b7355; 
+  
+  /* background colors */
+  --bg-primary: #f4f2eb; 
+  --bg-light: #faf9f6; 
+  --bg-card: rgba(244, 242, 235, 0.9); 
   
   /* Border and UI */
-  --border-color: #d4c4b0; /* Light brown border */
-  --border-light: #e8dcc6; /* Very light border */
+  --border-color: #d4c4b0; 
+  --border-light: #e8dcc6; 
   
-  /* Status colors (adjusted to theme) */
-  --success-color: #6b8e23; /* Olive green */
-  --warning-color: #d4af37; /* Gold */
-  --error-color: #a0522d; /* Sienna */
-  --info-color: #8b6914; /* Dark gold */
+  /* Status colors */
+  --success-color: #6b8e23; 
+  --warning-color: #d4af37; 
+  --error-color: #a0522d; 
+  --info-color: #8b6914; 
   
   /* Spacing */
   --spacing-xs: 0.25rem;
@@ -83,9 +83,9 @@ body {
   --container-2xl: 1536px;
 }
 
-/* Typography - More elegant and sophisticated */
+/* Typography */
 h1, h2, h3, h4, h5, h6 {
-  font-weight: 300; /* Lighter weight for elegance */
+  font-weight: 300; 
   color: var(--text-primary);
   line-height: 1.3;
   letter-spacing: 0.01em;
@@ -93,7 +93,7 @@ h1, h2, h3, h4, h5, h6 {
 
 h1 { 
   font-size: 2.5rem; 
-  font-weight: 200; /* Extra light for main headings */
+  font-weight: 200; 
 }
 h2 { 
   font-size: 2rem; 
@@ -133,7 +133,7 @@ a:hover {
   color: var(--primary-dark);
 }
 
-/* Buttons - More elegant styling */
+/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -141,7 +141,7 @@ a:hover {
   gap: var(--spacing-sm);
   padding: var(--spacing-sm) var(--spacing-xl);
   border: none;
-  border-radius: var(--radius-sm); /* Less rounded for sophisticated look */
+  border-radius: var(--radius-sm); 
   font-size: 0.95rem;
   font-weight: 400;
   letter-spacing: 0.5px;
@@ -211,7 +211,7 @@ a:hover {
   font-size: 1rem;
 }
 
-/* Form elements - Cleaner styling */
+/* Form elements */
 .form-group {
   margin-bottom: var(--spacing-lg);
 }
@@ -466,7 +466,6 @@ a:hover {
   display: none;
 }
 
-/* Add this to the end of your global.css file */
 [class*="contact-info"],
 [class*="contact-detail"],
 [class*="contact-box"] {

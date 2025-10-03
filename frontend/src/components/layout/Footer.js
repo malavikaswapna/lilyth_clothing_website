@@ -38,7 +38,7 @@ const Footer = () => {
               <li><Link to="/shop?category=dresses">Dresses</Link></li>
               <li><Link to="/shop?category=tops">Tops</Link></li>
               <li><Link to="/shop?category=bottoms">Bottoms</Link></li>
-              <li><Link to="/shop?category=outerwear">Outerwear</Link></li>
+              <li><Link to="/shop?category=sleepwear">Sleepwear</Link></li>
               <li><Link to="/shop?newArrivals=true">New Arrivals</Link></li>
               <li><Link to="/shop?onSale=true">Sale</Link></li>
             </ul>

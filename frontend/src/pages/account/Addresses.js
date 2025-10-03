@@ -21,7 +21,7 @@ const AddressModal = ({ isOpen, onClose, address, onSave }) => {
 
   useEffect(() => {
     if (address) {
-      // Populate form with existing address data
+      // populate with existing data
       Object.keys(address).forEach(key => {
         setValue(key, address[key]);
       });
@@ -200,7 +200,7 @@ const Addresses = () => {
   const loadAddresses = async () => {
     try {
         setLoading(true);
-         const response = await authAPI.getProfile(); // or userAPI.getProfile()
+         const response = await authAPI.getProfile();
          setAddresses(response.data.user.addresses || []);
     } catch (error) {
       console.error('Failed to load addresses:', error);
@@ -224,7 +224,7 @@ const Addresses = () => {
   if (window.confirm('Are you sure you want to delete this address?')) {
     try {
       await userAPI.deleteAddress(addressId);
-      await loadAddresses(); // Reload to get updated data
+      await loadAddresses(); // reload to update data
       toast.success('Address deleted successfully');
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to delete address';
@@ -236,15 +236,15 @@ const Addresses = () => {
   const handleSaveAddress = async (addressData) => {
   try {
     if (editingAddress) {
-      // Update existing address
+      // update existing address
       const response = await userAPI.updateAddress(editingAddress._id, addressData);
-      // Reload addresses to get updated data
+      // reload addresses for updated data
       await loadAddresses();
       toast.success('Address updated successfully');
     } else {
-      // Add new address
+      // add new address
       const response = await userAPI.addAddress(addressData);
-      // Reload addresses to get updated data
+      // reload addresses to get updated data
       await loadAddresses();
       toast.success('Address added successfully');
     }

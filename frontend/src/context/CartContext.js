@@ -47,9 +47,9 @@ export const CartProvider = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, initialState);
   const { isAuthenticated, loading: authLoading } = useAuth();
 
-  // Only load cart when user is authenticated AND auth is not loading
+  // load cart only when user is authenticated(auth is not loading)
   useEffect(() => {
-    if (!authLoading) { // Wait for auth to finish loading
+    if (!authLoading) { 
       if (isAuthenticated) {
         loadCart();
       } else {
@@ -65,7 +65,7 @@ export const CartProvider = ({ children }) => {
       dispatch({ type: 'SET_CART', payload: response.data.cart });
     } catch (error) {
       console.error('Failed to load cart:', error);
-      // Don't show error toast for 401s - user might not be logged in
+      // don't show error toast for 401s(user not logged in)
       if (error.response?.status !== 401) {
         toast.error('Failed to load cart');
       }
