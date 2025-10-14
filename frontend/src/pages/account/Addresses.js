@@ -1,28 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, MapPin, Check } from 'lucide-react';
-import { useForm } from 'react-hook-form';
-import { userAPI, authAPI } from '../../services/api';
-import Button from '../../components/common/Button';
-import Loading from '../../components/common/Loading';
-import { useAuth } from '../../context/AuthContext'; 
-import toast from 'react-hot-toast';
-import './Addresses.css';
+import React, { useState, useEffect } from "react";
+import { Plus, Edit, Trash2, MapPin, Check } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { userAPI, authAPI } from "../../services/api";
+import Button from "../../components/common/Button";
+import Loading from "../../components/common/Loading";
+import { useAuth } from "../../context/AuthContext";
+import toast from "react-hot-toast";
+import PincodeInput from "../../components/common/PincodeInput";
+import KeralaDistrictSelect from "../../components/common/KeralaDistrictSelect";
+import "./Addresses.css";
 
 const AddressModal = ({ isOpen, onClose, address, onSave }) => {
   const [loading, setLoading] = useState(false);
-  
+  const [pincodeAutofilled, setPincodeAutofilled] = useState(false);
+
+  const handlePincodeAutofill = (locationData) => {
+    setValue("city", locationData.city);
+    setValue("state", "Kerala");
+    setValue("country", "India");
+    setPincodeAutofilled(true);
+  };
+
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
-    setValue
+    setValue,
+    watch,
   } = useForm();
 
   useEffect(() => {
     if (address) {
       // populate with existing data
-      Object.keys(address).forEach(key => {
+      Object.keys(address).forEach((key) => {
         setValue(key, address[key]);
       });
     } else {
@@ -37,7 +48,7 @@ const AddressModal = ({ isOpen, onClose, address, onSave }) => {
       onClose();
       reset();
     } catch (error) {
-      console.error('Failed to save address:', error);
+      console.error("Failed to save address:", error);
     } finally {
       setLoading(false);
     }
@@ -49,23 +60,31 @@ const AddressModal = ({ isOpen, onClose, address, onSave }) => {
     <div className="modal-overlay">
       <div className="modal-content">
         <div className="modal-header">
-          <h2>{address ? 'Edit Address' : 'Add New Address'}</h2>
-          <button onClick={onClose} className="close-btn">&times;</button>
+          <h2>{address ? "Edit Address" : "Add New Address"}</h2>
+          <div className="kerala-badge">
+            <MapPin size={12} />
+            <span>Kerala Only</span>
+          </div>
+          <button onClick={onClose} className="close-btn">
+            &times;
+          </button>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="address-form">
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Address Type</label>
-              <select 
+              <select
                 className="form-control"
-                {...register('type', { required: 'Address type is required' })}
+                {...register("type", { required: "Address type is required" })}
               >
                 <option value="both">Shipping & Billing</option>
                 <option value="shipping">Shipping Only</option>
                 <option value="billing">Billing Only</option>
               </select>
-              {errors.type && <span className="form-error">{errors.type.message}</span>}
+              {errors.type && (
+                <span className="form-error">{errors.type.message}</span>
+              )}
             </div>
           </div>
 
@@ -75,19 +94,25 @@ const AddressModal = ({ isOpen, onClose, address, onSave }) => {
               <input
                 type="text"
                 className="form-control"
-                {...register('firstName', { required: 'First name is required' })}
+                {...register("firstName", {
+                  required: "First name is required",
+                })}
               />
-              {errors.firstName && <span className="form-error">{errors.firstName.message}</span>}
+              {errors.firstName && (
+                <span className="form-error">{errors.firstName.message}</span>
+              )}
             </div>
-            
+
             <div className="form-group">
               <label className="form-label">Last Name *</label>
               <input
                 type="text"
                 className="form-control"
-                {...register('lastName', { required: 'Last name is required' })}
+                {...register("lastName", { required: "Last name is required" })}
               />
-              {errors.lastName && <span className="form-error">{errors.lastName.message}</span>}
+              {errors.lastName && (
+                <span className="form-error">{errors.lastName.message}</span>
+              )}
             </div>
           </div>
 
@@ -96,7 +121,7 @@ const AddressModal = ({ isOpen, onClose, address, onSave }) => {
             <input
               type="text"
               className="form-control"
-              {...register('company')}
+              {...register("company")}
             />
           </div>
 
@@ -106,9 +131,11 @@ const AddressModal = ({ isOpen, onClose, address, onSave }) => {
               type="text"
               className="form-control"
               placeholder="Street address, P.O. box, c/o"
-              {...register('addressLine1', { required: 'Address is required' })}
+              {...register("addressLine1", { required: "Address is required" })}
             />
-            {errors.addressLine1 && <span className="form-error">{errors.addressLine1.message}</span>}
+            {errors.addressLine1 && (
+              <span className="form-error">{errors.addressLine1.message}</span>
+            )}
           </div>
 
           <div className="form-group">
@@ -117,55 +144,70 @@ const AddressModal = ({ isOpen, onClose, address, onSave }) => {
               type="text"
               className="form-control"
               placeholder="Apartment, suite, unit, building, floor, etc."
-              {...register('addressLine2')}
+              {...register("addressLine2")}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">PIN Code *</label>
+            <PincodeInput
+              value={watch("postalCode")}
+              onChange={(value) => setValue("postalCode", value)}
+              onAutofill={handlePincodeAutofill}
+              error={errors.postalCode?.message}
+              showDeliveryInfo={true}
+              required
             />
           </div>
 
           <div className="form-row">
             <div className="form-group">
+              <label className="form-label">District *</label>
+              {pincodeAutofilled ? (
+                <input
+                  type="text"
+                  className="form-control autofilled-input"
+                  {...register("city", { required: "District is required" })}
+                  disabled
+                />
+              ) : (
+                <KeralaDistrictSelect
+                  value={watch("city")}
+                  onChange={(value) => setValue("city", value)}
+                  error={errors.city?.message}
+                  required
+                />
+              )}
+              {errors.city && (
+                <span className="form-error">{errors.city.message}</span>
+              )}
+            </div>
+
+            <div className="form-group">
               <label className="form-label">State *</label>
               <input
                 type="text"
-                className="form-control"
-                {...register('state', { required: 'State is required' })}
+                value="Kerala"
+                className="form-control kerala-field"
+                disabled
               />
-              {errors.state && <span className="form-error">{errors.state.message}</span>}
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">City *</label>
-              <input
-               type="text" 
-               className="form-control"
-               placeholder="Enter your city"
-                {...register('city', { required: 'City is required' })}
-              />
-              {errors.district && <span className="form-error">{errors.district.message}</span>}
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">PIN Code *</label>
-              <input
-                type="text"
-                className="form-control"
-                {...register('postalCode', { 
-                  required: 'PIN code is required',
-                  pattern: {
-                    value: /^[1-9][0-9]{5}$/,
-                    message: 'Please enter a valid 6-digit PIN code'
-                  }
-                })}
-              />
-              {errors.postalCode && <span className="form-error">{errors.postalCode.message}</span>}
+              <small className="field-note">Kerala delivery only</small>
             </div>
           </div>
 
           <div className="form-group">
+            <label className="form-label">Country</label>
+            <input
+              type="text"
+              value="India"
+              className="form-control"
+              disabled
+            />
+          </div>
+
+          <div className="form-group">
             <label className="checkbox-label">
-              <input
-                type="checkbox"
-                {...register('isDefault')}
-              />
+              <input type="checkbox" {...register("isDefault")} />
               <span>Set as default address</span>
             </label>
           </div>
@@ -175,7 +217,7 @@ const AddressModal = ({ isOpen, onClose, address, onSave }) => {
               Cancel
             </Button>
             <Button type="submit" loading={loading}>
-              {address ? 'Update Address' : 'Save Address'}
+              {address ? "Update Address" : "Save Address"}
             </Button>
           </div>
         </form>
@@ -192,18 +234,18 @@ const Addresses = () => {
   const [editingAddress, setEditingAddress] = useState(null);
 
   useEffect(() => {
-  if (isAuthenticated && !authLoading) {
-    loadAddresses();
-  }
-}, [isAuthenticated, authLoading]);
-  
+    if (isAuthenticated && !authLoading) {
+      loadAddresses();
+    }
+  }, [isAuthenticated, authLoading]);
+
   const loadAddresses = async () => {
     try {
-        setLoading(true);
-         const response = await authAPI.getProfile();
-         setAddresses(response.data.user.addresses || []);
+      setLoading(true);
+      const response = await authAPI.getProfile();
+      setAddresses(response.data.user.addresses || []);
     } catch (error) {
-      console.error('Failed to load addresses:', error);
+      console.error("Failed to load addresses:", error);
       setAddresses([]);
     } finally {
       setLoading(false);
@@ -221,39 +263,43 @@ const Addresses = () => {
   };
 
   const handleDeleteAddress = async (addressId) => {
-  if (window.confirm('Are you sure you want to delete this address?')) {
-    try {
-      await userAPI.deleteAddress(addressId);
-      await loadAddresses(); // reload to update data
-      toast.success('Address deleted successfully');
-    } catch (error) {
-      const message = error.response?.data?.message || 'Failed to delete address';
-      toast.error(message);
+    if (window.confirm("Are you sure you want to delete this address?")) {
+      try {
+        await userAPI.deleteAddress(addressId);
+        await loadAddresses(); // reload to update data
+        toast.success("Address deleted successfully");
+      } catch (error) {
+        const message =
+          error.response?.data?.message || "Failed to delete address";
+        toast.error(message);
+      }
     }
-  }
-};
+  };
 
   const handleSaveAddress = async (addressData) => {
-  try {
-    if (editingAddress) {
-      // update existing address
-      const response = await userAPI.updateAddress(editingAddress._id, addressData);
-      // reload addresses for updated data
-      await loadAddresses();
-      toast.success('Address updated successfully');
-    } else {
-      // add new address
-      const response = await userAPI.addAddress(addressData);
-      // reload addresses to get updated data
-      await loadAddresses();
-      toast.success('Address added successfully');
+    try {
+      if (editingAddress) {
+        // update existing address
+        const response = await userAPI.updateAddress(
+          editingAddress._id,
+          addressData
+        );
+        // reload addresses for updated data
+        await loadAddresses();
+        toast.success("Address updated successfully");
+      } else {
+        // add new address
+        const response = await userAPI.addAddress(addressData);
+        // reload addresses to get updated data
+        await loadAddresses();
+        toast.success("Address added successfully");
+      }
+    } catch (error) {
+      const message = error.response?.data?.message || "Failed to save address";
+      toast.error(message);
+      throw error;
     }
-  } catch (error) {
-    const message = error.response?.data?.message || 'Failed to save address';
-    toast.error(message);
-    throw error;
-  }
-};
+  };
 
   if (loading) return <Loading size="lg" text="Loading addresses..." />;
 
@@ -270,13 +316,18 @@ const Addresses = () => {
 
       <div className="addresses-grid">
         {addresses.length > 0 ? (
-          addresses.map(address => (
+          addresses.map((address) => (
             <div key={address._id} className="address-card">
               <div className="address-header">
                 <div className="address-type">
                   <MapPin size={16} />
-                  <span>{address.type === 'both' ? 'Shipping & Billing' : 
-                        address.type === 'shipping' ? 'Shipping' : 'Billing'}</span>
+                  <span>
+                    {address.type === "both"
+                      ? "Shipping & Billing"
+                      : address.type === "shipping"
+                      ? "Shipping"
+                      : "Billing"}
+                  </span>
                 </div>
                 {address.isDefault && (
                   <span className="default-badge">
@@ -287,23 +338,29 @@ const Addresses = () => {
               </div>
 
               <div className="address-details">
-                <h3>{address.firstName} {address.lastName}</h3>
-                {address.company && <p className="company">{address.company}</p>}
+                <h3>
+                  {address.firstName} {address.lastName}
+                </h3>
+                {address.company && (
+                  <p className="company">{address.company}</p>
+                )}
                 <p>{address.addressLine1}</p>
                 {address.addressLine2 && <p>{address.addressLine2}</p>}
-                <p>{address.city}, {address.state} {address.postalCode}</p>
+                <p>
+                  {address.city}, {address.state} {address.postalCode}
+                </p>
                 <p>{address.country}</p>
               </div>
 
               <div className="address-actions">
-                <button 
+                <button
                   onClick={() => handleEditAddress(address)}
                   className="action-btn edit-btn"
                 >
                   <Edit size={16} />
                   Edit
                 </button>
-                <button 
+                <button
                   onClick={() => handleDeleteAddress(address._id)}
                   className="action-btn delete-btn"
                   disabled={address.isDefault}

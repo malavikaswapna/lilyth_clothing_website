@@ -1,0 +1,939 @@
+/* ===========================
+   ORDER SUCCESS PAGE
+=========================== */
+.order-success-page {
+  padding: var(--spacing-2xl) 0;
+  min-height: 100vh;
+}
+
+.order-success-page .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-lg);
+}
+
+/* ===========================
+   SUCCESS HEADER
+=========================== */
+.success-header {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+  padding: var(--spacing-2xl);
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
+}
+
+.success-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  margin-bottom: var(--spacing-lg);
+  animation: successPulse 2s ease-in-out infinite;
+}
+
+@keyframes successPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 20px rgba(16, 185, 129, 0);
+  }
+}
+
+.success-header h1 {
+  font-size: 2.5rem;
+  font-weight: 300;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.success-header p {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.order-number {
+  display: inline-block;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--bg-light);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-family: "Courier New", monospace;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  letter-spacing: 1px;
+}
+
+/* ===========================
+   RECEIPT PRINTER ANIMATION
+=========================== */
+.receipt-section {
+  display: flex;
+  justify-content: center;
+  margin: var(--spacing-2xl) 0;
+  padding: var(--spacing-2xl);
+}
+
+/* Original printer styles with modifications */
+.wrapper {
+  --printer-color: #b87049;
+  --printer-color-2: #a0624a;
+  --receipt-color: #f5f5f5;
+
+  font-size: 14px;
+  position: relative;
+  user-select: none;
+}
+
+.printer {
+  width: 320px;
+  height: 80px;
+  border-radius: 0 0 8px 8px;
+  background-color: var(--printer-color);
+  border: 2px solid var(--printer-color-2);
+  box-shadow: 0 16px 32px 0px rgba(0, 0, 0, 0.2),
+    0 -30px 16px 0px rgba(0, 0, 0, 0.1);
+}
+
+.printer::before {
+  content: "";
+  position: absolute;
+  top: -30px;
+  left: 0;
+  width: 100%;
+  height: 70px;
+  border-radius: 12px 12px 0 0;
+  border-bottom: 2px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 12px 16px -12px rgba(255, 255, 255, 0.3) inset,
+    0 -6px 16px -6px rgba(0, 0, 0, 0.2) inset, 0 6px 8px -6px rgba(0, 0, 0, 0.3);
+  box-sizing: border-box;
+  background-color: inherit;
+  filter: brightness(1.12);
+  z-index: 2;
+}
+
+.printer::after {
+  content: "";
+  position: absolute;
+  top: 20px;
+  left: 30px;
+  width: 260px;
+  height: 40px;
+  border-radius: 0 0 4px 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  background: linear-gradient(
+    to top,
+    var(--printer-color),
+    60%,
+    var(--printer-color-2)
+  );
+  box-shadow: 0 4px 4px -2px rgba(0, 0, 0, 0.3);
+  z-index: 1;
+}
+
+.printer-display {
+  z-index: 2;
+  display: flex;
+  padding: 6px 8px;
+  position: absolute;
+  top: -10px;
+  left: 30px;
+  width: 160px;
+  height: 32px;
+  background-color: #000;
+  border: 3px solid var(--printer-color-2);
+  border-radius: 6px;
+  box-sizing: border-box;
+  box-shadow: -1px -1px 2px 0 rgba(255, 255, 255, 0.6) inset,
+    1px 1px 5px 1px #000 inset, 0 0 1px 2px rgba(0, 0, 0, 0.2);
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.8em;
+  color: #5aff5a;
+}
+
+.print-button {
+  z-index: 2;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2em;
+  position: absolute;
+  top: -30px;
+  right: 0;
+  margin: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  width: 48px;
+  height: 36px;
+  background-color: var(--printer-color);
+  box-shadow: 1px 1px 2px 0 rgba(255, 255, 255, 0.5) inset,
+    -1px -1px 2px 0 rgba(0, 0, 0, 0.2) inset, 0 2px 6px 0px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+  color: white;
+}
+
+.print-button:hover {
+  box-shadow: 2px 2px 2px 0 rgba(255, 255, 255, 0.6) inset,
+    -2px -2px 2px 0 rgba(0, 0, 0, 0.2) inset, 0 2px 10px 0px rgba(0, 0, 0, 0.2);
+  transform: scale(1.05);
+}
+
+.print-button:active,
+.print-button:focus {
+  box-shadow: 2px 2px 2px 0 rgba(0, 0, 0, 0.2) inset,
+    -2px -2px 2px 0 rgba(255, 255, 255, 0.6) inset,
+    0 0px 4px 0px rgba(255, 255, 255, 0.6);
+  transform: scale(0.95);
+}
+
+.receipt-wrapper {
+  position: absolute;
+  top: 0;
+  left: 44px;
+  filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.1));
+  transform: translateY(-100%);
+  clip-path: inset(100% -100px -100px -100px);
+  transition: clip-path 0.5s;
+}
+
+.receipt {
+  z-index: 2;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  padding: 16px;
+  width: 232px;
+  min-height: 160px;
+  font-size: 0.75em;
+  font-family: "Courier New", monospace;
+  font-weight: 400;
+  color: #444;
+  background-color: var(--receipt-color);
+  box-shadow: 0 12px 12px 0 rgba(0, 0, 0, 0.1), 0 24px 24px 0 rgba(0, 0, 0, 0.1),
+    0 36px 36px 0 rgba(0, 0, 0, 0.1);
+}
+
+.receipt::before,
+.receipt::after {
+  --angle: 45deg;
+  content: "";
+  display: block;
+  position: absolute;
+  left: 0px;
+  width: 100%;
+  height: 8px;
+  background: linear-gradient(
+      calc(var(--angle) * -1),
+      var(--receipt-color) 4px,
+      transparent 0
+    ),
+    linear-gradient(var(--angle), var(--receipt-color) 4px, transparent 0);
+  background-position: 4px 0;
+  background-repeat: repeat-x;
+  background-size: 8px 8px;
+}
+
+.receipt::before {
+  top: -8px;
+}
+
+.receipt::after {
+  bottom: -8px;
+  background-position: 0 100%;
+  --angle: 225deg;
+}
+
+.receipt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0.5em 0;
+  border-bottom: 1px dashed #ccc;
+  font-size: 0.9em;
+}
+
+.receipt-header strong {
+  font-size: 1.2em;
+  font-weight: 700;
+}
+
+.receipt .logo {
+  font-size: 2.5em;
+  filter: grayscale(0.3);
+}
+
+.receipt-subheader {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5em 0;
+  border-bottom: 1px dashed #ccc;
+  font-size: 0.85em;
+}
+
+.receipt-table {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  line-height: 1.6em;
+  border-collapse: collapse;
+}
+
+.receipt-table th {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: 0.5em;
+  border-bottom: 1px solid #ddd;
+}
+
+.receipt-table th:last-child,
+.receipt-table td:last-child {
+  text-align: right;
+}
+
+.receipt-table td {
+  padding: 0.3em 0;
+}
+
+.receipt-table td small {
+  font-size: 0.85em;
+  color: #666;
+}
+
+.receipt-subtotal td,
+.receipt-tax td {
+  border-top: 1px dashed #ccc;
+  padding-top: 0.5em;
+}
+
+.receipt-total td {
+  border-top: 2px solid #333;
+  padding-top: 0.5em;
+  font-weight: 700;
+  font-size: 1.1em;
+}
+
+.receipt-message {
+  text-align: center;
+  padding: 0.5em 0;
+  border-top: 1px dashed #ccc;
+  margin-top: 0.5em;
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+.letter-wrapper {
+  display: flex;
+}
+
+.letter {
+  display: inline-block;
+  opacity: 0;
+}
+
+/* Printing Animation */
+.wrapper.printing .receipt-wrapper,
+.wrapper:has(.print-button:focus) .receipt-wrapper,
+.wrapper:has(.print-button:active) .receipt-wrapper {
+  animation: print 1.2s 1 forwards ease-in,
+    display 0.4s 1 forwards cubic-bezier(0, 0.63, 0.96, 1.1);
+  animation-delay: 0s, 1.35s;
+}
+
+.wrapper.printing .printer-message,
+.wrapper:has(.print-button:focus) .printer-message,
+.wrapper:has(.print-button:active) .printer-message {
+  opacity: 0;
+}
+
+.wrapper.printing .letter,
+.wrapper:has(.print-button:focus) .letter,
+.wrapper:has(.print-button:active) .letter {
+  animation: show-text 0.6s 1 forwards linear;
+}
+
+.wrapper.printing .letter:nth-child(1),
+.wrapper:has(.print-button:focus) .letter:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.wrapper.printing .letter:nth-child(2),
+.wrapper:has(.print-button:focus) .letter:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.wrapper.printing .letter:nth-child(3),
+.wrapper:has(.print-button:focus) .letter:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.wrapper.printing .letter:nth-child(4),
+.wrapper:has(.print-button:focus) .letter:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.wrapper.printing .letter:nth-child(5),
+.wrapper:has(.print-button:focus) .letter:nth-child(5) {
+  animation-delay: 0.25s;
+}
+.wrapper.printing .letter:nth-child(6),
+.wrapper:has(.print-button:focus) .letter:nth-child(6) {
+  animation-delay: 0.3s;
+}
+.wrapper.printing .letter:nth-child(7),
+.wrapper:has(.print-button:focus) .letter:nth-child(7) {
+  animation-delay: 0.35s;
+}
+.wrapper.printing .letter:nth-child(8),
+.wrapper:has(.print-button:focus) .letter:nth-child(8) {
+  animation-delay: 0.4s;
+}
+.wrapper.printing .letter:nth-child(9),
+.wrapper:has(.print-button:focus) .letter:nth-child(9) {
+  animation-delay: 0.45s;
+}
+.wrapper.printing .letter:nth-child(10),
+.wrapper:has(.print-button:focus) .letter:nth-child(10) {
+  animation-delay: 0.5s;
+}
+.wrapper.printing .letter:nth-child(11),
+.wrapper:has(.print-button:focus) .letter:nth-child(11) {
+  animation-delay: 0.55s;
+}
+
+@keyframes print {
+  0% {
+    transform: translateY(-100%);
+    clip-path: inset(100% -100px -100px -100px);
+  }
+  100% {
+    transform: translateY(20%);
+    clip-path: inset(-20% -100px -100px -100px);
+  }
+}
+
+@keyframes display {
+  0% {
+    transform: translateY(20%) scale(1);
+    z-index: 100;
+  }
+  30% {
+    transform: translateY(25%) rotate3d(1, 0, 1, -3deg);
+    z-index: 100;
+  }
+  70% {
+    z-index: 100;
+  }
+  100% {
+    z-index: 100;
+    transform: translateY(-20%) scale(1.5);
+  }
+}
+
+@keyframes show-text {
+  10%,
+  100% {
+    opacity: 1;
+  }
+}
+
+/* ===========================
+   ORDER DETAILS GRID
+=========================== */
+.order-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: var(--spacing-xl);
+  margin: var(--spacing-2xl) 0;
+}
+
+.detail-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(10px);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.card-header svg {
+  color: var(--primary-color);
+}
+
+.card-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.card-content {
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.card-content p {
+  margin: var(--spacing-xs) 0;
+}
+
+.card-content .phone {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px dashed var(--border-color);
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.payment-method {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.status-badge {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.status-badge.completed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.amount {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+/* ===========================
+   STATUS TIMELINE
+=========================== */
+.status-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.status-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  position: relative;
+  padding-left: var(--spacing-md);
+}
+
+.status-step::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: 40px;
+  width: 2px;
+  height: calc(100% + var(--spacing-md));
+  background: var(--border-color);
+}
+
+.status-step:last-child::before {
+  display: none;
+}
+
+.status-step.active .step-icon {
+  background: var(--primary-color);
+  color: white;
+}
+
+.step-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  border: 2px solid var(--border-color);
+}
+
+.step-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.step-info strong {
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.step-info span {
+  color: var(--text-light);
+  font-size: 0.875rem;
+}
+
+/* ===========================
+   ACTION BUTTONS
+=========================== */
+.action-buttons {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  margin: var(--spacing-2xl) 0;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  min-width: 200px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+/* ===========================
+   HELP SECTION
+=========================== */
+.help-section {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(10px);
+}
+
+.help-section h3 {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.help-section p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.help-section a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color var(--transition-fast);
+}
+
+.help-section a:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+/* ===========================
+   PRINT STYLES
+=========================== */
+@media print {
+  .order-success-page {
+    background: white;
+  }
+
+  .success-header,
+  .receipt-section,
+  .action-buttons,
+  .help-section {
+    display: none;
+  }
+
+  .order-details-grid {
+    display: block;
+  }
+
+  .detail-card {
+    page-break-inside: avoid;
+    margin-bottom: var(--spacing-lg);
+    border: 1px solid #333;
+  }
+}
+
+/* ===========================
+   RESPONSIVE DESIGN
+=========================== */
+@media (max-width: 968px) {
+  .order-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .receipt-section {
+    padding: var(--spacing-lg);
+  }
+}
+
+@media (max-width: 640px) {
+  .success-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .success-header p {
+    font-size: 1rem;
+  }
+
+  .success-icon {
+    width: 80px;
+    height: 80px;
+  }
+
+  .success-icon svg {
+    width: 48px;
+    height: 48px;
+  }
+
+  .receipt-section {
+    padding: var(--spacing-md);
+    overflow-x: auto;
+  }
+
+  .wrapper {
+    transform: scale(0.85);
+    transform-origin: top center;
+  }
+
+  .order-details-grid {
+    gap: var(--spacing-md);
+  }
+
+  .detail-card {
+    padding: var(--spacing-lg);
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .action-btn {
+    width: 100%;
+  }
+
+  .status-timeline {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .order-success-page .container {
+    padding: 0 var(--spacing-md);
+  }
+
+  .success-header {
+    padding: var(--spacing-lg);
+  }
+
+  .success-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .wrapper {
+    transform: scale(0.75);
+  }
+
+  .card-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .help-section {
+    padding: var(--spacing-lg);
+  }
+}
+
+/* Fix receipt section positioning */
+.receipt-section {
+  display: flex;
+  justify-content: center;
+  margin: var(--spacing-2xl) 0;
+  padding: var(--spacing-2xl);
+  min-height: 500px; /* Ensure space for animation */
+  position: relative;
+  z-index: 1; /* Lower z-index */
+}
+
+.wrapper {
+  --printer-color: #b87049;
+  --printer-color-2: #a0624a;
+  --receipt-color: #f5f5f5;
+
+  font-size: 14px;
+  position: relative;
+  user-select: none;
+  z-index: 10; /* Higher than content below */
+}
+
+/* Fix receipt wrapper positioning */
+.receipt-wrapper {
+  position: absolute;
+  top: -10px;
+  left: 44px;
+  filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.1));
+  transform: translateY(-100%);
+  clip-path: inset(100% -100px -100px -100px);
+  transition: all 0.5s ease;
+  z-index: 100; /* Highest z-index */
+}
+
+/* Receipt actions button */
+.receipt-actions {
+  margin-top: 1em;
+  padding-top: 1em;
+  border-top: 1px dashed #ccc;
+  text-align: center;
+}
+
+.receipt-print-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--printer-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.receipt-print-btn:hover {
+  background: var(--printer-color-2);
+  transform: scale(1.05);
+}
+
+/* Ensure content below doesn't overlap */
+.order-details-grid {
+  position: relative;
+  z-index: 1;
+  margin-top: 100px; /* Add space after receipt section */
+}
+
+/* Fix receipt table spacing */
+.receipt-table {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  line-height: 1.8em;
+  border-collapse: collapse;
+  margin: 0.5em 0;
+}
+
+.receipt-table td {
+  padding: 0.4em 0;
+  vertical-align: top;
+}
+
+.receipt-table td:last-child {
+  white-space: nowrap;
+}
+
+/* Better receipt display animation */
+@keyframes display {
+  0% {
+    transform: translateY(22%) scale(1);
+    z-index: 100;
+  }
+  30% {
+    transform: translateY(22%) rotate3d(1, 0, 1, -3deg);
+    z-index: 100;
+  }
+  70% {
+    z-index: 100;
+  }
+  100% {
+    z-index: 100;
+    transform: translateY(-30%) scale(1.15);
+  }
+}
+
+/* Print media query - hide everything except important content */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .order-success-page,
+  .order-success-page * {
+    visibility: visible;
+  }
+
+  .success-header,
+  .receipt-section .printer,
+  .receipt-section .print-button,
+  .receipt-section .printer-display,
+  .action-buttons,
+  .help-section {
+    display: none !important;
+  }
+
+  .receipt-wrapper {
+    position: static !important;
+    transform: none !important;
+    clip-path: none !important;
+  }
+
+  .receipt {
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+
+  .order-details-grid {
+    page-break-before: always;
+  }
+}
+
+/* Responsive fixes */
+@media (max-width: 640px) {
+  .receipt-section {
+    padding: var(--spacing-md);
+    overflow-x: hidden;
+    min-height: 450px;
+  }
+
+  .wrapper {
+    transform: scale(0.8);
+    transform-origin: top center;
+  }
+
+  .order-details-grid {
+    margin-top: 50px;
+  }
+}

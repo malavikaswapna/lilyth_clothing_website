@@ -1,9 +1,8 @@
 // controllers/userController.js
-const User = require('../models/User');
-const Product = require('../models/Product');
-const asyncHandler = require('../utils/asyncHandler');
-const Order = require('../models/Order'); 
-
+const User = require("../models/User");
+const Product = require("../models/Product");
+const asyncHandler = require("../utils/asyncHandler");
+const Order = require("../models/Order");
 
 // @desc    Add address to user profile
 // @route   POST /api/user/addresses
@@ -11,14 +10,12 @@ const Order = require('../models/Order');
 exports.addAddress = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id);
 
-  // If this is the first address, make it default
   if (user.addresses.length === 0) {
     req.body.isDefault = true;
   }
 
-  // If setting as default, remove default from other addresses
   if (req.body.isDefault) {
-    user.addresses.forEach(address => {
+    user.addresses.forEach((address) => {
       address.isDefault = false;
     });
   }
@@ -26,11 +23,21 @@ exports.addAddress = asyncHandler(async (req, res) => {
   user.addresses.push(req.body);
   await user.save();
 
-  res.status(201).json({
+  const response = {
     success: true,
-    message: 'Address added successfully',
-    user: user.getPublicProfile()
-  });
+    message: "Address added successfully",
+    user: user.getPublicProfile(),
+  };
+
+  if (req.addressSuggestions) {
+    response.suggestions = {
+      message: `Based on PIN code ${req.body.postalCode}, the city should be "${req.addressSuggestions.city}". You entered "${req.addressSuggestions.userProvidedCity}".`,
+      suggestedCity: req.addressSuggestions.city,
+      suggestedState: req.addressSuggestions.state,
+    };
+  }
+
+  res.status(201).json(response);
 });
 
 // @desc    Update address
@@ -43,13 +50,13 @@ exports.updateAddress = asyncHandler(async (req, res) => {
   if (!address) {
     return res.status(404).json({
       success: false,
-      message: 'Address not found'
+      message: "Address not found",
     });
   }
 
   // If setting as default, remove default from other addresses
   if (req.body.isDefault) {
-    user.addresses.forEach(addr => {
+    user.addresses.forEach((addr) => {
       addr.isDefault = false;
     });
   }
@@ -60,8 +67,8 @@ exports.updateAddress = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Address updated successfully',
-    user: user.getPublicProfile()
+    message: "Address updated successfully",
+    user: user.getPublicProfile(),
   });
 });
 
@@ -75,7 +82,7 @@ exports.deleteAddress = asyncHandler(async (req, res) => {
   if (!address) {
     return res.status(404).json({
       success: false,
-      message: 'Address not found'
+      message: "Address not found",
     });
   }
 
@@ -91,8 +98,8 @@ exports.deleteAddress = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Address deleted successfully',
-    user: user.getPublicProfile()
+    message: "Address deleted successfully",
+    user: user.getPublicProfile(),
   });
 });
 
@@ -100,17 +107,17 @@ exports.deleteAddress = asyncHandler(async (req, res) => {
 // @route   GET /api/user/wishlist
 // @access  Private
 exports.getWishlist = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user.id)
-    .populate({
-      path: 'wishlist',
-      select: 'name price salePrice images slug brand averageRating reviewCount status',
-      match: { status: 'active' }
-    });
+  const user = await User.findById(req.user.id).populate({
+    path: "wishlist",
+    select:
+      "name price salePrice images slug brand averageRating reviewCount status",
+    match: { status: "active" },
+  });
 
   res.status(200).json({
     success: true,
     count: user.wishlist.length,
-    wishlist: user.wishlist
+    wishlist: user.wishlist,
   });
 });
 
@@ -120,10 +127,10 @@ exports.getWishlist = asyncHandler(async (req, res) => {
 exports.addToWishlist = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.productId);
 
-  if (!product || product.status !== 'active') {
+  if (!product || product.status !== "active") {
     return res.status(404).json({
       success: false,
-      message: 'Product not found'
+      message: "Product not found",
     });
   }
 
@@ -133,7 +140,7 @@ exports.addToWishlist = asyncHandler(async (req, res) => {
   if (user.wishlist.includes(req.params.productId)) {
     return res.status(400).json({
       success: false,
-      message: 'Product already in wishlist'
+      message: "Product already in wishlist",
     });
   }
 
@@ -142,7 +149,7 @@ exports.addToWishlist = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Product added to wishlist'
+    message: "Product added to wishlist",
   });
 });
 
@@ -153,14 +160,14 @@ exports.removeFromWishlist = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id);
 
   user.wishlist = user.wishlist.filter(
-    productId => productId.toString() !== req.params.productId
+    (productId) => productId.toString() !== req.params.productId
   );
 
   await user.save();
 
   res.status(200).json({
     success: true,
-    message: 'Product removed from wishlist'
+    message: "Product removed from wishlist",
   });
 });
 
@@ -178,8 +185,8 @@ exports.updatePreferredSizes = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Preferred sizes updated',
-    user: user.getPublicProfile()
+    message: "Preferred sizes updated",
+    user: user.getPublicProfile(),
   });
 });
 
@@ -187,11 +194,11 @@ exports.updatePreferredSizes = asyncHandler(async (req, res) => {
 // @route   GET /api/user/addresses
 // @access  Private
 exports.getAddresses = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.user._id).select('addresses');
-  
+  const user = await User.findById(req.user._id).select("addresses");
+
   res.status(200).json({
     success: true,
-    addresses: user.addresses || []
+    addresses: user.addresses || [],
   });
 });
 
@@ -205,7 +212,7 @@ exports.getUserAnalytics = asyncHandler(async (req, res) => {
   const recentOrders = await Order.find({ user: req.user.id })
     .sort({ createdAt: -1 })
     .limit(5)
-    .populate('items.product', 'name images');
+    .populate("items.product", "name images");
 
   // Get wishlist count
   const wishlistCount = user.wishlist.length;
@@ -213,26 +220,29 @@ exports.getUserAnalytics = asyncHandler(async (req, res) => {
   const analytics = {
     totalOrders: user.totalOrders,
     totalSpent: user.totalSpent,
-    averageOrderValue: user.totalOrders > 0 ? user.totalSpent / user.totalOrders : 0,
+    averageOrderValue:
+      user.totalOrders > 0 ? user.totalSpent / user.totalOrders : 0,
     wishlistCount,
-    recentOrders: recentOrders.map(order => ({
+    recentOrders: recentOrders.map((order) => ({
       id: order._id,
       orderNumber: order.orderNumber,
       total: order.total,
       status: order.status,
       createdAt: order.createdAt,
       itemCount: order.items.length,
-      firstItem: order.items[0] ? {
-        name: order.items[0].productName,
-        image: order.items[0].productImage
-      } : null
+      firstItem: order.items[0]
+        ? {
+            name: order.items[0].productName,
+            image: order.items[0].productImage,
+          }
+        : null,
     })),
     memberSince: user.createdAt,
-    lastLogin: user.lastLogin
+    lastLogin: user.lastLogin,
   };
 
   res.status(200).json({
     success: true,
-    analytics
+    analytics,
   });
 });

@@ -1,8 +1,18 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Mail, Phone, MapPin, Facebook, Instagram, Twitter } from 'lucide-react';
-import logo from '../../assets/logo.png';
-import './Footer.css';
+import React from "react";
+import { HashRouter, Link, redirect } from "react-router-dom";
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Facebook,
+  Instagram,
+  Twitter,
+  RefreshCcwDot,
+  GitPullRequestCreate,
+  HeartHandshake,
+} from "lucide-react";
+import logo from "../../assets/logo.png";
+import "./Footer.css";
 
 const Footer = () => {
   return (
@@ -15,14 +25,18 @@ const Footer = () => {
               <img src={logo} alt="AMOURA" className="footer-logo-image" />
             </Link>
             <p className="footer-description">
-              Curated fashion pieces that celebrate your individuality. 
-              Find clothing that fits your lifestyle and expresses your unique style.
+              Curated fashion pieces that celebrate your individuality. Find
+              clothing that fits your lifestyle and expresses your unique style.
             </p>
             <div className="social-links">
               <a href="#" className="social-link" aria-label="Facebook">
                 <Facebook size={18} />
               </a>
-              <a href="https://www.instagram.com/lilyth.in" className="social-link" aria-label="Instagram">
+              <a
+                href="https://www.instagram.com/lilyth.in"
+                className="social-link"
+                aria-label="Instagram"
+              >
                 <Instagram size={18} />
               </a>
               <a href="#" className="social-link" aria-label="Twitter">
@@ -35,12 +49,24 @@ const Footer = () => {
           <div className="footer-section">
             <h3 className="footer-title">Shop</h3>
             <ul className="footer-links">
-              <li><Link to="/shop?category=dresses">Dresses</Link></li>
-              <li><Link to="/shop?category=tops">Tops</Link></li>
-              <li><Link to="/shop?category=bottoms">Bottoms</Link></li>
-              <li><Link to="/shop?category=sleepwear">Sleepwear</Link></li>
-              <li><Link to="/shop?newArrivals=true">New Arrivals</Link></li>
-              <li><Link to="/shop?onSale=true">Sale</Link></li>
+              <li>
+                <Link to="/shop?category=dresses">Dresses</Link>
+              </li>
+              <li>
+                <Link to="/shop?category=tops">Tops</Link>
+              </li>
+              <li>
+                <Link to="/shop?category=bottoms">Bottoms</Link>
+              </li>
+              <li>
+                <Link to="/shop?category=sleepwear">Sleepwear</Link>
+              </li>
+              <li>
+                <Link to="/shop?newArrivals=true">New Arrivals</Link>
+              </li>
+              <li>
+                <Link to="/shop?onSale=true">Sale</Link>
+              </li>
             </ul>
           </div>
 
@@ -48,11 +74,21 @@ const Footer = () => {
           <div className="footer-section">
             <h3 className="footer-title">Customer Care</h3>
             <ul className="footer-links">
-              <li><Link to="/help/contact">Contact Us</Link></li>
-              <li><Link to="/help/shipping">Shipping & Returns</Link></li>
-              <li><Link to="/help/size-guide">Size Guide</Link></li>
-              <li><Link to="/help/care">Care Instructions</Link></li>
-              <li><Link to="/help/faq">FAQ</Link></li>
+              <li>
+                <Link to="/help/contact">Contact Us</Link>
+              </li>
+              <li>
+                <Link to="/help/shipping">Shipping & Returns</Link>
+              </li>
+              <li>
+                <Link to="/help/size-guide">Size Guide</Link>
+              </li>
+              <li>
+                <Link to="/help/care">Care Instructions</Link>
+              </li>
+              <li>
+                <Link to="/help/faq">FAQ</Link>
+              </li>
             </ul>
           </div>
 
@@ -73,7 +109,7 @@ const Footer = () => {
                 Subscribe
               </button>
             </form>
-            
+
             <div className="contact-info">
               <div className="contact-item">
                 <Mail size={16} />
@@ -90,9 +126,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="footer-bottom">
           <div className="footer-bottom-content">
-            <p className="copyright">
-              © 2025 LILYTH. All rights reserved.
-            </p>
+            <p className="copyright">© 2025 LILYTH. All rights reserved.</p>
             <div className="footer-bottom-links">
               <Link to="/legal/privacy">Privacy Policy</Link>
               <Link to="/legal/terms">Terms of Service</Link>

@@ -1,6 +1,6 @@
 // Header.js
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
   ShoppingBag,
@@ -8,19 +8,19 @@ import {
   Menu,
   X,
   Heart,
-  MoreVertical, // ✅ Kebab Icon
-} from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useCart } from '../../context/CartContext';
-import logo from '../../assets/logo.png';
-import { motion } from 'framer-motion';
-import './Header.css';
+  MoreVertical,
+} from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
+import logo from "../../assets/logo.png";
+import { motion } from "framer-motion";
+import "./Header.css";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isKebabOpen, setIsKebabOpen] = useState(false); // ✅ new state for kebab dropdown
-  const [searchQuery, setSearchQuery] = useState('');
+  const [isKebabOpen, setIsKebabOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { isAuthenticated, user, logout } = useAuth();
   const { getCartItemCount } = useCart();
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ const Header = () => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/shop?search=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery('');
+      setSearchQuery("");
       setIsSearchOpen(false);
       setIsKebabOpen(false);
     }
@@ -47,7 +47,7 @@ const Header = () => {
     <header className="header">
       <div className="container">
         <div className="header-content">
-          {/* ✅ Hamburger Menu - Always leftmost */}
+          {/* Hamburger Menu */}
           <motion.button
             className="mobile-menu-btn"
             onClick={toggleMenu}
@@ -55,10 +55,14 @@ const Header = () => {
             whileHover={{ rotate: 5 }}
             aria-label="Toggle Navigation"
           >
-            {isMenuOpen ? <X size={24} strokeWidth={2.5} /> : <Menu size={24} strokeWidth={2.5} />}
+            {isMenuOpen ? (
+              <X size={24} strokeWidth={2.5} />
+            ) : (
+              <Menu size={24} strokeWidth={2.5} />
+            )}
           </motion.button>
 
-          {/* ✅ Logo - Second position on desktop, centered on mobile */}
+          {/* Logo */}
           <Link to="/" className="logo">
             <img src={logo} alt="Lilyth" className="logo-image" />
           </Link>
@@ -67,7 +71,7 @@ const Header = () => {
 
           {/* Header Actions */}
           <div className="header-actions">
-            {/* ✅ Desktop Icons - Shown on larger screens */}
+            {/* Desktop Icons */}
             <div className="desktop-icons">
               {/* Search */}
               <button
@@ -75,7 +79,7 @@ const Header = () => {
                 onClick={toggleSearch}
                 aria-label="Search"
               >
-                <Search size={24} />
+                <Search size={22} />
               </button>
 
               {/* Wishlist */}
@@ -85,13 +89,17 @@ const Header = () => {
                   className="action-btn"
                   aria-label="Wishlist"
                 >
-                  <Heart size={24} />
+                  <Heart size={22} />
                 </Link>
               )}
 
               {/* Cart */}
-              <Link to="/cart" className="action-btn cart-btn" aria-label="Cart">
-                <ShoppingBag size={24} />
+              <Link
+                to="/cart"
+                className="action-btn cart-btn"
+                aria-label="Cart"
+              >
+                <ShoppingBag size={22} />
                 {cartItemCount > 0 && (
                   <span className="cart-badge">{cartItemCount}</span>
                 )}
@@ -101,9 +109,16 @@ const Header = () => {
               {isAuthenticated ? (
                 <div className="user-menu">
                   <div className="user-dropdown">
-                    <button className="action-btn user-btn">
-                      <User size={24} />
-                      <span className="user-name">{user?.firstName}</span>
+                    <button
+                      className="action-btn user-btn user-expandable"
+                      aria-label="User Account"
+                    >
+                      <span className="user-icon">
+                        <User size={22} />
+                      </span>
+                      <span className="user-name-expand">
+                        {user?.firstName}
+                      </span>
                     </button>
                     <div className="dropdown-menu">
                       <Link to="/account" className="dropdown-item">
@@ -115,7 +130,7 @@ const Header = () => {
                       <Link to="/account/wishlist" className="dropdown-item">
                         Wishlist
                       </Link>
-                      {user?.role === 'admin' && (
+                      {user?.role === "admin" && (
                         <div className="admin-controls">
                           <Link to="/admin" className="dropdown-item">
                             Admin Panel
@@ -125,7 +140,10 @@ const Header = () => {
                           </Link>
                         </div>
                       )}
-                      <button onClick={logout} className="dropdown-item logout-btn">
+                      <button
+                        onClick={logout}
+                        className="dropdown-item logout-btn"
+                      >
                         Sign Out
                       </button>
                     </div>
@@ -133,19 +151,19 @@ const Header = () => {
                 </div>
               ) : (
                 <Link to="/login" className="action-btn" aria-label="Login">
-                  <User size={24} />
+                  <User size={22} />
                 </Link>
               )}
             </div>
 
-            {/* ✅ Mobile Kebab Menu - Only shown on mobile screens */}
+            {/* Mobile Kebab Menu */}
             <div className="mobile-icons">
               <button
                 className="action-btn"
                 onClick={() => setIsKebabOpen(!isKebabOpen)}
                 aria-label="More Options"
               >
-                <MoreVertical size={24} />
+                <MoreVertical size={22} />
               </button>
 
               {isKebabOpen && (
@@ -229,31 +247,59 @@ const Header = () => {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <nav className={`mobile-nav ${isMenuOpen ? 'open' : ''}`}>
+          <nav className={`mobile-nav ${isMenuOpen ? "open" : ""}`}>
             <div className="mobile-nav-section">
               <h3 className="mobile-nav-title">Shop</h3>
               <Link to="/shop" className="mobile-nav-link" onClick={toggleMenu}>
                 All Items
               </Link>
-              <Link to="/shop?category=dresses" className="mobile-nav-link" onClick={toggleMenu}>
+              <Link
+                to="/shop?category=dresses"
+                className="mobile-nav-link"
+                onClick={toggleMenu}
+              >
                 Dresses
               </Link>
-              <Link to="/shop?category=activewear" className="mobile-nav-link" onClick={toggleMenu}>
+              <Link
+                to="/shop?category=activewear"
+                className="mobile-nav-link"
+                onClick={toggleMenu}
+              >
                 Activewear
               </Link>
-              <Link to="/shop?category=indo-western" className="mobile-nav-link" onClick={toggleMenu}>
+              <Link
+                to="/shop?category=indo-western"
+                className="mobile-nav-link"
+                onClick={toggleMenu}
+              >
                 Indo-Western
               </Link>
-              <Link to="/shop?category=tops" className="mobile-nav-link" onClick={toggleMenu}>
+              <Link
+                to="/shop?category=tops"
+                className="mobile-nav-link"
+                onClick={toggleMenu}
+              >
                 Tops
               </Link>
-              <Link to="/shop?category=bottoms" className="mobile-nav-link" onClick={toggleMenu}>
+              <Link
+                to="/shop?category=bottoms"
+                className="mobile-nav-link"
+                onClick={toggleMenu}
+              >
                 Bottoms
               </Link>
-              <Link to="/shop?category=sleepwear" className="mobile-nav-link" onClick={toggleMenu}>
+              <Link
+                to="/shop?category=sleepwear"
+                className="mobile-nav-link"
+                onClick={toggleMenu}
+              >
                 Sleepwear
               </Link>
-              <Link to="/shop?category=cord-sets" className="mobile-nav-link" onClick={toggleMenu}>
+              <Link
+                to="/shop?category=cord-sets"
+                className="mobile-nav-link"
+                onClick={toggleMenu}
+              >
                 Cord Sets
               </Link>
             </div>
@@ -261,13 +307,25 @@ const Header = () => {
             {isAuthenticated ? (
               <div className="mobile-nav-section">
                 <h3 className="mobile-nav-title">Account</h3>
-                <Link to="/account" className="mobile-nav-link" onClick={toggleMenu}>
+                <Link
+                  to="/account"
+                  className="mobile-nav-link"
+                  onClick={toggleMenu}
+                >
                   My Account
                 </Link>
-                <Link to="/account/orders" className="mobile-nav-link" onClick={toggleMenu}>
+                <Link
+                  to="/account/orders"
+                  className="mobile-nav-link"
+                  onClick={toggleMenu}
+                >
                   My Orders
                 </Link>
-                <Link to="/account/wishlist" className="mobile-nav-link" onClick={toggleMenu}>
+                <Link
+                  to="/account/wishlist"
+                  className="mobile-nav-link"
+                  onClick={toggleMenu}
+                >
                   Wishlist
                 </Link>
                 <button
@@ -283,10 +341,18 @@ const Header = () => {
             ) : (
               <div className="mobile-nav-section">
                 <h3 className="mobile-nav-title">Account</h3>
-                <Link to="/login" className="mobile-nav-link" onClick={toggleMenu}>
+                <Link
+                  to="/login"
+                  className="mobile-nav-link"
+                  onClick={toggleMenu}
+                >
                   Sign In
                 </Link>
-                <Link to="/register" className="mobile-nav-link" onClick={toggleMenu}>
+                <Link
+                  to="/register"
+                  className="mobile-nav-link"
+                  onClick={toggleMenu}
+                >
                   Create Account
                 </Link>
               </div>
@@ -294,16 +360,32 @@ const Header = () => {
 
             <div className="mobile-nav-section">
               <h3 className="mobile-nav-title">Customer Care</h3>
-              <Link to="/contact" className="mobile-nav-link" onClick={toggleMenu}>
+              <Link
+                to="/contact"
+                className="mobile-nav-link"
+                onClick={toggleMenu}
+              >
                 Contact Us
               </Link>
-              <Link to="/help/shipping" className="mobile-nav-link" onClick={toggleMenu}>
+              <Link
+                to="/help/shipping"
+                className="mobile-nav-link"
+                onClick={toggleMenu}
+              >
                 Shipping & Returns
               </Link>
-              <Link to="/help/size-guide" className="mobile-nav-link" onClick={toggleMenu}>
+              <Link
+                to="/help/size-guide"
+                className="mobile-nav-link"
+                onClick={toggleMenu}
+              >
                 Size Guide
               </Link>
-              <Link to="/help/faq" className="mobile-nav-link" onClick={toggleMenu}>
+              <Link
+                to="/help/faq"
+                className="mobile-nav-link"
+                onClick={toggleMenu}
+              >
                 FAQ
               </Link>
             </div>

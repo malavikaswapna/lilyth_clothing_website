@@ -1,0 +1,193 @@
+/* src/components/common/PincodeInput.css */
+.pincode-input-wrapper {
+  width: 100%;
+}
+
+.pincode-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.pincode-input-container:focus-within {
+  border-color: #b87049;
+  box-shadow: 0 0 0 3px rgba(184, 112, 73, 0.1);
+}
+
+.pincode-input-container.valid {
+  border-color: #10b981;
+}
+
+.pincode-input-container.invalid {
+  border-color: #ef4444;
+}
+
+.pincode-icon {
+  color: #6b7280;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.pincode-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 12px 8px;
+  font-size: 1rem;
+  font-family: "Courier New", monospace;
+  letter-spacing: 2px;
+}
+
+.pincode-input::placeholder {
+  letter-spacing: normal;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.validation-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.valid-icon {
+  color: #10b981;
+}
+
+.invalid-icon {
+  color: #ef4444;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+  color: #b87049;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.validation-message {
+  margin-top: 6px;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.validation-message.valid {
+  color: #10b981;
+}
+
+.validation-message.invalid {
+  color: #ef4444;
+}
+
+.service-area-warning {
+  margin-top: 12px;
+  padding: 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.service-area-warning svg {
+  color: #ef4444;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.service-area-warning strong {
+  display: block;
+  color: #991b1b;
+  margin-bottom: 4px;
+}
+
+.service-area-warning p {
+  color: #991b1b;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.pincode-details {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+}
+
+.location-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 0.875rem;
+  color: #166534;
+}
+
+.location-info svg {
+  flex-shrink: 0;
+}
+
+.post-office-info {
+  margin: 8px 0 0 0;
+  font-size: 0.875rem;
+  color: #166534;
+}
+
+.post-office-info strong {
+  font-weight: 600;
+}
+
+.delivery-info {
+  margin-top: 12px;
+  padding: 12px;
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.delivery-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: #1e40af;
+}
+
+.delivery-item svg {
+  flex-shrink: 0;
+}
+
+.service-info {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.service-info svg {
+  flex-shrink: 0;
+}

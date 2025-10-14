@@ -1,80 +1,84 @@
 // controllers/adminController.js
-const User = require('../models/User');
-const Product = require('../models/Product');
-const Order = require('../models/Order');
-const Category = require('../models/Category');
-const asyncHandler = require('../utils/asyncHandler');
-const csv = require('csv-stringify');
-const crypto = require('crypto');
-const { auditLogger, AuditLog } = require('../utils/auditLogger');
-const inventoryMonitor = require('../utils/inventoryMonitor');
+const User = require("../models/User");
+const Product = require("../models/Product");
+const Order = require("../models/Order");
+const Category = require("../models/Category");
+const asyncHandler = require("../utils/asyncHandler");
+const csv = require("csv-stringify");
+const crypto = require("crypto");
+const { auditLogger, AuditLog } = require("../utils/auditLogger");
+const inventoryMonitor = require("../utils/inventoryMonitor");
 
 // @desc    Get admin dashboard analytics
 // @route   GET /api/admin/dashboard
 // @access  Private/Admin
 exports.getDashboard = asyncHandler(async (req, res) => {
   const today = new Date();
-  const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+  const lastMonth = new Date(
+    today.getFullYear(),
+    today.getMonth() - 1,
+    today.getDate()
+  );
   const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   // Total counts
-  const totalUsers = await User.countDocuments({ role: 'customer' });
+  const totalUsers = await User.countDocuments({ role: "customer" });
   const totalProducts = await Product.countDocuments();
   const totalOrders = await Order.countDocuments();
-  
+
   // Recent counts
   const newUsersThisMonth = await User.countDocuments({
-    role: 'customer',
-    createdAt: { $gte: lastMonth }
+    role: "customer",
+    createdAt: { $gte: lastMonth },
   });
-  
+
   const ordersThisWeek = await Order.countDocuments({
-    createdAt: { $gte: lastWeek }
+    createdAt: { $gte: lastWeek },
   });
 
   // Revenue analytics
   const totalRevenue = await Order.aggregate([
-    { $match: { 'payment.status': 'completed' } },
-    { $group: { _id: null, total: { $sum: '$total' } } }
+    { $match: { "payment.status": "completed" } },
+    { $group: { _id: null, total: { $sum: "$total" } } },
   ]);
 
   const monthlyRevenue = await Order.aggregate([
-    { 
-      $match: { 
-        'payment.status': 'completed',
-        createdAt: { $gte: lastMonth }
-      }
+    {
+      $match: {
+        "payment.status": "completed",
+        createdAt: { $gte: lastMonth },
+      },
     },
-    { $group: { _id: null, total: { $sum: '$total' } } }
+    { $group: { _id: null, total: { $sum: "$total" } } },
   ]);
 
   // Top selling products
   const topProducts = await Product.find()
     .sort({ purchases: -1 })
     .limit(5)
-    .select('name purchases revenue images');
+    .select("name purchases revenue images");
 
   // Low stock products
   const lowStockProducts = await Product.find({
-    totalStock: { $lt: 10, $gt: 0 }
-  }).select('name totalStock variants');
+    totalStock: { $lt: 10, $gt: 0 },
+  }).select("name totalStock variants");
 
   // Order status breakdown
   const orderStatusBreakdown = await Order.aggregate([
     {
       $group: {
-        _id: '$status',
-        count: { $sum: 1 }
-      }
-    }
+        _id: "$status",
+        count: { $sum: 1 },
+      },
+    },
   ]);
 
   // Recent orders
   const recentOrders = await Order.find()
     .sort({ createdAt: -1 })
     .limit(10)
-    .populate('user', 'firstName lastName email')
-    .select('orderNumber total status createdAt user');
+    .populate("user", "firstName lastName email")
+    .select("orderNumber total status createdAt user");
 
   res.status(200).json({
     success: true,
@@ -83,18 +87,18 @@ exports.getDashboard = asyncHandler(async (req, res) => {
         users: totalUsers,
         products: totalProducts,
         orders: totalOrders,
-        revenue: totalRevenue[0]?.total || 0
+        revenue: totalRevenue[0]?.total || 0,
       },
       recent: {
         newUsers: newUsersThisMonth,
         weeklyOrders: ordersThisWeek,
-        monthlyRevenue: monthlyRevenue[0]?.total || 0
+        monthlyRevenue: monthlyRevenue[0]?.total || 0,
       },
       topProducts,
       lowStockProducts,
       orderStatusBreakdown,
-      recentOrders
-    }
+      recentOrders,
+    },
   });
 });
 
@@ -106,23 +110,23 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 20;
   const startIndex = (page - 1) * limit;
 
-  let query = User.find({ role: 'customer' });
+  let query = User.find({ role: "customer" });
 
   // Search functionality
   if (req.query.search) {
     query = query.where({
       $or: [
-        { firstName: { $regex: req.query.search, $options: 'i' } },
-        { lastName: { $regex: req.query.search, $options: 'i' } },
-        { email: { $regex: req.query.search, $options: 'i' } }
-      ]
+        { firstName: { $regex: req.query.search, $options: "i" } },
+        { lastName: { $regex: req.query.search, $options: "i" } },
+        { email: { $regex: req.query.search, $options: "i" } },
+      ],
     });
   }
 
   // Filter by active status - FIXED
-  if (req.query.active !== undefined && req.query.active !== '') {
-    const isActive = req.query.active === 'true';
-    query = query.where('isActive').equals(isActive);
+  if (req.query.active !== undefined && req.query.active !== "") {
+    const isActive = req.query.active === "true";
+    query = query.where("isActive").equals(isActive);
   }
   // If req.query.active is undefined or empty string, don't filter by isActive
 
@@ -130,24 +134,24 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .skip(startIndex)
     .limit(limit)
-    .select('-password');
+    .select("-password");
 
   // Get total count with the same filters (excluding pagination)
-  let countQuery = User.find({ role: 'customer' });
-  
+  let countQuery = User.find({ role: "customer" });
+
   if (req.query.search) {
     countQuery = countQuery.where({
       $or: [
-        { firstName: { $regex: req.query.search, $options: 'i' } },
-        { lastName: { $regex: req.query.search, $options: 'i' } },
-        { email: { $regex: req.query.search, $options: 'i' } }
-      ]
+        { firstName: { $regex: req.query.search, $options: "i" } },
+        { lastName: { $regex: req.query.search, $options: "i" } },
+        { email: { $regex: req.query.search, $options: "i" } },
+      ],
     });
   }
-  
-  if (req.query.active !== undefined && req.query.active !== '') {
-    const isActive = req.query.active === 'true';
-    countQuery = countQuery.where('isActive').equals(isActive);
+
+  if (req.query.active !== undefined && req.query.active !== "") {
+    const isActive = req.query.active === "true";
+    countQuery = countQuery.where("isActive").equals(isActive);
   }
 
   const total = await countQuery.countDocuments();
@@ -160,9 +164,9 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
       page,
       pages: Math.ceil(total / limit),
       hasNext: page < Math.ceil(total / limit),
-      hasPrev: page > 1
+      hasPrev: page > 1,
     },
-    users
+    users,
   });
 });
 
@@ -170,12 +174,12 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
 // @route   GET /api/admin/users/:id
 // @access  Private/Admin
 exports.getUserDetails = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id).select('-password');
+  const user = await User.findById(req.params.id).select("-password");
 
   if (!user) {
     return res.status(404).json({
       success: false,
-      message: 'User not found'
+      message: "User not found",
     });
   }
 
@@ -183,12 +187,12 @@ exports.getUserDetails = asyncHandler(async (req, res) => {
   const orders = await Order.find({ user: req.params.id })
     .sort({ createdAt: -1 })
     .limit(10)
-    .select('orderNumber total status createdAt');
+    .select("orderNumber total status createdAt");
 
   res.status(200).json({
     success: true,
     user,
-    orders
+    orders,
   });
 });
 
@@ -202,29 +206,29 @@ exports.updateUserStatus = asyncHandler(async (req, res) => {
     req.params.id,
     { isActive },
     { new: true, runValidators: true }
-  ).select('-password');
+  ).select("-password");
 
   if (!user) {
     return res.status(404).json({
       success: false,
-      message: 'User not found'
+      message: "User not found",
     });
   }
 
   // Log audit trail
   await auditLogger.logUserAction(
-    'USER_STATUS_CHANGED',
+    "USER_STATUS_CHANGED",
     req.user,
     user._id,
-    { ip: req.ip, userAgent: req.headers['user-agent'] },
+    { ip: req.ip, userAgent: req.headers["user-agent"] },
     !isActive,
     isActive
   );
 
   res.status(200).json({
     success: true,
-    message: `User ${isActive ? 'activated' : 'deactivated'} successfully`,
-    user
+    message: `User ${isActive ? "activated" : "deactivated"} successfully`,
+    user,
   });
 });
 
@@ -234,39 +238,39 @@ exports.updateUserStatus = asyncHandler(async (req, res) => {
 exports.getInventoryReport = asyncHandler(async (req, res) => {
   // Out of stock products
   const outOfStock = await Product.find({ totalStock: 0 })
-    .populate('category', 'name')
-    .select('name sku totalStock category');
+    .populate("category", "name")
+    .select("name sku totalStock category");
 
   // Low stock products (less than 10)
   const lowStock = await Product.find({
-    totalStock: { $gt: 0, $lt: 10 }
+    totalStock: { $gt: 0, $lt: 10 },
   })
-    .populate('category', 'name')
-    .select('name sku totalStock category');
+    .populate("category", "name")
+    .select("name sku totalStock category");
 
   // High stock products (more than 100)
   const highStock = await Product.find({ totalStock: { $gt: 100 } })
-    .populate('category', 'name')
-    .select('name sku totalStock category');
+    .populate("category", "name")
+    .select("name sku totalStock category");
 
   // Stock by category
   const stockByCategory = await Product.aggregate([
     {
       $lookup: {
-        from: 'categories',
-        localField: 'category',
-        foreignField: '_id',
-        as: 'categoryInfo'
-      }
+        from: "categories",
+        localField: "category",
+        foreignField: "_id",
+        as: "categoryInfo",
+      },
     },
     {
       $group: {
-        _id: '$categoryInfo.name',
+        _id: "$categoryInfo.name",
         totalProducts: { $sum: 1 },
-        totalStock: { $sum: '$totalStock' },
-        averageStock: { $avg: '$totalStock' }
-      }
-    }
+        totalStock: { $sum: "$totalStock" },
+        averageStock: { $avg: "$totalStock" },
+      },
+    },
   ]);
 
   res.status(200).json({
@@ -277,8 +281,8 @@ exports.getInventoryReport = asyncHandler(async (req, res) => {
       highStock: highStock.length,
       outOfStockProducts: outOfStock,
       lowStockProducts: lowStock,
-      stockByCategory
-    }
+      stockByCategory,
+    },
   });
 });
 
@@ -286,37 +290,37 @@ exports.getInventoryReport = asyncHandler(async (req, res) => {
 // @route   GET /api/admin/sales
 // @access  Private/Admin
 exports.getSalesReport = asyncHandler(async (req, res) => {
-  const { startDate, endDate, period = 'month' } = req.query;
+  const { startDate, endDate, period = "month" } = req.query;
 
-  let matchCondition = { 'payment.status': 'completed' };
+  let matchCondition = { "payment.status": "completed" };
 
   if (startDate && endDate) {
     matchCondition.createdAt = {
       $gte: new Date(startDate),
-      $lte: new Date(endDate)
+      $lte: new Date(endDate),
     };
   }
 
   // Sales by period
   let groupBy;
   switch (period) {
-    case 'day':
+    case "day":
       groupBy = {
-        year: { $year: '$createdAt' },
-        month: { $month: '$createdAt' },
-        day: { $dayOfMonth: '$createdAt' }
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
+        day: { $dayOfMonth: "$createdAt" },
       };
       break;
-    case 'week':
+    case "week":
       groupBy = {
-        year: { $year: '$createdAt' },
-        week: { $week: '$createdAt' }
+        year: { $year: "$createdAt" },
+        week: { $week: "$createdAt" },
       };
       break;
     default:
       groupBy = {
-        year: { $year: '$createdAt' },
-        month: { $month: '$createdAt' }
+        year: { $year: "$createdAt" },
+        month: { $month: "$createdAt" },
       };
   }
 
@@ -325,28 +329,28 @@ exports.getSalesReport = asyncHandler(async (req, res) => {
     {
       $group: {
         _id: groupBy,
-        totalSales: { $sum: '$total' },
+        totalSales: { $sum: "$total" },
         totalOrders: { $sum: 1 },
-        averageOrderValue: { $avg: '$total' }
-      }
+        averageOrderValue: { $avg: "$total" },
+      },
     },
-    { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+    { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
   ]);
 
   // Top selling products
   const topSellingProducts = await Order.aggregate([
     { $match: matchCondition },
-    { $unwind: '$items' },
+    { $unwind: "$items" },
     {
       $group: {
-        _id: '$items.product',
-        totalQuantity: { $sum: '$items.quantity' },
-        totalRevenue: { $sum: '$items.totalPrice' },
-        productName: { $first: '$items.productName' }
-      }
+        _id: "$items.product",
+        totalQuantity: { $sum: "$items.quantity" },
+        totalRevenue: { $sum: "$items.totalPrice" },
+        productName: { $first: "$items.productName" },
+      },
     },
     { $sort: { totalQuantity: -1 } },
-    { $limit: 10 }
+    { $limit: 10 },
   ]);
 
   // Sales summary
@@ -355,12 +359,12 @@ exports.getSalesReport = asyncHandler(async (req, res) => {
     {
       $group: {
         _id: null,
-        totalRevenue: { $sum: '$total' },
+        totalRevenue: { $sum: "$total" },
         totalOrders: { $sum: 1 },
-        averageOrderValue: { $avg: '$total' },
-        totalItemsSold: { $sum: { $sum: '$items.quantity' } }
-      }
-    }
+        averageOrderValue: { $avg: "$total" },
+        totalItemsSold: { $sum: { $sum: "$items.quantity" } },
+      },
+    },
   ]);
 
   res.status(200).json({
@@ -368,8 +372,8 @@ exports.getSalesReport = asyncHandler(async (req, res) => {
     salesReport: {
       summary: salesSummary[0] || {},
       salesByPeriod,
-      topSellingProducts
-    }
+      topSellingProducts,
+    },
   });
 });
 
@@ -379,31 +383,142 @@ exports.getSalesReport = asyncHandler(async (req, res) => {
 exports.updateProductStock = asyncHandler(async (req, res) => {
   const { variants } = req.body;
 
+  // Validate input
+  if (!variants || !Array.isArray(variants) || variants.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Variants array is required",
+    });
+  }
+
+  console.log("📦 Updating stock for product ID:", req.params.id);
+  console.log("📦 Received variants update:", variants);
+
   const product = await Product.findById(req.params.id);
 
   if (!product) {
     return res.status(404).json({
       success: false,
-      message: 'Product not found'
+      message: "Product not found",
     });
   }
 
+  console.log("📦 Current product:", product.name);
+  console.log("📦 Current totalStock BEFORE update:", product.totalStock);
+  console.log(
+    "📦 Current variants BEFORE update:",
+    product.variants.map((v) => ({
+      size: v.size,
+      color: v.color.name,
+      stock: v.stock,
+    }))
+  );
+
   // Update variant stocks
-  variants.forEach(variantUpdate => {
+  let updatedCount = 0;
+  variants.forEach((variantUpdate) => {
     const variant = product.variants.find(
-      v => v.size === variantUpdate.size && v.color.name === variantUpdate.color
+      (v) =>
+        v.size === variantUpdate.size && v.color.name === variantUpdate.color
     );
+
     if (variant) {
-      variant.stock = variantUpdate.stock;
+      console.log(
+        `✏️  Updating ${variant.size} ${variant.color.name}: ${variant.stock} -> ${variantUpdate.stock}`
+      );
+      variant.stock = parseInt(variantUpdate.stock) || 0;
+      updatedCount++;
+    } else {
+      console.log(
+        `❌ Variant not found: ${variantUpdate.size} ${variantUpdate.color}`
+      );
     }
   });
 
+  if (updatedCount === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "No matching variants found to update",
+    });
+  }
+
+  console.log(
+    "📦 Variants AFTER manual update:",
+    product.variants.map((v) => ({
+      size: v.size,
+      color: v.color.name,
+      stock: v.stock,
+    }))
+  );
+
+  // Manually calculate totalStock BEFORE save
+  const calculatedTotal = product.variants.reduce((total, variant) => {
+    return total + (variant.stock || 0);
+  }, 0);
+  console.log("🧮 Manually calculated totalStock:", calculatedTotal);
+
+  // Explicitly set totalStock (in case pre-save hook fails)
+  product.totalStock = calculatedTotal;
+
+  console.log("💾 Calling product.save()...");
+
+  // Mark the variants path as modified to ensure pre-save hooks run
+  product.markModified("variants");
+  product.markModified("totalStock");
+
+  // Save the product
   await product.save();
 
+  console.log("✅ Save completed");
+  console.log("📦 Product totalStock AFTER save:", product.totalStock);
+
+  // VERIFY: Fetch from database to confirm it was saved
+  const verifyProduct = await Product.findById(product._id).lean();
+  console.log("🔍 VERIFY - Database totalStock:", verifyProduct.totalStock);
+  console.log(
+    "🔍 VERIFY - Database variants:",
+    verifyProduct.variants.map((v) => ({
+      size: v.size,
+      color: v.color.name,
+      stock: v.stock,
+    }))
+  );
+
+  // Double check they match
+  if (verifyProduct.totalStock !== calculatedTotal) {
+    console.error(
+      "⚠️  WARNING: Database totalStock does not match calculated value!"
+    );
+    console.error("   Expected:", calculatedTotal);
+    console.error("   Got:", verifyProduct.totalStock);
+  } else {
+    console.log("✅ Verification passed - database has correct stock");
+  }
+
+  // Populate category for response
+  await product.populate("category", "name slug");
+
+  // Return the VERIFIED data from database
   res.status(200).json({
     success: true,
-    message: 'Stock updated successfully',
-    product
+    message: `Stock updated successfully for ${updatedCount} variant(s)`,
+    product: {
+      _id: verifyProduct._id,
+      name: verifyProduct.name,
+      sku: verifyProduct.sku,
+      totalStock: verifyProduct.totalStock, // Use verified value from DB
+      variants: verifyProduct.variants, // Use verified values from DB
+      category: product.category,
+      price: verifyProduct.price,
+      salePrice: verifyProduct.salePrice,
+      status: verifyProduct.status,
+      images: verifyProduct.images,
+      brand: verifyProduct.brand,
+      featured: verifyProduct.featured,
+      isNewArrival: verifyProduct.isNewArrival,
+      updatedAt: verifyProduct.updatedAt,
+    },
+    updatedCount,
   });
 });
 
@@ -416,22 +531,22 @@ exports.bulkUpdateProducts = asyncHandler(async (req, res) => {
   if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
     return res.status(400).json({
       success: false,
-      message: 'Product IDs array is required'
+      message: "Product IDs array is required",
     });
   }
 
   if (!updates || Object.keys(updates).length === 0) {
     return res.status(400).json({
       success: false,
-      message: 'Updates object is required'
+      message: "Updates object is required",
     });
   }
 
   // Validate allowed update fields
-  const allowedFields = ['status', 'isFeatured', 'isNewArrival', 'category'];
+  const allowedFields = ["status", "isFeatured", "isNewArrival", "category"];
   const updateFields = {};
-  
-  Object.keys(updates).forEach(key => {
+
+  Object.keys(updates).forEach((key) => {
     if (allowedFields.includes(key)) {
       updateFields[key] = updates[key];
     }
@@ -440,7 +555,7 @@ exports.bulkUpdateProducts = asyncHandler(async (req, res) => {
   if (Object.keys(updateFields).length === 0) {
     return res.status(400).json({
       success: false,
-      message: 'No valid update fields provided'
+      message: "No valid update fields provided",
     });
   }
 
@@ -450,20 +565,15 @@ exports.bulkUpdateProducts = asyncHandler(async (req, res) => {
   );
 
   // Log audit trail
-  await auditLogger.logProductAction(
-    'BULK_UPDATE',
-    req.user,
-    null,
-    { 
-      productCount: productIds.length,
-      updates: updateFields 
-    }
-  );
+  await auditLogger.logProductAction("BULK_UPDATE", req.user, null, {
+    productCount: productIds.length,
+    updates: updateFields,
+  });
 
   res.status(200).json({
     success: true,
     message: `${result.modifiedCount} products updated successfully`,
-    modifiedCount: result.modifiedCount
+    modifiedCount: result.modifiedCount,
   });
 });
 
@@ -471,56 +581,52 @@ exports.bulkUpdateProducts = asyncHandler(async (req, res) => {
 // @route   DELETE /api/admin/products/bulk-delete
 // @access  Private/Admin
 exports.bulkDeleteProducts = asyncHandler(async (req, res) => {
-  const { productIds, deleteType = 'soft' } = req.body;
+  const { productIds, deleteType = "soft" } = req.body;
 
   if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
     return res.status(400).json({
       success: false,
-      message: 'Product IDs array is required'
+      message: "Product IDs array is required",
     });
   }
 
   let result;
 
-  if (deleteType === 'hard') {
+  if (deleteType === "hard") {
     // Hard delete - permanently remove from database
     result = await Product.deleteMany({ _id: { $in: productIds } });
-    
-    await auditLogger.logProductAction(
-      'PRODUCT_DELETED',
-      req.user,
-      null,
-      { deleteType: 'hard', productCount: productIds.length }
-    );
-    
+
+    await auditLogger.logProductAction("PRODUCT_DELETED", req.user, null, {
+      deleteType: "hard",
+      productCount: productIds.length,
+    });
+
     res.status(200).json({
       success: true,
       message: `${result.deletedCount} products permanently deleted`,
-      deletedCount: result.deletedCount
+      deletedCount: result.deletedCount,
     });
   } else {
     // Soft delete - change status to deleted
     result = await Product.updateMany(
       { _id: { $in: productIds } },
-      { 
-        $set: { 
-          status: 'deleted',
-          deletedAt: new Date()
-        }
+      {
+        $set: {
+          status: "deleted",
+          deletedAt: new Date(),
+        },
       }
     );
 
-    await auditLogger.logProductAction(
-      'PRODUCT_DELETED',
-      req.user,
-      null,
-      { deleteType: 'soft', productCount: productIds.length }
-    );
+    await auditLogger.logProductAction("PRODUCT_DELETED", req.user, null, {
+      deleteType: "soft",
+      productCount: productIds.length,
+    });
 
     res.status(200).json({
       success: true,
       message: `${result.modifiedCount} products marked as deleted`,
-      modifiedCount: result.modifiedCount
+      modifiedCount: result.modifiedCount,
     });
   }
 });
@@ -534,15 +640,15 @@ exports.updateProductStatus = asyncHandler(async (req, res) => {
   if (!status) {
     return res.status(400).json({
       success: false,
-      message: 'Status is required'
+      message: "Status is required",
     });
   }
 
-  const validStatuses = ['active', 'inactive', 'draft', 'discontinued'];
+  const validStatuses = ["active", "inactive", "draft", "discontinued"];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid status value'
+      message: "Invalid status value",
     });
   }
 
@@ -555,14 +661,14 @@ exports.updateProductStatus = asyncHandler(async (req, res) => {
   if (!product) {
     return res.status(404).json({
       success: false,
-      message: 'Product not found'
+      message: "Product not found",
     });
   }
 
   res.status(200).json({
     success: true,
-    message: 'Product status updated successfully',
-    product
+    message: "Product status updated successfully",
+    product,
   });
 });
 
@@ -575,7 +681,7 @@ exports.duplicateProduct = asyncHandler(async (req, res) => {
   if (!originalProduct) {
     return res.status(404).json({
       success: false,
-      message: 'Product not found'
+      message: "Product not found",
     });
   }
 
@@ -597,7 +703,7 @@ exports.duplicateProduct = asyncHandler(async (req, res) => {
     name: `${originalProduct.name} - Copy`,
     sku: generateNewSKU(),
     slug: generateNewSlug(originalProduct.slug),
-    status: 'draft',
+    status: "draft",
     isFeatured: false,
     isNewArrival: false,
     views: 0,
@@ -606,15 +712,17 @@ exports.duplicateProduct = asyncHandler(async (req, res) => {
     averageRating: 0,
     reviewCount: 0,
     createdAt: undefined,
-    updatedAt: undefined
+    updatedAt: undefined,
   };
 
   // Reset stock for all variants
   if (duplicateData.variants) {
-    duplicateData.variants = duplicateData.variants.map(variant => ({
+    duplicateData.variants = duplicateData.variants.map((variant) => ({
       ...variant,
       stock: 0,
-      variantSku: `${duplicateData.sku}-${variant.size}-${variant.color.name.toUpperCase()}`
+      variantSku: `${duplicateData.sku}-${
+        variant.size
+      }-${variant.color.name.toUpperCase()}`,
     }));
   }
 
@@ -623,8 +731,8 @@ exports.duplicateProduct = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     success: true,
-    message: 'Product duplicated successfully',
-    product: duplicatedProduct
+    message: "Product duplicated successfully",
+    product: duplicatedProduct,
   });
 });
 
@@ -648,15 +756,15 @@ exports.exportProducts = asyncHandler(async (req, res) => {
   }
 
   if (req.query.featured !== undefined) {
-    query.isFeatured = req.query.featured === 'true';
+    query.isFeatured = req.query.featured === "true";
   }
 
   if (req.query.newArrival !== undefined) {
-    query.isNewArrival = req.query.newArrival === 'true';
+    query.isNewArrival = req.query.newArrival === "true";
   }
 
   if (req.query.brand) {
-    query.brand = new RegExp(req.query.brand, 'i');
+    query.brand = new RegExp(req.query.brand, "i");
   }
 
   if (req.query.minPrice || req.query.maxPrice) {
@@ -667,54 +775,64 @@ exports.exportProducts = asyncHandler(async (req, res) => {
 
   if (req.query.startDate || req.query.endDate) {
     query.createdAt = {};
-    if (req.query.startDate) query.createdAt.$gte = new Date(req.query.startDate);
+    if (req.query.startDate)
+      query.createdAt.$gte = new Date(req.query.startDate);
     if (req.query.endDate) query.createdAt.$lte = new Date(req.query.endDate);
   }
 
   const products = await Product.find(query)
-    .populate('category', 'name')
+    .populate("category", "name")
     .sort({ createdAt: -1 });
 
   // Generate CSV data
-  const csvData = products.map(product => ({
+  const csvData = products.map((product) => ({
     ID: product._id,
     Name: product.name,
     SKU: product.sku,
     Brand: product.brand,
-    Category: product.category?.name || 'No Category',
+    Category: product.category?.name || "No Category",
     Price: product.price,
-    'Sale Price': product.salePrice || '',
+    "Sale Price": product.salePrice || "",
     Status: product.status,
-    Featured: product.isFeatured ? 'Yes' : 'No',
-    'New Arrival': product.isNewArrival ? 'Yes' : 'No',
-    'Total Stock': product.totalStock,
+    Featured: product.isFeatured ? "Yes" : "No",
+    "New Arrival": product.isNewArrival ? "Yes" : "No",
+    "Total Stock": product.totalStock,
     Views: product.views,
     Purchases: product.purchases,
     Revenue: product.revenue,
-    'Average Rating': product.averageRating,
-    'Review Count': product.reviewCount,
-    'Created Date': product.createdAt.toISOString().split('T')[0],
-    'Updated Date': product.updatedAt.toISOString().split('T')[0]
+    "Average Rating": product.averageRating,
+    "Review Count": product.reviewCount,
+    "Created Date": product.createdAt.toISOString().split("T")[0],
+    "Updated Date": product.updatedAt.toISOString().split("T")[0],
   }));
 
   // Convert to CSV string
-  csv(csvData, {
-    header: true,
-    columns: Object.keys(csvData[0] || {})
-  }, (err, csvString) => {
-    if (err) {
-      return res.status(500).json({
-        success: false,
-        message: 'Error generating CSV'
-      });
-    }
+  csv(
+    csvData,
+    {
+      header: true,
+      columns: Object.keys(csvData[0] || {}),
+    },
+    (err, csvString) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Error generating CSV",
+        });
+      }
 
-    const filename = `products-export-${new Date().toISOString().split('T')[0]}.csv`;
-    
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(csvString);
-  });
+      const filename = `products-export-${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename}"`
+      );
+      res.send(csvString);
+    }
+  );
 });
 
 // @desc    Get enhanced products with admin filters
@@ -739,17 +857,17 @@ exports.getAdminProducts = asyncHandler(async (req, res) => {
 
   // Featured filter
   if (req.query.featured !== undefined) {
-    query.isFeatured = req.query.featured === 'true';
+    query.isFeatured = req.query.featured === "true";
   }
 
   // New arrival filter
   if (req.query.newArrival !== undefined) {
-    query.isNewArrival = req.query.newArrival === 'true';
+    query.isNewArrival = req.query.newArrival === "true";
   }
 
   // Brand filter
   if (req.query.brand) {
-    query.brand = new RegExp(req.query.brand, 'i');
+    query.brand = new RegExp(req.query.brand, "i");
   }
 
   // Price range filter
@@ -762,20 +880,21 @@ exports.getAdminProducts = asyncHandler(async (req, res) => {
   // Date range filter
   if (req.query.startDate || req.query.endDate) {
     query.createdAt = {};
-    if (req.query.startDate) query.createdAt.$gte = new Date(req.query.startDate);
+    if (req.query.startDate)
+      query.createdAt.$gte = new Date(req.query.startDate);
     if (req.query.endDate) query.createdAt.$lte = new Date(req.query.endDate);
   }
 
   // Stock level filter
   if (req.query.stockLevel) {
     switch (req.query.stockLevel) {
-      case 'out_of_stock':
+      case "out_of_stock":
         query.totalStock = 0;
         break;
-      case 'low_stock':
+      case "low_stock":
         query.totalStock = { $gt: 0, $lt: 10 };
         break;
-      case 'in_stock':
+      case "in_stock":
         query.totalStock = { $gte: 10 };
         break;
     }
@@ -784,9 +903,9 @@ exports.getAdminProducts = asyncHandler(async (req, res) => {
   // Search
   if (req.query.search) {
     query.$or = [
-      { name: { $regex: req.query.search, $options: 'i' } },
-      { sku: { $regex: req.query.search, $options: 'i' } },
-      { brand: { $regex: req.query.search, $options: 'i' } }
+      { name: { $regex: req.query.search, $options: "i" } },
+      { sku: { $regex: req.query.search, $options: "i" } },
+      { brand: { $regex: req.query.search, $options: "i" } },
     ];
   }
 
@@ -794,8 +913,8 @@ exports.getAdminProducts = asyncHandler(async (req, res) => {
   let mongooseQuery = Product.find(query);
 
   // Sorting
-  const sortBy = req.query.sort || 'createdAt';
-  const sortOrder = req.query.order === 'asc' ? 1 : -1;
+  const sortBy = req.query.sort || "createdAt";
+  const sortOrder = req.query.order === "asc" ? 1 : -1;
   const sortObj = {};
   sortObj[sortBy] = sortOrder;
   mongooseQuery = mongooseQuery.sort(sortObj);
@@ -806,7 +925,7 @@ exports.getAdminProducts = asyncHandler(async (req, res) => {
   const startIndex = (page - 1) * limit;
 
   mongooseQuery = mongooseQuery.skip(startIndex).limit(limit);
-  mongooseQuery = mongooseQuery.populate('category', 'name slug');
+  mongooseQuery = mongooseQuery.populate("category", "name slug");
 
   const products = await mongooseQuery;
   const total = await Product.countDocuments(query);
@@ -820,9 +939,9 @@ exports.getAdminProducts = asyncHandler(async (req, res) => {
       pages: Math.ceil(total / limit),
       limit,
       hasNext: page < Math.ceil(total / limit),
-      hasPrev: page > 1
+      hasPrev: page > 1,
     },
-    products
+    products,
   });
 });
 
@@ -837,17 +956,17 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
   if (req.query.search) {
     const users = await User.find({
       $or: [
-        { firstName: { $regex: req.query.search, $options: 'i' } },
-        { lastName: { $regex: req.query.search, $options: 'i' } },
-        { email: { $regex: req.query.search, $options: 'i' } }
-      ]
-    }).select('_id');
-    
-    const userIds = users.map(user => user._id);
-    
+        { firstName: { $regex: req.query.search, $options: "i" } },
+        { lastName: { $regex: req.query.search, $options: "i" } },
+        { email: { $regex: req.query.search, $options: "i" } },
+      ],
+    }).select("_id");
+
+    const userIds = users.map((user) => user._id);
+
     query.$or = [
-      { orderNumber: { $regex: req.query.search, $options: 'i' } },
-      { user: { $in: userIds } }
+      { orderNumber: { $regex: req.query.search, $options: "i" } },
+      { user: { $in: userIds } },
     ];
   }
 
@@ -876,7 +995,7 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
     if (req.query.maxAmount) query.total.$lte = Number(req.query.maxAmount);
   }
 
-  console.log('Orders query:', JSON.stringify(query, null, 2));
+  console.log("Orders query:", JSON.stringify(query, null, 2));
 
   // Create the mongoose query
   let mongooseQuery = Order.find(query);
@@ -892,7 +1011,10 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
   mongooseQuery = mongooseQuery.skip(startIndex).limit(limit);
 
   // Populate user and basic order info
-  mongooseQuery = mongooseQuery.populate('user', 'firstName lastName email phone');
+  mongooseQuery = mongooseQuery.populate(
+    "user",
+    "firstName lastName email phone"
+  );
 
   try {
     // Execute query
@@ -912,15 +1034,15 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
         pages: Math.ceil(total / limit),
         limit,
         hasNext: page < Math.ceil(total / limit),
-        hasPrev: page > 1
+        hasPrev: page > 1,
       },
-      orders
+      orders,
     });
   } catch (error) {
-    console.error('Orders query error:', error);
+    console.error("Orders query error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching orders'
+      message: "Error fetching orders",
     });
   }
 });
@@ -930,22 +1052,22 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 exports.getOrderDetails = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id)
-    .populate('user', 'firstName lastName email phone')
+    .populate("user", "firstName lastName email phone")
     .populate({
-      path: 'items.product',
-      select: 'name images'
+      path: "items.product",
+      select: "name images",
     });
 
   if (!order) {
     return res.status(404).json({
       success: false,
-      message: 'Order not found'
+      message: "Order not found",
     });
   }
 
   res.status(200).json({
     success: true,
-    order
+    order,
   });
 });
 
@@ -956,11 +1078,17 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
 
   // Validate status
-  const validStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+  const validStatuses = [
+    "pending",
+    "confirmed",
+    "shipped",
+    "delivered",
+    "cancelled",
+  ];
   if (!validStatuses.includes(status)) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid status value'
+      message: "Invalid status value",
     });
   }
 
@@ -969,33 +1097,33 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
   if (!order) {
     return res.status(404).json({
       success: false,
-      message: 'Order not found'
+      message: "Order not found",
     });
   }
 
   // Update status
   order.status = status;
-  
+
   // Add timestamps for certain status changes
-  if (status === 'confirmed') {
+  if (status === "confirmed") {
     order.confirmedAt = new Date();
-  } else if (status === 'shipped') {
+  } else if (status === "shipped") {
     order.shippedAt = new Date();
-  } else if (status === 'delivered') {
+  } else if (status === "delivered") {
     order.deliveredAt = new Date();
-  } else if (status === 'cancelled') {
+  } else if (status === "cancelled") {
     order.cancelledAt = new Date();
   }
 
   await order.save();
 
   // Populate for response
-  await order.populate('user', 'firstName lastName email');
+  await order.populate("user", "firstName lastName email");
 
   res.status(200).json({
     success: true,
-    message: 'Order status updated successfully',
-    order
+    message: "Order status updated successfully",
+    order,
   });
 });
 
@@ -1011,15 +1139,15 @@ exports.getOrderStats = asyncHandler(async (req, res) => {
     const statusCounts = await Order.aggregate([
       {
         $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
-      }
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
     // Convert to object for easier access
     const statusStats = {};
-    statusCounts.forEach(item => {
+    statusCounts.forEach((item) => {
       statusStats[item._id] = item.count;
     });
 
@@ -1027,18 +1155,19 @@ exports.getOrderStats = asyncHandler(async (req, res) => {
     const revenueResult = await Order.aggregate([
       {
         $match: {
-          status: { $nin: ['cancelled'] }
-        }
+          status: { $nin: ["cancelled"] },
+        },
       },
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: '$total' }
-        }
-      }
+          totalRevenue: { $sum: "$total" },
+        },
+      },
     ]);
 
-    const totalRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
+    const totalRevenue =
+      revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
 
     const stats = {
       total,
@@ -1047,18 +1176,18 @@ exports.getOrderStats = asyncHandler(async (req, res) => {
       shipped: statusStats.shipped || 0,
       delivered: statusStats.delivered || 0,
       cancelled: statusStats.cancelled || 0,
-      totalRevenue
+      totalRevenue,
     };
 
     res.status(200).json({
       success: true,
-      stats
+      stats,
     });
   } catch (error) {
-    console.error('Error fetching order stats:', error);
+    console.error("Error fetching order stats:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching order statistics'
+      message: "Error fetching order statistics",
     });
   }
 });
@@ -1089,31 +1218,31 @@ exports.exportOrders = asyncHandler(async (req, res) => {
 
     // Get all orders matching criteria
     const orders = await Order.find(query)
-      .populate('user', 'firstName lastName email')
+      .populate("user", "firstName lastName email")
       .sort({ createdAt: -1 });
 
     // Generate CSV headers
     const headers = [
-      'Order Number',
-      'Customer Name',
-      'Customer Email',
-      'Order Date',
-      'Status',
-      'Items Count',
-      'Subtotal',
-      'Shipping',
-      'Tax',
-      'Discount',
-      'Total',
-      'Payment Method',
-      'Payment Status'
+      "Order Number",
+      "Customer Name",
+      "Customer Email",
+      "Order Date",
+      "Status",
+      "Items Count",
+      "Subtotal",
+      "Shipping",
+      "Tax",
+      "Discount",
+      "Total",
+      "Payment Method",
+      "Payment Status",
     ];
 
     // Generate CSV rows
-    const rows = orders.map(order => [
+    const rows = orders.map((order) => [
       order.orderNumber,
-      `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim(),
-      order.user?.email || '',
+      `${order.user?.firstName || ""} ${order.user?.lastName || ""}`.trim(),
+      order.user?.email || "",
       new Date(order.createdAt).toLocaleDateString(),
       order.status,
       order.items.length,
@@ -1122,25 +1251,30 @@ exports.exportOrders = asyncHandler(async (req, res) => {
       order.tax || 0,
       order.discount || 0,
       order.total,
-      order.paymentMethod || '',
-      order.paymentStatus || ''
+      order.paymentMethod || "",
+      order.paymentStatus || "",
     ]);
 
     // Create CSV content
     const csvContent = [headers, ...rows]
-      .map(row => row.map(field => `"${field}"`).join(','))
-      .join('\n');
+      .map((row) => row.map((field) => `"${field}"`).join(","))
+      .join("\n");
 
     // Set headers for file download
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename=orders-export-${new Date().toISOString().split('T')[0]}.csv`);
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=orders-export-${
+        new Date().toISOString().split("T")[0]
+      }.csv`
+    );
 
     res.status(200).send(csvContent);
   } catch (error) {
-    console.error('Error exporting orders:', error);
+    console.error("Error exporting orders:", error);
     res.status(500).json({
       success: false,
-      message: 'Error exporting orders'
+      message: "Error exporting orders",
     });
   }
 });
@@ -1159,88 +1293,98 @@ exports.getSalesReport = asyncHandler(async (req, res) => {
       {
         $match: {
           createdAt: { $gte: startDate },
-          status: { $nin: ['cancelled'] }
-        }
+          status: { $nin: ["cancelled"] },
+        },
       },
       {
         $group: {
           _id: null,
-          totalRevenue: { $sum: '$total' },
+          totalRevenue: { $sum: "$total" },
           totalOrders: { $sum: 1 },
-          averageOrderValue: { $avg: '$total' }
-        }
-      }
+          averageOrderValue: { $avg: "$total" },
+        },
+      },
     ]);
 
     // Get top products
     const topProducts = await Order.aggregate([
-      { $match: { createdAt: { $gte: startDate }, status: { $nin: ['cancelled'] } } },
-      { $unwind: '$items' },
+      {
+        $match: {
+          createdAt: { $gte: startDate },
+          status: { $nin: ["cancelled"] },
+        },
+      },
+      { $unwind: "$items" },
       {
         $group: {
-          _id: '$items.product',
-          sales: { $sum: '$items.quantity' },
-          revenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } }
-        }
+          _id: "$items.product",
+          sales: { $sum: "$items.quantity" },
+          revenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } },
+        },
       },
       { $sort: { revenue: -1 } },
       { $limit: 10 },
       {
         $lookup: {
-          from: 'products',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'productInfo'
-        }
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "productInfo",
+        },
       },
-      { $unwind: '$productInfo' },
+      { $unwind: "$productInfo" },
       {
         $project: {
-          name: '$productInfo.name',
-          image: { $arrayElemAt: ['$productInfo.images.url', 0] },
+          name: "$productInfo.name",
+          image: { $arrayElemAt: ["$productInfo.images.url", 0] },
           sales: 1,
           revenue: 1,
-          growth: { $literal: Math.random() * 20 - 10 } // Placeholder for growth calculation
-        }
-      }
+          growth: { $literal: Math.random() * 20 - 10 }, // Placeholder for growth calculation
+        },
+      },
     ]);
 
     // Get sales by category
     const salesByCategory = await Order.aggregate([
-      { $match: { createdAt: { $gte: startDate }, status: { $nin: ['cancelled'] } } },
-      { $unwind: '$items' },
+      {
+        $match: {
+          createdAt: { $gte: startDate },
+          status: { $nin: ["cancelled"] },
+        },
+      },
+      { $unwind: "$items" },
       {
         $lookup: {
-          from: 'products',
-          localField: 'items.product',
-          foreignField: '_id',
-          as: 'product'
-        }
+          from: "products",
+          localField: "items.product",
+          foreignField: "_id",
+          as: "product",
+        },
       },
-      { $unwind: '$product' },
+      { $unwind: "$product" },
       {
         $lookup: {
-          from: 'categories',
-          localField: 'product.category',
-          foreignField: '_id',
-          as: 'category'
-        }
+          from: "categories",
+          localField: "product.category",
+          foreignField: "_id",
+          as: "category",
+        },
       },
-      { $unwind: '$category' },
+      { $unwind: "$category" },
       {
         $group: {
-          _id: '$category._id',
-          name: { $first: '$category.name' },
-          revenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } }
-        }
+          _id: "$category._id",
+          name: { $first: "$category.name" },
+          revenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } },
+        },
       },
-      { $sort: { revenue: -1 } }
+      { $sort: { revenue: -1 } },
     ]);
 
     const stats = salesStats[0] || {
       totalRevenue: 0,
       totalOrders: 0,
-      averageOrderValue: 0
+      averageOrderValue: 0,
     };
 
     res.status(200).json({
@@ -1251,13 +1395,13 @@ exports.getSalesReport = asyncHandler(async (req, res) => {
       conversionRate: Math.random() * 5 + 2, // Placeholder
       topProducts,
       salesByCategory,
-      recentTransactions: [] // Add recent high-value transactions if needed
+      recentTransactions: [], // Add recent high-value transactions if needed
     });
   } catch (error) {
-    console.error('Sales report error:', error);
+    console.error("Sales report error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error generating sales report'
+      message: "Error generating sales report",
     });
   }
 });
@@ -1268,33 +1412,34 @@ exports.getSalesReport = asyncHandler(async (req, res) => {
 exports.getInventoryReport = asyncHandler(async (req, res) => {
   try {
     const totalProducts = await Product.countDocuments();
-    const lowStockItems = await Product.countDocuments({ totalStock: { $lt: 10, $gt: 0 } });
+    const lowStockItems = await Product.countDocuments({
+      totalStock: { $lt: 10, $gt: 0 },
+    });
     const outOfStockItems = await Product.countDocuments({ totalStock: 0 });
 
     const stockValue = await Product.aggregate([
       {
         $group: {
           _id: null,
-          totalValue: { $sum: { $multiply: ['$price', '$totalStock'] } }
-        }
-      }
+          totalValue: { $sum: { $multiply: ["$price", "$totalStock"] } },
+        },
+      },
     ]);
 
     const stockAlerts = await Product.find({
-      $or: [
-        { totalStock: { $lt: 5 } },
-        { totalStock: 0 }
-      ]
+      $or: [{ totalStock: { $lt: 5 } }, { totalStock: 0 }],
     }).limit(10);
 
     const fastMovingProducts = await Product.find()
       .sort({ purchases: -1 })
       .limit(10)
-      .select('name purchases');
+      .select("name purchases");
 
     const slowMovingProducts = await Product.find({
-      purchases: { $lt: 5 }
-    }).limit(10).select('name createdAt');
+      purchases: { $lt: 5 },
+    })
+      .limit(10)
+      .select("name createdAt");
 
     res.status(200).json({
       success: true,
@@ -1302,29 +1447,31 @@ exports.getInventoryReport = asyncHandler(async (req, res) => {
       lowStockItems,
       outOfStockItems,
       totalStockValue: stockValue[0]?.totalValue || 0,
-      stockAlerts: stockAlerts.map(product => ({
+      stockAlerts: stockAlerts.map((product) => ({
         _id: product._id,
         productName: product.name,
         currentStock: product.totalStock,
-        level: product.totalStock === 0 ? 'critical' : 'warning',
-        message: product.totalStock === 0 ? 'Out of stock' : 'Low stock alert'
+        level: product.totalStock === 0 ? "critical" : "warning",
+        message: product.totalStock === 0 ? "Out of stock" : "Low stock alert",
       })),
-      fastMovingProducts: fastMovingProducts.map(product => ({
+      fastMovingProducts: fastMovingProducts.map((product) => ({
         _id: product._id,
         name: product.name,
-        velocity: Math.round(product.purchases / 30) || 1
+        velocity: Math.round(product.purchases / 30) || 1,
       })),
-      slowMovingProducts: slowMovingProducts.map(product => ({
+      slowMovingProducts: slowMovingProducts.map((product) => ({
         _id: product._id,
         name: product.name,
-        daysInStock: Math.floor((new Date() - product.createdAt) / (1000 * 60 * 60 * 24))
-      }))
+        daysInStock: Math.floor(
+          (new Date() - product.createdAt) / (1000 * 60 * 60 * 24)
+        ),
+      })),
     });
   } catch (error) {
-    console.error('Inventory report error:', error);
+    console.error("Inventory report error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error generating inventory report'
+      message: "Error generating inventory report",
     });
   }
 });
@@ -1340,7 +1487,7 @@ exports.getAuditLogs = asyncHandler(async (req, res) => {
     startDate,
     endDate,
     page = 1,
-    limit = 50
+    limit = 50,
   } = req.query;
 
   const result = await auditLogger.getAuditLogs(
@@ -1350,7 +1497,7 @@ exports.getAuditLogs = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    ...result
+    ...result,
   });
 });
 
@@ -1363,16 +1510,16 @@ exports.getInventoryAlerts = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    alerts: alerts.filter(a => a.level === 'critical'),
+    alerts: alerts.filter((a) => a.level === "critical"),
     summary: {
       totalAlerts: alerts.length,
-      criticalAlerts: alerts.filter(a => a.level === 'critical').length,
-      lowStockAlerts: alerts.filter(a => a.level === 'low').length,
+      criticalAlerts: alerts.filter((a) => a.level === "critical").length,
+      lowStockAlerts: alerts.filter((a) => a.level === "low").length,
       outOfStock: report.outOfStock,
       criticalStock: report.criticalStock,
-      lowStock: report.lowStock
+      lowStock: report.lowStock,
     },
-    report
+    report,
   });
 });
 
@@ -1380,18 +1527,20 @@ exports.getInventoryAlerts = asyncHandler(async (req, res) => {
 // @route   GET /api/admin/inventory/prediction/:productId
 // @access  Private/Admin
 exports.getStockPrediction = asyncHandler(async (req, res) => {
-  const prediction = await inventoryMonitor.predictStockout(req.params.productId);
+  const prediction = await inventoryMonitor.predictStockout(
+    req.params.productId
+  );
 
   if (!prediction) {
     return res.status(404).json({
       success: false,
-      message: 'Unable to generate prediction - insufficient data'
+      message: "Unable to generate prediction - insufficient data",
     });
   }
 
   res.status(200).json({
     success: true,
-    prediction
+    prediction,
   });
 });
 
@@ -1404,79 +1553,79 @@ exports.getCustomersReport = asyncHandler(async (req, res) => {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const totalCustomers = await User.countDocuments({ role: 'user' });
+    const totalCustomers = await User.countDocuments({ role: "user" });
     const newCustomers = await User.countDocuments({
-      role: 'user',
-      createdAt: { $gte: startDate }
+      role: "user",
+      createdAt: { $gte: startDate },
     });
 
     const repeatCustomers = await Order.aggregate([
       {
         $group: {
-          _id: '$user',
-          orderCount: { $sum: 1 }
-        }
+          _id: "$user",
+          orderCount: { $sum: 1 },
+        },
       },
       {
-        $match: { orderCount: { $gt: 1 } }
+        $match: { orderCount: { $gt: 1 } },
       },
       {
-        $count: 'repeatCustomers'
-      }
+        $count: "repeatCustomers",
+      },
     ]);
 
     const topCustomers = await Order.aggregate([
       {
         $group: {
-          _id: '$user',
-          totalSpent: { $sum: '$total' },
+          _id: "$user",
+          totalSpent: { $sum: "$total" },
           totalOrders: { $sum: 1 },
-          lastOrder: { $max: '$createdAt' }
-        }
+          lastOrder: { $max: "$createdAt" },
+        },
       },
       { $sort: { totalSpent: -1 } },
       { $limit: 10 },
       {
         $lookup: {
-          from: 'users',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'userInfo'
-        }
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "userInfo",
+        },
       },
-      { $unwind: '$userInfo' },
+      { $unwind: "$userInfo" },
       {
         $project: {
-          name: { $concat: ['$userInfo.firstName', ' ', '$userInfo.lastName'] },
-          email: '$userInfo.email',
+          name: { $concat: ["$userInfo.firstName", " ", "$userInfo.lastName"] },
+          email: "$userInfo.email",
           totalSpent: 1,
           totalOrders: 1,
-          lastOrder: 1
-        }
-      }
+          lastOrder: 1,
+        },
+      },
     ]);
 
     const customersByLocation = await User.aggregate([
-      { $match: { role: 'user' } },
-      { $unwind: { path: '$addresses', preserveNullAndEmptyArrays: true } },
+      { $match: { role: "user" } },
+      { $unwind: { path: "$addresses", preserveNullAndEmptyArrays: true } },
       {
         $group: {
           _id: {
-            city: '$addresses.city',
-            state: '$addresses.state'
+            city: "$addresses.city",
+            state: "$addresses.state",
           },
-          count: { $sum: 1 }
-        }
+          count: { $sum: 1 },
+        },
       },
       { $sort: { count: -1 } },
       { $limit: 10 },
       {
         $project: {
-          city: '$_id.city',
-          state: '$_id.state',
-          count: 1
-        }
-      }
+          city: "$_id.city",
+          state: "$_id.state",
+          count: 1,
+        },
+      },
     ]);
 
     res.status(200).json({
@@ -1486,13 +1635,13 @@ exports.getCustomersReport = asyncHandler(async (req, res) => {
       repeatCustomers: repeatCustomers[0]?.repeatCustomers || 0,
       customerGrowth: Math.random() * 20 - 5, // Placeholder
       topCustomers,
-      customersByLocation
+      customersByLocation,
     });
   } catch (error) {
-    console.error('Customers report error:', error);
+    console.error("Customers report error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error generating customers report'
+      message: "Error generating customers report",
     });
   }
 });
@@ -1502,28 +1651,28 @@ exports.getCustomersReport = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 exports.getReviewStats = asyncHandler(async (req, res) => {
   const totalReviews = await Review.countDocuments();
-  const pendingReviews = await Review.countDocuments({ status: 'pending' });
-  const flaggedReviews = await Review.countDocuments({ status: 'flagged' });
-  
+  const pendingReviews = await Review.countDocuments({ status: "pending" });
+  const flaggedReviews = await Review.countDocuments({ status: "flagged" });
+
   const ratingDistribution = await Review.aggregate([
-    { $match: { status: 'approved' } },
+    { $match: { status: "approved" } },
     {
       $group: {
-        _id: '$rating',
-        count: { $sum: 1 }
-      }
+        _id: "$rating",
+        count: { $sum: 1 },
+      },
     },
-    { $sort: { _id: 1 } }
+    { $sort: { _id: 1 } },
   ]);
 
   const averageRating = await Review.aggregate([
-    { $match: { status: 'approved' } },
+    { $match: { status: "approved" } },
     {
       $group: {
         _id: null,
-        average: { $avg: '$rating' }
-      }
-    }
+        average: { $avg: "$rating" },
+      },
+    },
   ]);
 
   res.status(200).json({
@@ -1533,8 +1682,8 @@ exports.getReviewStats = asyncHandler(async (req, res) => {
       pendingReviews,
       flaggedReviews,
       averageRating: averageRating[0]?.average || 0,
-      ratingDistribution
-    }
+      ratingDistribution,
+    },
   });
 });
 
@@ -1542,51 +1691,54 @@ const exportReport = async (req, res) => {
   try {
     const { reportType } = req.params;
     const queryParams = req.query;
-    
+
     console.log(`Exporting ${reportType} report with params:`, queryParams);
-    
-    let csvData = '';
-    let filename = '';
-    
+
+    let csvData = "";
+    let filename = "";
+
     switch (reportType) {
-      case 'sales':
+      case "sales":
         const salesData = await generateSalesReportData(queryParams);
         csvData = convertSalesDataToCSV(salesData);
-        filename = `sales-report-${new Date().toISOString().split('T')[0]}.csv`;
+        filename = `sales-report-${new Date().toISOString().split("T")[0]}.csv`;
         break;
-        
-      case 'inventory':
+
+      case "inventory":
         const inventoryData = await generateInventoryReportData();
         csvData = convertInventoryDataToCSV(inventoryData);
-        filename = `inventory-report-${new Date().toISOString().split('T')[0]}.csv`;
+        filename = `inventory-report-${
+          new Date().toISOString().split("T")[0]
+        }.csv`;
         break;
-        
-      case 'customers':
+
+      case "customers":
         const customersData = await generateCustomersReportData(queryParams);
         csvData = convertCustomersDataToCSV(customersData);
-        filename = `customers-report-${new Date().toISOString().split('T')[0]}.csv`;
+        filename = `customers-report-${
+          new Date().toISOString().split("T")[0]
+        }.csv`;
         break;
-        
+
       default:
         return res.status(400).json({
           success: false,
-          message: 'Invalid report type'
+          message: "Invalid report type",
         });
     }
-    
+
     // Set headers for CSV download
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Cache-Control', 'no-cache');
-    
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Cache-Control", "no-cache");
+
     // Send CSV data
     res.send(csvData);
-    
   } catch (error) {
-    console.error('Export report error:', error);
+    console.error("Export report error:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to export report'
+      message: "Failed to export report",
     });
   }
 };
@@ -1596,119 +1748,123 @@ const generateSalesReportData = async (params) => {
   const { days = 30 } = params;
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - parseInt(days));
-  
+
   // Get orders for the date range
   const orders = await Order.find({
     createdAt: { $gte: startDate },
-    status: { $ne: 'cancelled' }
+    status: { $ne: "cancelled" },
   })
-  .populate('user', 'firstName lastName email')
-  .populate('items.product', 'name brand category')
-  .sort({ createdAt: -1 });
-  
+    .populate("user", "firstName lastName email")
+    .populate("items.product", "name brand category")
+    .sort({ createdAt: -1 });
+
   return orders;
 };
 
 // Helper function to convert sales data to CSV
 const convertSalesDataToCSV = (orders) => {
   const headers = [
-    'Order Number',
-    'Date',
-    'Customer Name',
-    'Customer Email',
-    'Items Count',
-    'Subtotal',
-    'Shipping',
-    'Tax',
-    'Total',
-    'Status',
-    'Payment Method'
+    "Order Number",
+    "Date",
+    "Customer Name",
+    "Customer Email",
+    "Items Count",
+    "Subtotal",
+    "Shipping",
+    "Tax",
+    "Total",
+    "Status",
+    "Payment Method",
   ];
-  
-  let csv = headers.join(',') + '\n';
-  
-  orders.forEach(order => {
+
+  let csv = headers.join(",") + "\n";
+
+  orders.forEach((order) => {
     const row = [
-      order.orderNumber || '',
+      order.orderNumber || "",
       new Date(order.createdAt).toLocaleDateString(),
-      `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim(),
-      order.user?.email || '',
+      `${order.user?.firstName || ""} ${order.user?.lastName || ""}`.trim(),
+      order.user?.email || "",
       order.items?.length || 0,
       order.subtotal || 0,
       order.shippingCost || 0,
       order.tax || 0,
       order.total || 0,
-      order.status || '',
-      order.paymentMethod || ''
+      order.status || "",
+      order.paymentMethod || "",
     ];
-    
+
     // Escape commas in data and wrap in quotes if necessary
-    const escapedRow = row.map(field => {
+    const escapedRow = row.map((field) => {
       const str = String(field);
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
         return `"${str.replace(/"/g, '""')}"`;
       }
       return str;
     });
-    
-    csv += escapedRow.join(',') + '\n';
+
+    csv += escapedRow.join(",") + "\n";
   });
-  
+
   return csv;
 };
 
 // Helper function to generate inventory report data
 const generateInventoryReportData = async () => {
   const products = await Product.find({})
-    .populate('category', 'name')
+    .populate("category", "name")
     .sort({ name: 1 });
-  
+
   return products;
 };
 
 // Helper function to convert inventory data to CSV
 const convertInventoryDataToCSV = (products) => {
   const headers = [
-    'Product Name',
-    'Brand',
-    'Category',
-    'SKU',
-    'Price',
-    'Sale Price',
-    'Total Stock',
-    'Status',
-    'Created Date'
+    "Product Name",
+    "Brand",
+    "Category",
+    "SKU",
+    "Price",
+    "Sale Price",
+    "Total Stock",
+    "Status",
+    "Created Date",
   ];
-  
-  let csv = headers.join(',') + '\n';
-  
-  products.forEach(product => {
+
+  let csv = headers.join(",") + "\n";
+
+  products.forEach((product) => {
     // Calculate total stock across all variants
-    const totalStock = product.variants?.reduce((sum, variant) => sum + (variant.stock || 0), 0) || 0;
-    
+    const totalStock =
+      product.variants?.reduce(
+        (sum, variant) => sum + (variant.stock || 0),
+        0
+      ) || 0;
+
     const row = [
-      product.name || '',
-      product.brand || '',
-      product.category?.name || '',
-      product.sku || '',
+      product.name || "",
+      product.brand || "",
+      product.category?.name || "",
+      product.sku || "",
       product.price || 0,
-      product.salePrice || '',
+      product.salePrice || "",
       totalStock,
-      product.status || '',
-      new Date(product.createdAt).toLocaleDateString()
+      product.status || "",
+      new Date(product.createdAt).toLocaleDateString(),
     ];
-    
-    const escapedRow = row.map(field => {
+
+    const escapedRow = row.map((field) => {
       const str = String(field);
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
         return `"${str.replace(/"/g, '""')}"`;
       }
       return str;
     });
-    
-    csv += escapedRow.join(',') + '\n';
+
+    csv += escapedRow.join(",") + "\n";
   });
-  
+
   return csv;
 };
 
@@ -1717,51 +1873,50 @@ const generateCustomersReportData = async (params) => {
   const { days = 30 } = params;
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - parseInt(days));
-  
+
   const users = await User.find({
-    role: 'user',
-    createdAt: { $gte: startDate }
+    role: "user",
+    createdAt: { $gte: startDate },
   }).sort({ createdAt: -1 });
-  
+
   return users;
 };
 
 // Helper function to convert customers data to CSV
 const convertCustomersDataToCSV = (users) => {
   const headers = [
-    'Name',
-    'Email',
-    'Phone',
-    'Registration Date',
-    'Status',
-    'Email Verified'
+    "Name",
+    "Email",
+    "Phone",
+    "Registration Date",
+    "Status",
+    "Email Verified",
   ];
-  
-  let csv = headers.join(',') + '\n';
-  
-  users.forEach(user => {
+
+  let csv = headers.join(",") + "\n";
+
+  users.forEach((user) => {
     const row = [
-      `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-      user.email || '',
-      user.phone || '',
+      `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+      user.email || "",
+      user.phone || "",
       new Date(user.createdAt).toLocaleDateString(),
-      user.status || 'active',
-      user.emailVerified ? 'Yes' : 'No'
+      user.status || "active",
+      user.emailVerified ? "Yes" : "No",
     ];
-    
-    const escapedRow = row.map(field => {
+
+    const escapedRow = row.map((field) => {
       const str = String(field);
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
         return `"${str.replace(/"/g, '""')}"`;
       }
       return str;
     });
-    
-    csv += escapedRow.join(',') + '\n';
+
+    csv += escapedRow.join(",") + "\n";
   });
-  
+
   return csv;
 };
 
 exports.exportReport = exportReport;
-

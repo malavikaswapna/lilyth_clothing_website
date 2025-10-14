@@ -1,56 +1,76 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const asyncHandler = require('../utils/asyncHandler');
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
+const asyncHandler = require("../utils/asyncHandler");
+const { LoginTicket } = require("google-auth-library");
+const { RemoteConfigFetchResponse } = require("firebase-admin/remote-config");
+const { MongoCryptCreateDataKeyError } = require("mongodb");
 
 // Protect routes - require authentication
 exports.protect = async (req, res, next) => {
   try {
     let token;
 
-    // Get token from header
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
+    // Get token from heade
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
     }
 
     // Check if token exists
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'Not authorized, no token'
+        message: "Not authorized, no token",
+      });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      console.error("CRITICAL: JWT_SECRET not configured");
+      return res.status(500).json({
+        success: false,
+        message: "Server configuration error",
       });
     }
 
     try {
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('Decoded token:', decoded); // Debug log
-      
-      // Fix: Use decoded.id OR decoded._id (depending on how you create the token)
+      console.log("Decoded token:", decoded); // debug
+
       const userId = decoded.id || decoded._id;
-      
+
       if (!userId) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid token format'
+          message: "Invalid token format",
         });
       }
 
       // Get user from token
       req.user = await User.findById(userId);
-      
+
       if (!req.user) {
         return res.status(401).json({
           success: false,
-          message: 'User not found'
+          message: "User not found",
+        });
+      }
+
+      if (!req.user.isActive) {
+        return res.status(403).json({
+          success: false,
+          message: "Account has been deactivated",
         });
       }
 
       next();
     } catch (error) {
-      console.log('Token verification error:', error.message); // Debug log
+      console.log("Token verification error:", error.message); // Debug log
       return res.status(401).json({
         success: false,
-        message: 'Not authorized, token failed'
+        message: "Not authorized, token failed",
       });
     }
   } catch (error) {
@@ -64,7 +84,7 @@ exports.authorize = (...roles) => {
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: `User role ${req.user.role} is not authorized to access this route`
+        message: `User role ${req.user.role} is not authorized to access this route`,
       });
     }
     next();
@@ -76,9 +96,12 @@ exports.optionalAuth = async (req, res, next) => {
   try {
     let token;
 
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-      
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
+
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = await User.findById(decoded.id);

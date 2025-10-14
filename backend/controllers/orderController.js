@@ -1,19 +1,45 @@
 // controllers/orderController.js
-const Order = require('../models/Order');
-const Cart = require('../models/Cart');
-const Product = require('../models/Product');
-const User = require('../models/User');
-const asyncHandler = require('../utils/asyncHandler');
-const razorpay = require('../config/razorpay');
-const crypto = require('crypto');
-const emailService = require('../utils/emailService');
-const inventoryMonitor = require('../utils/inventoryMonitor');
-const { auditLogger } = require('../utils/auditLogger');
+const Order = require("../models/Order");
+const Cart = require("../models/Cart");
+const Product = require("../models/Product");
+const User = require("../models/User");
+const asyncHandler = require("../utils/asyncHandler");
+const razorpay = require("../config/razorpay");
+const crypto = require("crypto");
+const emailService = require("../utils/emailService");
+const inventoryMonitor = require("../utils/inventoryMonitor");
+const { auditLogger } = require("../utils/auditLogger");
 
 // @desc    Create new order
 // @route   POST /api/orders
 // @access  Private
 exports.createOrder = asyncHandler(async (req, res) => {
+  console.log("🔍 CREATE ORDER - Request body received:");
+  console.log(JSON.stringify(req.body, null, 2));
+
+  console.log("\n📋 Request body structure:");
+  console.log("  - items:", req.body.items?.length, "items");
+  console.log(
+    "  - shippingAddress:",
+    req.body.shippingAddress ? "Present" : "Missing"
+  );
+  console.log(
+    "  - billingAddress:",
+    req.body.billingAddress ? "Present" : "Missing"
+  );
+  console.log("  - paymentMethod:", req.body.paymentMethod);
+  console.log("  - shippingMethod:", req.body.shippingMethod);
+
+  if (req.body.shippingAddress) {
+    console.log("\n📫 Shipping Address Details:");
+    console.log("  - firstName:", req.body.shippingAddress.firstName);
+    console.log("  - lastName:", req.body.shippingAddress.lastName);
+    console.log("  - addressLine1:", req.body.shippingAddress.addressLine1);
+    console.log("  - city:", req.body.shippingAddress.city);
+    console.log("  - state:", req.body.shippingAddress.state);
+    console.log("  - postalCode:", req.body.shippingAddress.postalCode);
+    console.log("  - country:", req.body.shippingAddress.country);
+  }
   const {
     items,
     shippingAddress,
@@ -22,13 +48,13 @@ exports.createOrder = asyncHandler(async (req, res) => {
     shippingMethod,
     specialInstructions,
     isGift,
-    giftMessage
+    giftMessage,
   } = req.body;
 
   if (!items || items.length === 0) {
     return res.status(400).json({
       success: false,
-      message: 'No order items provided'
+      message: "No order items provided",
     });
   }
 
@@ -38,31 +64,41 @@ exports.createOrder = asyncHandler(async (req, res) => {
   const stockUpdates = [];
 
   for (const item of items) {
-    const product = await Product.findById(item.productId);
-    
-    if (!product || product.status !== 'active') {
+    // FIXED: Check for both 'product' and 'productId' fields
+    const productId = item.product || item.productId;
+
+    if (!productId) {
+      return res.status(400).json({
+        success: false,
+        message: "Product ID is required for all items",
+      });
+    }
+
+    const product = await Product.findById(productId);
+
+    if (!product || product.status !== "active") {
       return res.status(404).json({
         success: false,
-        message: `Product ${item.productId} not found or unavailable`
+        message: `Product ${productId} not found or unavailable`,
       });
     }
 
     // Find variant and check stock
     const variant = product.variants.find(
-      v => v.size === item.size && v.color.name === item.color
+      (v) => v.size === item.size && v.color.name === item.color
     );
 
     if (!variant) {
       return res.status(400).json({
         success: false,
-        message: `Variant not found for product ${product.name}`
+        message: `Variant not found for product ${product.name}. Size: ${item.size}, Color: ${item.color}`,
       });
     }
 
     if (variant.stock < item.quantity) {
       return res.status(400).json({
         success: false,
-        message: `Insufficient stock for ${product.name}. Only ${variant.stock} available`
+        message: `Insufficient stock for ${product.name}. Only ${variant.stock} available`,
       });
     }
 
@@ -72,18 +108,20 @@ exports.createOrder = asyncHandler(async (req, res) => {
     orderItems.push({
       product: product._id,
       productName: product.name,
-      productImage: product.images.find(img => img.isPrimary)?.url || product.images[0]?.url,
+      productImage:
+        product.images.find((img) => img.isPrimary)?.url ||
+        product.images[0]?.url,
       variant: {
         size: item.size,
         color: {
           name: item.color,
-          hexCode: variant.color.hexCode
+          hexCode: variant.color.hexCode,
         },
-        sku: variant.variantSku
+        sku: variant.variantSku,
       },
       quantity: item.quantity,
       unitPrice,
-      totalPrice
+      totalPrice,
     });
 
     subtotal += totalPrice;
@@ -91,13 +129,14 @@ exports.createOrder = asyncHandler(async (req, res) => {
   }
 
   // Calculate shipping cost
-  const shippingCost = calculateShippingCost(shippingMethod, subtotal);
-  
-  // Calculate tax (simplified - 8.5% for example)
-  const tax = subtotal * 0.18;
-  
+  const shippingCost =
+    req.body.shipping || calculateShippingCost(shippingMethod, subtotal);
+
+  // Calculate tax (18% GST for India)
+  const tax = req.body.tax || subtotal * 0.18;
+
   // Calculate total
-  const total = subtotal + shippingCost + tax;
+  const total = req.body.total || subtotal + shippingCost + tax;
 
   // Create order
   const order = await Order.create({
@@ -106,7 +145,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
     subtotal,
     shipping: {
       cost: shippingCost,
-      method: shippingMethod || 'standard'
+      method: shippingMethod || "standard",
     },
     tax,
     total,
@@ -114,38 +153,38 @@ exports.createOrder = asyncHandler(async (req, res) => {
     billingAddress: billingAddress || shippingAddress,
     payment: {
       method: paymentMethod,
-      status: 'pending'
+      status: paymentMethod === "cod" ? "pending" : "pending",
     },
     specialInstructions,
     isGift: isGift || false,
-    giftMessage
+    giftMessage,
   });
 
-  // Update product stock and analytics
+  // Update product stock and analytics - FIXED VERSION
   for (const { product, variant, quantity } of stockUpdates) {
     await Product.findOneAndUpdate(
       {
-        _id: item.product,
-        'variants.size': variant.size,
-        'variants.color.name': variant.color.name
+        _id: product._id, // ✅ FIXED
+        "variants.size": variant.size,
+        "variants.color.name": variant.color.name,
       },
       {
         $inc: {
-          'variants.$.stock': -quantity,
+          "variants.$.stock": -quantity,
           purchases: quantity,
-          revenue: quantity * variant.price
-        }
+          revenue: quantity * (product.salePrice || product.price), // ✅ FIXED
+        },
       }
     );
 
     // Check if stock is low after update
     const updatedProduct = await Product.findById(product._id);
     const updatedVariant = updatedProduct.variants.find(
-      v => v.size === variant.size && v.color.name === variant.color.name
+      (v) => v.size === variant.size && v.color.name === variant.color.name
     );
 
     // Send low stock alert if needed
-    if (updatedVariant.stock <= 5) {
+    if (updatedVariant && updatedVariant.stock <= 5) {
       await emailService.sendLowStockAlert(updatedProduct, updatedVariant);
     }
   }
@@ -154,36 +193,41 @@ exports.createOrder = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(req.user.id, {
     $inc: {
       totalOrders: 1,
-      totalSpent: total
-    }
+      totalSpent: total,
+    },
   });
 
   // Clear user's cart
-  await Cart.findOneAndUpdate(
-    { user: req.user.id },
-    { $set: { items: [] } }
-  );
+  await Cart.findOneAndUpdate({ user: req.user.id }, { $set: { items: [] } });
 
   // Populate order details
   const populatedOrder = await Order.findById(order._id)
-    .populate('user', 'firstName lastName email')
-    .populate('items.product', 'name slug images');
+    .populate("user", "firstName lastName email")
+    .populate("items.product", "name slug images");
 
   // Send order confirmation email
-  await emailService.sendOrderConfirmation(populatedOrder, req.user);
+  try {
+    await emailService.sendOrderConfirmation(populatedOrder, req.user);
+  } catch (emailError) {
+    console.error("Failed to send order confirmation email:", emailError);
+    // Don't fail the order if email fails
+  }
 
   // Log audit trail
-  await auditLogger.logOrderAction(
-    'ORDER_CREATED',
-    req.user,
-    order._id,
-    { orderNumber: order.orderNumber, total: order.total }
-  );
+  try {
+    await auditLogger.logOrderAction("ORDER_CREATED", req.user, order._id, {
+      orderNumber: order.orderNumber,
+      total: order.total,
+    });
+  } catch (auditError) {
+    console.error("Failed to log audit trail:", auditError);
+    // Don't fail the order if audit logging fails
+  }
 
   res.status(201).json({
     success: true,
-    message: 'Order created successfully',
-    order: populatedOrder
+    message: "Order created successfully",
+    order: populatedOrder,
   });
 });
 
@@ -192,13 +236,13 @@ const calculateShippingCost = (method, subtotal) => {
   if (subtotal >= 100) return 0; // Free shipping over $100
 
   switch (method) {
-    case 'standard':
+    case "standard":
       return 5.99;
-    case 'expedited':
+    case "expedited":
       return 12.99;
-    case 'overnight':
+    case "overnight":
       return 24.99;
-    case 'pickup':
+    case "pickup":
       return 0;
     default:
       return 5.99;
@@ -217,7 +261,7 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .skip(startIndex)
     .limit(limit)
-    .populate('items.product', 'name slug images');
+    .populate("items.product", "name slug images");
 
   const total = await Order.countDocuments({ user: req.user.id });
 
@@ -230,9 +274,9 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
       pages: Math.ceil(total / limit),
       limit,
       hasNext: page < Math.ceil(total / limit),
-      hasPrev: page > 1
+      hasPrev: page > 1,
     },
-    orders
+    orders,
   });
 });
 
@@ -241,27 +285,27 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
 // @access  Private
 exports.getOrder = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id)
-    .populate('user', 'firstName lastName email')
-    .populate('items.product', 'name slug images brand');
+    .populate("user", "firstName lastName email")
+    .populate("items.product", "name slug images brand");
 
   if (!order) {
     return res.status(404).json({
       success: false,
-      message: 'Order not found'
+      message: "Order not found",
     });
   }
 
   // Check if user owns this order or is admin
-  if (order.user._id.toString() !== req.user.id && req.user.role !== 'admin') {
+  if (order.user._id.toString() !== req.user.id && req.user.role !== "admin") {
     return res.status(403).json({
       success: false,
-      message: 'Not authorized to view this order'
+      message: "Not authorized to view this order",
     });
   }
 
   res.status(200).json({
     success: true,
-    order
+    order,
   });
 });
 
@@ -271,13 +315,15 @@ exports.getOrder = asyncHandler(async (req, res) => {
 exports.updateOrderStatus = asyncHandler(async (req, res) => {
   const { status, note } = req.body;
 
-  const order = await Order.findById(req.params.id)
-    .populate('user', 'firstName lastName email');
+  const order = await Order.findById(req.params.id).populate(
+    "user",
+    "firstName lastName email"
+  );
 
   if (!order) {
     return res.status(404).json({
       success: false,
-      message: 'Order not found'
+      message: "Order not found",
     });
   }
 
@@ -288,17 +334,17 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
     status,
     timestamp: new Date(),
     note,
-    updatedBy: req.user.id
+    updatedBy: req.user.id,
   });
 
   order.status = status;
 
   // Update specific timestamps based on status
   switch (status) {
-    case 'shipped':
+    case "shipped":
       order.tracking.shippedAt = new Date();
       break;
-    case 'delivered':
+    case "delivered":
       order.tracking.deliveredAt = new Date();
       break;
   }
@@ -310,7 +356,7 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
 
   // Log audit trail
   await auditLogger.logOrderAction(
-    'ORDER_STATUS_CHANGED',
+    "ORDER_STATUS_CHANGED",
     req.user,
     order._id,
     { orderNumber: order.orderNumber },
@@ -320,8 +366,8 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Order status updated',
-    order
+    message: "Order status updated",
+    order,
   });
 });
 
@@ -336,7 +382,7 @@ exports.updateTracking = asyncHandler(async (req, res) => {
   if (!order) {
     return res.status(404).json({
       success: false,
-      message: 'Order not found'
+      message: "Order not found",
     });
   }
 
@@ -345,28 +391,33 @@ exports.updateTracking = asyncHandler(async (req, res) => {
     carrier,
     trackingNumber,
     trackingUrl: generateTrackingUrl(carrier, trackingNumber),
-    estimatedDelivery: estimatedDelivery ? new Date(estimatedDelivery) : undefined
+    estimatedDelivery: estimatedDelivery
+      ? new Date(estimatedDelivery)
+      : undefined,
   };
 
   await order.save();
 
   res.status(200).json({
     success: true,
-    message: 'Tracking information updated',
-    order
+    message: "Tracking information updated",
+    order,
   });
 });
 
 // Helper function to generate tracking URL
 const generateTrackingUrl = (carrier, trackingNumber) => {
   const carriers = {
-    'fedex': `https://www.fedex.com/apps/fedextrack/?tracknumbers=${trackingNumber}`,
-    'ups': `https://www.ups.com/track?tracknum=${trackingNumber}`,
-    'usps': `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${trackingNumber}`,
-    'dhl': `https://www.dhl.com/en/express/tracking.html?AWB=${trackingNumber}`
+    fedex: `https://www.fedex.com/apps/fedextrack/?tracknumbers=${trackingNumber}`,
+    ups: `https://www.ups.com/track?tracknum=${trackingNumber}`,
+    usps: `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${trackingNumber}`,
+    dhl: `https://www.dhl.com/en/express/tracking.html?AWB=${trackingNumber}`,
   };
 
-  return carriers[carrier.toLowerCase()] || `https://www.google.com/search?q=${trackingNumber}+tracking`;
+  return (
+    carriers[carrier.toLowerCase()] ||
+    `https://www.google.com/search?q=${trackingNumber}+tracking`
+  );
 };
 
 // @desc    Cancel order
@@ -378,7 +429,7 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
   if (!order) {
     return res.status(404).json({
       success: false,
-      message: 'Order not found'
+      message: "Order not found",
     });
   }
 
@@ -386,15 +437,15 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
   if (order.user.toString() !== req.user.id) {
     return res.status(403).json({
       success: false,
-      message: 'Not authorized to cancel this order'
+      message: "Not authorized to cancel this order",
     });
   }
 
   // Can only cancel pending or confirmed orders
-  if (!['pending', 'confirmed'].includes(order.status)) {
+  if (!["pending", "confirmed"].includes(order.status)) {
     return res.status(400).json({
       success: false,
-      message: 'Order cannot be cancelled at this stage'
+      message: "Order cannot be cancelled at this stage",
     });
   }
 
@@ -403,32 +454,32 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
     await Product.findOneAndUpdate(
       {
         _id: item.product,
-        'variants.size': item.variant.size,
-        'variants.color.name': item.variant.color.name
+        "variants.size": item.variant.size,
+        "variants.color.name": item.variant.color.name,
       },
       {
         $inc: {
-          'variants.$.stock': item.quantity
-        }
+          "variants.$.stock": item.quantity,
+        },
       }
     );
   }
 
   // Update order status
-  order.status = 'cancelled';
+  order.status = "cancelled";
   order.statusHistory.push({
-    status: 'cancelled',
+    status: "cancelled",
     timestamp: new Date(),
-    note: req.body.reason || 'Cancelled by customer',
-    updatedBy: req.user.id
+    note: req.body.reason || "Cancelled by customer",
+    updatedBy: req.user.id,
   });
 
   await order.save();
 
   res.status(200).json({
     success: true,
-    message: 'Order cancelled successfully',
-    order
+    message: "Order cancelled successfully",
+    order,
   });
 });
 
@@ -445,7 +496,7 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
 
   // Filter by status
   if (req.query.status) {
-    query = query.where('status').equals(req.query.status);
+    query = query.where("status").equals(req.query.status);
   }
 
   // Filter by date range
@@ -453,7 +504,7 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
     const dateFilter = {};
     if (req.query.startDate) dateFilter.$gte = new Date(req.query.startDate);
     if (req.query.endDate) dateFilter.$lte = new Date(req.query.endDate);
-    query = query.where('createdAt').equals(dateFilter);
+    query = query.where("createdAt").equals(dateFilter);
   }
 
   // Sort by creation date (newest first)
@@ -463,8 +514,9 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
   query = query.skip(startIndex).limit(limit);
 
   // Populate user and product details
-  query = query.populate('user', 'firstName lastName email')
-    .populate('items.product', 'name slug');
+  query = query
+    .populate("user", "firstName lastName email")
+    .populate("items.product", "name slug");
 
   const orders = await query;
   const total = await Order.countDocuments();
@@ -478,9 +530,9 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
       pages: Math.ceil(total / limit),
       limit,
       hasNext: page < Math.ceil(total / limit),
-      hasPrev: page > 1
+      hasPrev: page > 1,
     },
-    orders
+    orders,
   });
 });
 
@@ -488,7 +540,7 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
 // @route   POST /api/orders/create-payment
 // @access  Private
 exports.createPaymentOrder = asyncHandler(async (req, res) => {
-  const { amount, currency = 'INR' } = req.body;
+  const { amount, currency = "INR" } = req.body;
 
   try {
     const options = {
@@ -502,13 +554,13 @@ exports.createPaymentOrder = asyncHandler(async (req, res) => {
     res.status(200).json({
       success: true,
       order,
-      key_id: process.env.RAZORPAY_KEY_ID
+      key_id: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
-    console.error('Razorpay order creation error:', error);
+    console.error("Razorpay order creation error:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to create payment order'
+      message: "Failed to create payment order",
     });
   }
 });
@@ -521,7 +573,7 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
     razorpay_order_id,
     razorpay_payment_id,
     razorpay_signature,
-    orderData
+    orderData,
   } = req.body;
 
   // Verify signature
@@ -541,38 +593,48 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
         shippingMethod,
         specialInstructions,
         isGift,
-        giftMessage
+        giftMessage,
       } = orderData;
 
-      // Validate all products and calculate totals (same logic as existing createOrder)
+      // Validate all products and calculate totals
       let orderItems = [];
       let subtotal = 0;
 
       for (const item of items) {
-        const product = await Product.findById(item.productId);
-        
-        if (!product || product.status !== 'active') {
+        // FIXED: Check for both 'product' and 'productId' fields
+        const productId = item.product || item.productId;
+
+        if (!productId) {
+          return res.status(400).json({
+            success: false,
+            message: "Product ID is required for all items",
+          });
+        }
+
+        const product = await Product.findById(productId);
+
+        if (!product || product.status !== "active") {
           return res.status(404).json({
             success: false,
-            message: `Product ${item.productId} not found or unavailable`
+            message: `Product ${productId} not found or unavailable`,
           });
         }
 
         const variant = product.variants.find(
-          v => v.size === item.size && v.color.name === item.color
+          (v) => v.size === item.size && v.color.name === item.color
         );
 
         if (!variant) {
           return res.status(400).json({
             success: false,
-            message: `Variant not found for product ${product.name}`
+            message: `Variant not found for product ${product.name}`,
           });
         }
 
         if (variant.stock < item.quantity) {
           return res.status(400).json({
             success: false,
-            message: `Insufficient stock for ${product.name}`
+            message: `Insufficient stock for ${product.name}`,
           });
         }
 
@@ -582,18 +644,20 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
         orderItems.push({
           product: product._id,
           productName: product.name,
-          productImage: product.images.find(img => img.isPrimary)?.url || product.images[0]?.url,
+          productImage:
+            product.images.find((img) => img.isPrimary)?.url ||
+            product.images[0]?.url,
           variant: {
             size: item.size,
             color: {
               name: item.color,
-              hexCode: variant.color.hexCode
+              hexCode: variant.color.hexCode,
             },
-            sku: variant.variantSku
+            sku: variant.variantSku,
           },
           quantity: item.quantity,
           unitPrice,
-          totalPrice
+          totalPrice,
         });
 
         subtotal += totalPrice;
@@ -610,39 +674,39 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
         subtotal,
         shipping: {
           cost: shippingCost,
-          method: shippingMethod || 'standard'
+          method: shippingMethod || "standard",
         },
         tax,
         total,
         shippingAddress,
         billingAddress: billingAddress || shippingAddress,
         payment: {
-          method: 'razorpay',
-          status: 'completed',
+          method: "razorpay",
+          status: "completed",
           transactionId: razorpay_payment_id,
           razorpayOrderId: razorpay_order_id,
-          paidAt: new Date()
+          paidAt: new Date(),
         },
-        status: 'confirmed',
+        status: "confirmed",
         specialInstructions,
         isGift: isGift || false,
-        giftMessage
+        giftMessage,
       });
 
-      // Update product stock
+      // Update product stock - FIXED VERSION
       for (const item of orderItems) {
         await Product.findOneAndUpdate(
           {
-            _id: item.product,
-            'variants.size': item.variant.size,
-            'variants.color.name': item.variant.color.name
+            _id: item.product, // ✅ This is correct - uses the MongoDB ObjectId
+            "variants.size": item.variant.size,
+            "variants.color.name": item.variant.color.name,
           },
           {
             $inc: {
-              'variants.$.stock': -item.quantity,
+              "variants.$.stock": -item.quantity,
               purchases: item.quantity,
-              revenue: item.totalPrice
-            }
+              revenue: item.totalPrice,
+            },
           }
         );
       }
@@ -651,8 +715,8 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
       await User.findByIdAndUpdate(req.user.id, {
         $inc: {
           totalOrders: 1,
-          totalSpent: total
-        }
+          totalSpent: total,
+        },
       });
 
       // Clear user's cart
@@ -662,26 +726,26 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
       );
 
       const populatedOrder = await Order.findById(order._id)
-        .populate('user', 'firstName lastName email')
-        .populate('items.product', 'name slug images');
+        .populate("user", "firstName lastName email")
+        .populate("items.product", "name slug images");
 
       res.status(201).json({
         success: true,
-        message: 'Payment verified and order created successfully',
-        order: populatedOrder
+        message: "Payment verified and order created successfully",
+        order: populatedOrder,
       });
-
     } catch (error) {
-      console.error('Order creation error after payment:', error);
+      console.error("Order creation error after payment:", error);
       res.status(500).json({
         success: false,
-        message: 'Payment verified but order creation failed'
+        message: "Payment verified but order creation failed",
+        error: error.message,
       });
     }
   } else {
     res.status(400).json({
       success: false,
-      message: 'Payment verification failed'
+      message: "Payment verification failed",
     });
   }
 });
@@ -691,14 +755,14 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
 // @access  Private
 exports.handlePaymentFailure = asyncHandler(async (req, res) => {
   const { razorpay_order_id, error_description } = req.body;
-  
+
   // Log payment failure
-  console.log('Payment failed:', { razorpay_order_id, error_description });
-  
+  console.log("Payment failed:", { razorpay_order_id, error_description });
+
   res.status(200).json({
     success: false,
-    message: 'Payment failed. Please try again.',
-    error: error_description
+    message: "Payment failed. Please try again.",
+    error: error_description,
   });
 });
 
@@ -706,23 +770,37 @@ exports.handlePaymentFailure = asyncHandler(async (req, res) => {
 // @route   POST /api/orders/webhook
 // @access  Public (but verify signature)
 exports.razorpayWebhook = asyncHandler(async (req, res) => {
-  const signature = req.headers['x-razorpay-signature'];
+  const signature = req.headers["x-razorpay-signature"];
+
+  if (!process.env.RAZORPAY_WEBHOOK_SECRET) {
+    console.error("RAZORPAY_WEBHOOK_SECRET not configured");
+    return res.status(500).json({ error: "Webhook not configured " });
+  }
+
   const body = JSON.stringify(req.body);
-  
+
   const expectedSignature = crypto
-    .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET)
+    .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
     .update(body)
-    .digest('hex');
-    
+    .digest("hex");
+
   if (signature === expectedSignature) {
     const event = req.body;
-    
-    if (event.event === 'payment.captured') {
-      // Update order status if needed
+
+    if (event.event === "payment.captured") {
+      // Update order status
+      await Order.findOneAndUpdate(
+        { "payment.razorpayOrderId": event.payload.payment.entity.order_id },
+        {
+          "payment.status": "completed",
+          status: "confirmed",
+        }
+      );
     }
-    
-    res.status(200).json({ status: 'ok' });
+
+    res.status(200).json({ status: "ok" });
   } else {
-    res.status(400).json({ error: 'Invalid signature' });
+    console.warn("Invalid webhook signature");
+    res.status(400).json({ error: "Invalid signature" });
   }
 });

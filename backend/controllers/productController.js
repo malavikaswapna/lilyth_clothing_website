@@ -1,8 +1,8 @@
 // controllers/productController.js
-const Product = require('../models/Product');
-const Category = require('../models/Category');
-const mongoose = require('mongoose');
-const asyncHandler = require('../utils/asyncHandler');
+const Product = require("../models/Product");
+const Category = require("../models/Category");
+const mongoose = require("mongoose");
+const asyncHandler = require("../utils/asyncHandler");
 
 // @desc    Get all products
 // @route   GET /api/products
@@ -14,7 +14,7 @@ exports.getProducts = asyncHandler(async (req, res) => {
 
   // For admin users, allow filtering by any status
   // For public users, only show active products
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && req.user.role === "admin") {
     // Admin can filter by specific status or see all
     if (req.query.status) {
       query.status = req.query.status;
@@ -22,18 +22,18 @@ exports.getProducts = asyncHandler(async (req, res) => {
     // If no status specified, show all statuses for admin
   } else {
     // Public users only see active products
-    query.status = 'active';
+    query.status = "active";
   }
 
   // Category filter - handle both slug and ID
   if (req.query.category) {
     try {
       // First try to find category by slug
-      const category = await Category.findOne({ 
+      const category = await Category.findOne({
         slug: req.query.category,
-        isActive: true 
+        isActive: true,
       });
-      
+
       if (category) {
         query.category = category._id;
       } else {
@@ -46,36 +46,48 @@ exports.getProducts = asyncHandler(async (req, res) => {
             success: true,
             count: 0,
             total: 0,
-            pagination: { page: 1, pages: 0, limit: 12, hasNext: false, hasPrev: false },
-            products: []
+            pagination: {
+              page: 1,
+              pages: 0,
+              limit: 12,
+              hasNext: false,
+              hasPrev: false,
+            },
+            products: [],
           });
         }
       }
     } catch (error) {
-      console.error('Category lookup error:', error);
+      console.error("Category lookup error:", error);
       return res.status(200).json({
         success: true,
         count: 0,
         total: 0,
-        pagination: { page: 1, pages: 0, limit: 12, hasNext: false, hasPrev: false },
-        products: []
+        pagination: {
+          page: 1,
+          pages: 0,
+          limit: 12,
+          hasNext: false,
+          hasPrev: false,
+        },
+        products: [],
       });
     }
   }
 
   // Brand filter
   if (req.query.brand) {
-    query.brand = new RegExp(req.query.brand, 'i');
+    query.brand = new RegExp(req.query.brand, "i");
   }
 
   // Size filter
   if (req.query.size) {
-    query['variants.size'] = req.query.size;
+    query["variants.size"] = req.query.size;
   }
 
   // Color filter
   if (req.query.color) {
-    query['variants.color.name'] = new RegExp(req.query.color, 'i');
+    query["variants.color.name"] = new RegExp(req.query.color, "i");
   }
 
   // Price range filter
@@ -88,29 +100,29 @@ exports.getProducts = asyncHandler(async (req, res) => {
   // Search by name, description, or tags
   if (req.query.search) {
     query.$or = [
-      { name: { $regex: req.query.search, $options: 'i' } },
-      { description: { $regex: req.query.search, $options: 'i' } },
-      { shortDescription: { $regex: req.query.search, $options: 'i' } },
-      { tags: { $in: [new RegExp(req.query.search, 'i')] } }
+      { name: { $regex: req.query.search, $options: "i" } },
+      { description: { $regex: req.query.search, $options: "i" } },
+      { shortDescription: { $regex: req.query.search, $options: "i" } },
+      { tags: { $in: [new RegExp(req.query.search, "i")] } },
     ];
   }
 
   // Featured products only
-  if (req.query.featured === 'true') {
+  if (req.query.featured === "true") {
     query.isFeatured = true;
   }
 
   // New arrivals only
-  if (req.query.newArrivals === 'true') {
+  if (req.query.newArrivals === "true") {
     query.isNewArrival = true;
   }
 
   // On sale only
-  if (req.query.onSale === 'true') {
+  if (req.query.onSale === "true") {
     query.salePrice = { $exists: true, $ne: null };
   }
 
-  console.log('Final query:', JSON.stringify(query, null, 2));
+  console.log("Final query:", JSON.stringify(query, null, 2));
 
   // Create the mongoose query
   let mongooseQuery = Product.find(query);
@@ -119,22 +131,22 @@ exports.getProducts = asyncHandler(async (req, res) => {
   if (req.query.sort) {
     const sortBy = req.query.sort;
     switch (sortBy) {
-      case 'price_low':
+      case "price_low":
         mongooseQuery = mongooseQuery.sort({ price: 1 });
         break;
-      case 'price_high':
+      case "price_high":
         mongooseQuery = mongooseQuery.sort({ price: -1 });
         break;
-      case 'newest':
+      case "newest":
         mongooseQuery = mongooseQuery.sort({ createdAt: -1 });
         break;
-      case 'oldest':
+      case "oldest":
         mongooseQuery = mongooseQuery.sort({ createdAt: 1 });
         break;
-      case 'popular':
+      case "popular":
         mongooseQuery = mongooseQuery.sort({ purchases: -1 });
         break;
-      case 'rating':
+      case "rating":
         mongooseQuery = mongooseQuery.sort({ averageRating: -1 });
         break;
       default:
@@ -152,11 +164,11 @@ exports.getProducts = asyncHandler(async (req, res) => {
   mongooseQuery = mongooseQuery.skip(startIndex).limit(limit);
 
   // Populate category
-  mongooseQuery = mongooseQuery.populate('category', 'name slug');
+  mongooseQuery = mongooseQuery.populate("category", "name slug");
 
   try {
     // Execute query
-    const products = await mongooseQuery;
+    const products = await mongooseQuery.lean().exec();
 
     // Get total count for pagination
     const total = await Product.countDocuments(query);
@@ -172,69 +184,114 @@ exports.getProducts = asyncHandler(async (req, res) => {
         pages: Math.ceil(total / limit),
         limit,
         hasNext: page < Math.ceil(total / limit),
-        hasPrev: page > 1
+        hasPrev: page > 1,
       },
-      products
+      products,
     });
   } catch (error) {
-    console.error('Product query error:', error);
+    console.error("Product query error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching products'
+      message: "Error fetching products",
     });
   }
 
-// Low stock filter (admin only)
-if (req.query.lowStock === 'true') {
-  query.totalStock = { $lt: 10 }; // Products with less than 10 items
-}
-
-// Date range filter
-if (req.query.startDate || req.query.endDate) {
-  query.createdAt = {};
-  if (req.query.startDate) {
-    query.createdAt.$gte = new Date(req.query.startDate);
+  // Low stock filter (admin only)
+  if (req.query.lowStock === "true") {
+    query.totalStock = { $lt: 10 }; // Products with less than 10 items
   }
-  if (req.query.endDate) {
-    // Add 1 day to include the entire end date
-    const endDate = new Date(req.query.endDate);
-    endDate.setDate(endDate.getDate() + 1);
-    query.createdAt.$lt = endDate;
+
+  // Date range filter
+  if (req.query.startDate || req.query.endDate) {
+    query.createdAt = {};
+    if (req.query.startDate) {
+      query.createdAt.$gte = new Date(req.query.startDate);
+    }
+    if (req.query.endDate) {
+      // Add 1 day to include the entire end date
+      const endDate = new Date(req.query.endDate);
+      endDate.setDate(endDate.getDate() + 1);
+      query.createdAt.$lt = endDate;
+    }
   }
-}
 
-// Featured filter (for admin)
-if (req.query.featured === 'true') {
-  query.isFeatured = true;
-}
+  // Featured filter (for admin)
+  if (req.query.featured === "true") {
+    query.isFeatured = true;
+  }
 
-// New arrivals filter (for admin)
-if (req.query.newArrivals === 'true') {
-  query.isNewArrival = true;
-}
+  // New arrivals filter (for admin)
+  if (req.query.newArrivals === "true") {
+    query.isNewArrival = true;
+  }
 });
 
 // @desc    Get single product
 // @route   GET /api/products/:id
 // @access  Public
 exports.getProduct = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id)
-    .populate('category', 'name slug')
+  console.log("🔍 [GET PRODUCT] Called for ID:", req.params.id);
 
-  if (!product || product.status !== 'active') {
+  // First, get the product with fresh data using lean()
+  const product = await Product.findById(req.params.id)
+    .populate("category", "name slug")
+    .lean(); // Use lean() to get plain object with fresh data
+
+  if (!product) {
     return res.status(404).json({
       success: false,
-      message: 'Product not found'
+      message: "Product not found",
     });
   }
 
-  // Increment view count
-  product.views += 1;
-  await product.save();
+  console.log("🔍 [GET PRODUCT] Found product:", product.name);
+  console.log("🔍 [GET PRODUCT] totalStock from DB:", product.totalStock);
+  console.log(
+    "🔍 [GET PRODUCT] variants from DB:",
+    product.variants.map((v) => ({
+      size: v.size,
+      color: v.color.name,
+      stock: v.stock,
+    }))
+  );
+
+  // For public users, check if product is active
+  // For admin users, allow viewing any status
+  const isAdmin = req.user && req.user.role === "admin";
+
+  if (!isAdmin && product.status !== "active") {
+    return res.status(404).json({
+      success: false,
+      message: "Product not found",
+    });
+  }
+
+  // Recalculate totalStock from variants to ensure accuracy
+  if (product.variants && product.variants.length > 0) {
+    const recalculatedTotal = product.variants.reduce((total, variant) => {
+      return total + (variant.stock || 0);
+    }, 0);
+    console.log("🔍 [GET PRODUCT] Recalculated totalStock:", recalculatedTotal);
+    product.totalStock = recalculatedTotal;
+  }
+
+  // Increment view count asynchronously (don't wait for it)
+  Product.findByIdAndUpdate(
+    req.params.id,
+    { $inc: { views: 1 } },
+    { new: false }
+  )
+    .exec()
+    .catch((err) => console.error("View increment error:", err));
+
+  console.log(
+    "🔍 [GET PRODUCT] Sending response with totalStock:",
+    product.totalStock
+  );
 
   res.status(200).json({
     success: true,
-    product
+    product,
   });
 });
 
@@ -242,15 +299,15 @@ exports.getProduct = asyncHandler(async (req, res) => {
 // @route   GET /api/products/slug/:slug
 // @access  Public
 exports.getProductBySlug = asyncHandler(async (req, res) => {
-  const product = await Product.findOne({ 
+  const product = await Product.findOne({
     slug: req.params.slug,
-    status: 'active'
-  }).populate('category', 'name slug');
+    status: "active",
+  }).populate("category", "name slug");
 
   if (!product) {
     return res.status(404).json({
       success: false,
-      message: 'Product not found'
+      message: "Product not found",
     });
   }
 
@@ -260,7 +317,7 @@ exports.getProductBySlug = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    product
+    product,
   });
 });
 
@@ -273,7 +330,7 @@ exports.getRelatedProducts = asyncHandler(async (req, res) => {
   if (!product) {
     return res.status(404).json({
       success: false,
-      message: 'Product not found'
+      message: "Product not found",
     });
   }
 
@@ -281,16 +338,16 @@ exports.getRelatedProducts = asyncHandler(async (req, res) => {
   const relatedProducts = await Product.find({
     category: product.category,
     _id: { $ne: product._id },
-    status: 'active'
+    status: "active",
   })
-    .populate('category', 'name slug')
+    .populate("category", "name slug")
     .limit(4)
     .sort({ averageRating: -1, purchases: -1 });
 
   res.status(200).json({
     success: true,
     count: relatedProducts.length,
-    products: relatedProducts
+    products: relatedProducts,
   });
 });
 
@@ -304,9 +361,9 @@ exports.createProduct = asyncHandler(async (req, res) => {
     try {
       if (req.body.variants) {
         variants = JSON.parse(req.body.variants);
-       }
+      }
     } catch (error) {
-      console.error('Error parsing variants:', error);
+      console.error("Error parsing variants:", error);
     }
 
     // Extract arrays (materials, features, careInstructions)
@@ -325,27 +382,36 @@ exports.createProduct = asyncHandler(async (req, res) => {
 
     // Extract SEO data
     const seo = {
-      metaTitle: req.body['seo[metaTitle]'] || '',
-      metaDescription: req.body['seo[metaDescription]'] || '',
-      keywords: req.body['seo[keywords]'] || ''
+      metaTitle: req.body["seo[metaTitle]"] || "",
+      metaDescription: req.body["seo[metaDescription]"] || "",
+      keywords: req.body["seo[keywords]"] || "",
     };
 
     // Validate required fields
-    if (!req.body.name || !req.body.description || !req.body.brand || !req.body.sku || !req.body.price) {
+    if (
+      !req.body.name ||
+      !req.body.description ||
+      !req.body.brand ||
+      !req.body.sku ||
+      !req.body.price
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide all required fields: name, description, brand, sku, and price'
+        message:
+          "Please provide all required fields: name, description, brand, sku, and price",
       });
     }
 
     // Validate sale price vs regular price
     const price = parseFloat(req.body.price);
-    const salePrice = req.body.salePrice ? parseFloat(req.body.salePrice) : null;
-    
+    const salePrice = req.body.salePrice
+      ? parseFloat(req.body.salePrice)
+      : null;
+
     if (salePrice && salePrice >= price) {
       return res.status(400).json({
         success: false,
-        message: 'Sale price must be less than regular price'
+        message: "Sale price must be less than regular price",
       });
     }
 
@@ -354,7 +420,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
     if (existingProduct) {
       return res.status(400).json({
         success: false,
-        message: 'Product with this SKU already exists'
+        message: "Product with this SKU already exists",
       });
     }
 
@@ -363,7 +429,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
     if (existingSlug) {
       return res.status(400).json({
         success: false,
-        message: 'Product with this slug already exists'
+        message: "Product with this slug already exists",
       });
     }
 
@@ -373,7 +439,7 @@ exports.createProduct = asyncHandler(async (req, res) => {
       if (!categoryExists) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid category selected'
+          message: "Invalid category selected",
         });
       }
     }
@@ -389,33 +455,43 @@ exports.createProduct = asyncHandler(async (req, res) => {
       salePrice: salePrice,
       cost: req.body.cost ? parseFloat(req.body.cost) : null,
       category: req.body.category || null,
-      status: req.body.status || 'active',
-      featured: req.body.featured === 'true',
-      isNewArrival: req.body.isNewArrival === 'true',
-      variants: variants.length > 0 ? variants.map(variant => ({
-        ...variant,
-        variantSku: `${req.body.sku}-${variant.size}-${variant.color.name.replace(/\s+/g, '').toUpperCase()}`
-      })) : [{
-        size: 'S', // Use a valid enum value instead of 'One Size'
-        color: { name: 'Black', hexCode: '#000000' },
-        stock: 0,
-        variantSku: `${req.body.sku}-S-BLACK`
-      }],
-      materials: extractArray('materials'),
-      features: extractArray('features'),
-      careInstructions: extractArray('careInstructions'),
-      seo: seo
+      status: req.body.status || "active",
+      featured: req.body.featured === "true",
+      isNewArrival: req.body.isNewArrival === "true",
+      variants:
+        variants.length > 0
+          ? variants.map((variant) => ({
+              ...variant,
+              variantSku: `${req.body.sku}-${variant.size}-${variant.color.name
+                .replace(/\s+/g, "")
+                .toUpperCase()}`,
+            }))
+          : [
+              {
+                size: "S", // Use a valid enum value instead of 'One Size'
+                color: { name: "Black", hexCode: "#000000" },
+                stock: 0,
+                variantSku: `${req.body.sku}-S-BLACK`,
+              },
+            ],
+      materials: extractArray("materials"),
+      features: extractArray("features"),
+      careInstructions: extractArray("careInstructions"),
+      seo: seo,
     };
 
     // Calculate total stock
-    productData.totalStock = productData.variants.reduce((total, variant) => total + variant.stock, 0);
+    productData.totalStock = productData.variants.reduce(
+      (total, variant) => total + variant.stock,
+      0
+    );
 
     // Handle images if uploaded
     if (req.files && req.files.length > 0) {
       productData.images = req.files.map((file, index) => ({
         url: `/uploads/${file.filename}`, // Adjust based on your upload setup
-        alt: '',
-        isPrimary: index === 0
+        alt: "",
+        isPrimary: index === 0,
       }));
     } else {
       // Default empty images array
@@ -427,30 +503,29 @@ exports.createProduct = asyncHandler(async (req, res) => {
     await product.save();
 
     // Populate category for response
-    await product.populate('category', 'name slug');
+    await product.populate("category", "name slug");
 
     res.status(201).json({
       success: true,
-      message: 'Product created successfully',
-      product
+      message: "Product created successfully",
+      product,
     });
-
   } catch (error) {
-    console.error('Product creation error:', error);
-    
+    console.error("Product creation error:", error);
+
     // Handle mongoose validation errors
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(err => err.message);
+    if (error.name === "ValidationError") {
+      const errors = Object.values(error.errors).map((err) => err.message);
       return res.status(400).json({
         success: false,
-        message: 'Validation Error',
-        errors
+        message: "Validation Error",
+        errors,
       });
     }
 
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to create product'
+      message: error.message || "Failed to create product",
     });
   }
 });
@@ -465,22 +540,22 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: 'Product not found'
+        message: "Product not found",
       });
     }
 
     // Similar processing as createProduct for updates
     const variants = [];
     let variantIndex = 0;
-    
+
     while (req.body[`variants[${variantIndex}][size]`]) {
       variants.push({
         size: req.body[`variants[${variantIndex}][size]`],
         color: {
           name: req.body[`variants[${variantIndex}][color][name]`],
-          hexCode: req.body[`variants[${variantIndex}][color][hexCode]`]
+          hexCode: req.body[`variants[${variantIndex}][color][hexCode]`],
         },
-        stock: parseInt(req.body[`variants[${variantIndex}][stock]`]) || 0
+        stock: parseInt(req.body[`variants[${variantIndex}][stock]`]) || 0,
       });
       variantIndex++;
     }
@@ -501,48 +576,49 @@ exports.updateProduct = asyncHandler(async (req, res) => {
 
     // Extract SEO data
     const seo = {
-      metaTitle: req.body['seo[metaTitle]'] || product.seo?.metaTitle || '',
-      metaDescription: req.body['seo[metaDescription]'] || product.seo?.metaDescription || '',
-      keywords: req.body['seo[keywords]'] || product.seo?.keywords || ''
+      metaTitle: req.body["seo[metaTitle]"] || product.seo?.metaTitle || "",
+      metaDescription:
+        req.body["seo[metaDescription]"] || product.seo?.metaDescription || "",
+      keywords: req.body["seo[keywords]"] || product.seo?.keywords || "",
     };
 
     // Validate sale price if provided
     if (req.body.price && req.body.salePrice) {
       const price = parseFloat(req.body.price);
       const salePrice = parseFloat(req.body.salePrice);
-      
+
       if (salePrice >= price) {
         return res.status(400).json({
           success: false,
-          message: 'Sale price must be less than regular price'
+          message: "Sale price must be less than regular price",
         });
       }
     }
 
     // Check for SKU conflicts (excluding current product)
     if (req.body.sku && req.body.sku !== product.sku) {
-      const existingProduct = await Product.findOne({ 
+      const existingProduct = await Product.findOne({
         sku: req.body.sku,
-        _id: { $ne: req.params.id }
+        _id: { $ne: req.params.id },
       });
       if (existingProduct) {
         return res.status(400).json({
           success: false,
-          message: 'Product with this SKU already exists'
+          message: "Product with this SKU already exists",
         });
       }
     }
 
     // Check for slug conflicts (excluding current product)
     if (req.body.slug && req.body.slug !== product.slug) {
-      const existingSlug = await Product.findOne({ 
+      const existingSlug = await Product.findOne({
         slug: req.body.slug,
-        _id: { $ne: req.params.id }
+        _id: { $ne: req.params.id },
       });
       if (existingSlug) {
         return res.status(400).json({
           success: false,
-          message: 'Product with this slug already exists'
+          message: "Product with this slug already exists",
         });
       }
     }
@@ -555,28 +631,48 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       sku: req.body.sku || product.sku,
       slug: req.body.slug || product.slug,
       price: req.body.price ? parseFloat(req.body.price) : product.price,
-      salePrice: req.body.salePrice ? parseFloat(req.body.salePrice) : product.salePrice,
+      salePrice: req.body.salePrice
+        ? parseFloat(req.body.salePrice)
+        : product.salePrice,
       cost: req.body.cost ? parseFloat(req.body.cost) : product.cost,
       category: req.body.category || product.category,
       status: req.body.status || product.status,
-      featured: req.body.featured !== undefined ? req.body.featured === 'true' : product.featured,
-      isNewArrival: req.body.isNewArrival !== undefined ? req.body.isNewArrival === 'true' : product.isNewArrival,
+      featured:
+        req.body.featured !== undefined
+          ? req.body.featured === "true"
+          : product.featured,
+      isNewArrival:
+        req.body.isNewArrival !== undefined
+          ? req.body.isNewArrival === "true"
+          : product.isNewArrival,
       variants: variants.length > 0 ? variants : product.variants,
-      materials: extractArray('materials').length > 0 ? extractArray('materials') : product.materials,
-      features: extractArray('features').length > 0 ? extractArray('features') : product.features,
-      careInstructions: extractArray('careInstructions').length > 0 ? extractArray('careInstructions') : product.careInstructions,
-      seo: seo
+      materials:
+        extractArray("materials").length > 0
+          ? extractArray("materials")
+          : product.materials,
+      features:
+        extractArray("features").length > 0
+          ? extractArray("features")
+          : product.features,
+      careInstructions:
+        extractArray("careInstructions").length > 0
+          ? extractArray("careInstructions")
+          : product.careInstructions,
+      seo: seo,
     };
 
     // Calculate total stock
-    updateData.totalStock = updateData.variants.reduce((total, variant) => total + variant.stock, 0);
+    updateData.totalStock = updateData.variants.reduce(
+      (total, variant) => total + variant.stock,
+      0
+    );
 
     // Handle new images if uploaded
     if (req.files && req.files.length > 0) {
       const newImages = req.files.map((file, index) => ({
         url: `/uploads/${file.filename}`,
-        alt: '',
-        isPrimary: index === 0 && product.images.length === 0
+        alt: "",
+        isPrimary: index === 0 && product.images.length === 0,
       }));
       updateData.images = [...product.images, ...newImages];
     }
@@ -585,38 +681,39 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     if (req.body.existingImages) {
       try {
         const existingImages = JSON.parse(req.body.existingImages);
-        updateData.images = updateData.images ? [...existingImages, ...updateData.images] : existingImages;
+        updateData.images = updateData.images
+          ? [...existingImages, ...updateData.images]
+          : existingImages;
       } catch (e) {
-        console.error('Error parsing existing images:', e);
+        console.error("Error parsing existing images:", e);
       }
     }
 
     product = await Product.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
-      runValidators: true
-    }).populate('category', 'name slug');
+      runValidators: true,
+    }).populate("category", "name slug");
 
     res.status(200).json({
       success: true,
-      message: 'Product updated successfully',
-      product
+      message: "Product updated successfully",
+      product,
     });
-
   } catch (error) {
-    console.error('Product update error:', error);
-    
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(err => err.message);
+    console.error("Product update error:", error);
+
+    if (error.name === "ValidationError") {
+      const errors = Object.values(error.errors).map((err) => err.message);
       return res.status(400).json({
         success: false,
-        message: 'Validation Error',
-        errors
+        message: "Validation Error",
+        errors,
       });
     }
 
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to update product'
+      message: error.message || "Failed to update product",
     });
   }
 });
@@ -630,7 +727,7 @@ exports.deleteProduct = asyncHandler(async (req, res) => {
   if (!product) {
     return res.status(404).json({
       success: false,
-      message: 'Product not found'
+      message: "Product not found",
     });
   }
 
@@ -638,6 +735,6 @@ exports.deleteProduct = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Product deleted successfully'
+    message: "Product deleted successfully",
   });
 });

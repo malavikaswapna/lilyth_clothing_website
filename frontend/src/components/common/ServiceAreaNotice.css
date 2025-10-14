@@ -1,0 +1,58 @@
+/* src/components/common/ServiceAreaNotice.css */
+.service-area-notice {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.service-area-notice.info {
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+}
+
+.service-area-notice.warning {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+}
+
+.notice-icon {
+  flex-shrink: 0;
+}
+
+.service-area-notice.info .notice-icon {
+  color: #1e40af;
+}
+
+.service-area-notice.warning .notice-icon {
+  color: #d97706;
+}
+
+.notice-content h4 {
+  margin: 0 0 4px 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.service-area-notice.info .notice-content h4 {
+  color: #1e40af;
+}
+
+.service-area-notice.warning .notice-content h4 {
+  color: #d97706;
+}
+
+.notice-content p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.service-area-notice.info .notice-content p {
+  color: #1e3a8a;
+}
+
+.service-area-notice.warning .notice-content p {
+  color: #92400e;
+}

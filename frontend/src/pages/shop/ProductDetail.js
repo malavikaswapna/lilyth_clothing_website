@@ -11,6 +11,9 @@ import {
   Shield,
   ArrowLeft,
   ChartNoAxesColumnIncreasing,
+  AlignVerticalJustifyCenterIcon,
+  Ticket,
+  Space,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
@@ -584,7 +587,7 @@ const ProductDetail = () => {
                       <div className="related-product-info">
                         <h4>{relatedProduct.name}</h4>
                         <p className="related-product-price">
-                          ${relatedProduct.salePrice || relatedProduct.price}
+                          ₹{relatedProduct.salePrice || relatedProduct.price}
                         </p>
                       </div>
                     </button>

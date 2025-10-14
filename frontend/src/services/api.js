@@ -1,18 +1,18 @@
-import axios from 'axios';
+import axios from "axios";
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001/api',
-  timeout: 10000,
+  baseURL: process.env.REACT_APP_API_URL || "http://localhost:3001/api",
+  timeout: 30000,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -29,13 +29,13 @@ api.interceptors.response.use(
   (error) => {
     // Only handle 401 errors for auth-related endpoints, not cart
     if (error.response?.status === 401) {
-      const url = error.config?.url || '';
-      
+      const url = error.config?.url || "";
+
       // Only auto-logout for auth endpoints, not cart/user data endpoints
-      if (url.includes('/auth/')) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+      if (url.includes("/auth/")) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/login";
       }
       // For other 401s (like cart), just return the error without auto-logout
     }
@@ -44,89 +44,126 @@ api.interceptors.response.use(
 );
 // Auth API calls
 export const authAPI = {
-  login: (credentials) => api.post('/auth/login', credentials),
-  register: (userData) => api.post('/auth/register', userData),
+  login: (credentials) => api.post("/auth/login", credentials),
+  register: (userData) => api.post("/auth/register", userData),
   verifyEmail: (token) => api.get(`/auth/verify-email/${token}`),
-  getProfile: () => api.get('/auth/me'),
-  updateProfile: (data) => api.put('/auth/profile', data),
-  updatePassword: (data) => api.put('/auth/password', data),
-  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
-  resetPassword: (token, password) => api.put(`/auth/reset-password/${token}`, { password }),
-  googleAuth: (data) => api.post('/auth/google', data),
+  getProfile: () => api.get("/auth/me"),
+  updateProfile: (data) => api.put("/auth/profile", data),
+  updatePassword: (data) => api.put("/auth/password", data),
+  forgotPassword: (email) => api.post("/auth/forgot-password", { email }),
+  resetPassword: (token, password) =>
+    api.put(`/auth/reset-password/${token}`, { password }),
+  googleAuth: (data) => api.post("/auth/google", data),
 };
 
 // Products API calls
 export const productsAPI = {
-  getProducts: (params) => api.get('/products', { params }),
-  getProduct: (id) => api.get(`/products/${id}`),
+  getProducts: (params) => api.get("/products", { params }),
+
+  // FIXED: Simple cache-busting with timestamp only (no custom headers)
+  getProduct: (id) => api.get(`/products/${id}?_t=${Date.now()}`),
+
   getProductBySlug: (slug) => api.get(`/products/slug/${slug}`),
   getRelatedProducts: (id) => api.get(`/products/${id}/related`),
   // Admin only
-  createProduct: (data) => api.post('/products', data),
+  createProduct: (data) => api.post("/products", data),
   updateProduct: (id, data) => api.put(`/products/${id}`, data),
   deleteProduct: (id) => api.delete(`/products/${id}`),
 };
 
 // Categories API calls
 export const categoriesAPI = {
-  getCategories: () => api.get('/categories'),
+  getCategories: () => api.get("/categories"),
   getCategory: (id) => api.get(`/categories/${id}`),
   getCategoryBySlug: (slug) => api.get(`/categories/slug/${slug}`),
   // Admin only
-  createCategory: (data) => api.post('/categories', data),
+  createCategory: (data) => api.post("/categories", data),
   updateCategory: (id, data) => api.put(`/categories/${id}`, data),
   deleteCategory: (id) => api.delete(`/categories/${id}`),
 };
 
 // Cart API calls
 export const cartAPI = {
-  getCart: () => api.get('/cart'),
-  addToCart: (data) => api.post('/cart/add', data),
-  updateCartItem: (data) => api.put('/cart/update', data),
-  removeFromCart: (data) => api.delete('/cart/remove', { data }),
-  clearCart: () => api.delete('/cart/clear'),
-  saveForLater: (data) => api.post('/cart/save-for-later', data),
-  moveToCart: (data) => api.post('/cart/move-to-cart', data),
+  getCart: () => api.get("/cart"),
+  addToCart: (data) => api.post("/cart/add", data),
+  updateCartItem: (data) => api.put("/cart/update", data),
+  removeFromCart: (data) => api.delete("/cart/remove", { data }),
+  clearCart: () => api.delete("/cart/clear"),
+  saveForLater: (data) => api.post("/cart/save-for-later", data),
+  moveToCart: (data) => api.post("/cart/move-to-cart", data),
 };
 
 // Orders API calls
 export const ordersAPI = {
-  createOrder: (data) => api.post('/orders', data),
-  getMyOrders: (params) => api.get('/orders', { params }),
+  createOrder: (data) => {
+    console.log("🚀 Creating order with data:", data);
+    console.log("📍 API Base URL:", api.defaults.baseURL);
+    console.log("🔗 Full URL:", `${api.defaults.baseURL}/orders`);
+
+    return api
+      .post("/orders", data)
+      .then((response) => {
+        console.log("✅ Order created successfully:", response.data);
+        return response;
+      })
+      .catch((error) => {
+        console.error("❌ Order creation failed:");
+        console.error("   Status:", error.response?.status);
+        console.error("   URL:", error.config?.url);
+        console.error("   Base URL:", error.config?.baseURL);
+        console.error(
+          "   Full URL:",
+          error.config?.baseURL + error.config?.url
+        );
+        console.error("   Full Response:", error.response?.data);
+        console.error("   Message:", error.response?.data?.message);
+
+        // If message is an array, log each item
+        if (Array.isArray(error.response?.data?.message)) {
+          console.error("   Error details:");
+          error.response.data.message.forEach((msg, idx) => {
+            console.error(`     ${idx + 1}. ${msg}`);
+          });
+        }
+
+        throw error;
+      });
+  },
+
+  getMyOrders: (params) => api.get("/orders", { params }),
   getOrder: (id) => api.get(`/orders/${id}`),
   cancelOrder: (id, reason) => api.put(`/orders/${id}/cancel`, { reason }),
-  createPaymentOrder: (data) => api.post('/orders/create-payment', data),
-  verifyPayment: (data) => api.post('/orders/verify-payment', data),
-  handlePaymentFailure: (data) => api.post('/orders/payment-failed', data),
+  createPaymentOrder: (data) => api.post("/orders/create-payment", data),
+  verifyPayment: (data) => api.post("/orders/verify-payment", data),
+  handlePaymentFailure: (data) => api.post("/orders/payment-failed", data),
 };
 
 // User API calls
 export const userAPI = {
-  addAddress: (data) => api.post('/user/addresses', data),
+  addAddress: (data) => api.post("/user/addresses", data),
   updateAddress: (id, data) => api.put(`/user/addresses/${id}`, data),
   deleteAddress: (id) => api.delete(`/user/addresses/${id}`),
-  getAddresses: () => api.get('/user/profile'),
-  getWishlist: () => api.get('/user/wishlist'),
-  getProfile: () => api.get('/auth/me'),
+  getAddresses: () => api.get("/user/profile"),
+  getWishlist: () => api.get("/user/wishlist"),
+  getProfile: () => api.get("/auth/me"),
   addToWishlist: (productId) => api.post(`/user/wishlist/${productId}`),
   removeFromWishlist: (productId) => api.delete(`/user/wishlist/${productId}`),
-  updatePreferredSizes: (data) => api.put('/user/sizes', data),
-  getUserAnalytics: () => api.get('/user/analytics'),
-    // Address management
-  getAddresses: () => api.get('/user/addresses'),
-  addAddress: (addressData) => api.post('/user/addresses', addressData),
-  updateAddress: (addressId, addressData) => api.put(`/user/addresses/${addressId}`, addressData),
+  updatePreferredSizes: (data) => api.put("/user/sizes", data),
+  getUserAnalytics: () => api.get("/user/analytics"),
+  // Address management
+  getAddresses: () => api.get("/user/addresses"),
+  addAddress: (addressData) => api.post("/user/addresses", addressData),
+  updateAddress: (addressId, addressData) =>
+    api.put(`/user/addresses/${addressId}`, addressData),
   deleteAddress: (addressId) => api.delete(`/user/addresses/${addressId}`),
 };
 
 // Contact API calls
 export const contactAPI = {
   submitContactForm: (contactData) => {
-    return api.post('/contact', contactData);
-  }
+    return api.post("/contact", contactData);
+  },
 };
-
-
 
 // Reviews API calls
 export const reviewsAPI = {
@@ -165,55 +202,69 @@ export const reviewsAPI = {
   // Flag a review
   flagReview: (reviewId, data) => {
     return api.post(`/reviews/${reviewId}/flag`, data);
-  }
+  },
+};
+
+export const pincodeAPI = {
+  validatePincode: (pincode) => api.get(`/pincode/validate/${pincode}`),
+  autofillAddress: (pincode) => api.get(`/pincode/autofill/${pincode}`),
+  searchPostOffice: (query) => api.get(`/pincode/search/${query}`),
+  getDistrictSuggestions: (query) => api.get(`/pincode/districts/${query}`),
+  getAllDistricts: () => api.get("/pincode/districts"),
+  verifyAddress: (data) => api.post("/pincode/verify-address", data),
+  getDeliveryInfo: (pincode) => api.get(`/pincode/delivery-info/${pincode}`),
+  getServiceAreas: () => api.get("/pincode/service-areas"),
 };
 
 // Admin API calls
 export const adminAPI = {
   // Dashboard
-  getDashboard: () => api.get('/admin/dashboard'),
-  
+  getDashboard: () => api.get("/admin/dashboard"),
+
   // User Management
-  getAllUsers: (params) => api.get('/admin/users', { params }),
+  getAllUsers: (params) => api.get("/admin/users", { params }),
   getUserDetails: (id) => api.get(`/admin/users/${id}`),
   updateUserStatus: (id, data) => api.put(`/admin/users/${id}/status`, data),
-  
+
   // Orders Management (corrected paths)
-  getAllOrders: (params) => api.get('/admin/orders', { params }),
+  getAllOrders: (params) => api.get("/admin/orders", { params }),
   getOrderDetails: (orderId) => api.get(`/admin/orders/${orderId}`),
-  updateOrderStatus: (orderId, data) => api.put(`/admin/orders/${orderId}/status`, data),
-  getOrderStats: () => api.get('/admin/orders/stats'),
-  exportOrders: (params) => api.get('/admin/orders/export', { params }),
-  
+  updateOrderStatus: (orderId, data) =>
+    api.put(`/admin/orders/${orderId}/status`, data),
+  getOrderStats: () => api.get("/admin/orders/stats"),
+  exportOrders: (params) => api.get("/admin/orders/export", { params }),
+
   // Product Management
-  bulkUpdateProductStatus: (productIds, updates) => 
-    api.put('/admin/products/bulk-update', { productIds, updates }),
-  
-  bulkDeleteProducts: (productIds) => 
-    api.delete('/admin/products/bulk-delete', { data: { productIds } }),
-  
-  updateProductStatus: (id, data) => 
+  bulkUpdateProductStatus: (productIds, updates) =>
+    api.put("/admin/products/bulk-update", { productIds, updates }),
+
+  bulkDeleteProducts: (productIds) =>
+    api.delete("/admin/products/bulk-delete", { data: { productIds } }),
+
+  updateProductStatus: (id, data) =>
     api.put(`/admin/products/${id}/status`, data),
-  
-  duplicateProduct: (id) => 
-    api.post(`/admin/products/${id}/duplicate`),
-  
-  updateProductStock: (id, data) => api.put(`/admin/products/${id}/stock`, data),
-  
-  exportProducts: (filters) => 
-    api.get('/admin/products/export', { 
+
+  duplicateProduct: (id) => api.post(`/admin/products/${id}/duplicate`),
+
+  updateProductStock: (id, data) =>
+    api.put(`/admin/products/${id}/stock`, data),
+
+  exportProducts: (filters) =>
+    api.get("/admin/products/export", {
       params: filters,
-      responseType: 'blob'
+      responseType: "blob",
     }),
-  
+
   // Reports
-  getSalesReport: (params) => api.get('/admin/reports/sales', { params }),
-  getInventoryReport: () => api.get('/admin/reports/inventory'),
-  getCustomersReport: (params) => api.get('/admin/reports/customers', { params }),
-  exportReport: (reportType, params) => api.get(`/admin/reports/${reportType}/export`, { 
-    params,
-    responseType: 'blob'
-  }),
+  getSalesReport: (params) => api.get("/admin/reports/sales", { params }),
+  getInventoryReport: () => api.get("/admin/reports/inventory"),
+  getCustomersReport: (params) =>
+    api.get("/admin/reports/customers", { params }),
+  exportReport: (reportType, params) =>
+    api.get(`/admin/reports/${reportType}/export`, {
+      params,
+      responseType: "blob",
+    }),
 };
 
 export default api;

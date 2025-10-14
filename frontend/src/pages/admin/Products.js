@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Search, 
-  Filter, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Eye, 
+import React, { useState, useEffect } from "react";
+import {
+  Search,
+  Filter,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
   EyeOff,
   Package,
   AlertTriangle,
@@ -13,43 +13,43 @@ import {
   Image as ImageIcon,
   Copy,
   Download,
-  Upload
-} from 'lucide-react';
-import { productsAPI, categoriesAPI, adminAPI } from '../../services/api';
-import Loading from '../../components/common/Loading';
-import Button from '../../components/common/Button';
-import AddProductModal from './AddProductModal';
-import toast from 'react-hot-toast';
-import './Products.css';
+  Upload,
+} from "lucide-react";
+import { productsAPI, categoriesAPI, adminAPI } from "../../services/api";
+import Loading from "../../components/common/Loading";
+import Button from "../../components/common/Button";
+import AddProductModal from "./AddProductModal";
+import toast from "react-hot-toast";
+import "./Products.css";
 
 const Products = () => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
-  
+
   // Enhanced filters with new options
   const [filters, setFilters] = useState({
-    search: '',
-    category: '',
-    status: '',
+    search: "",
+    category: "",
+    status: "",
     lowStock: false,
     featured: false,
     newArrival: false,
-    priceRange: { min: '', max: '' },
-    dateRange: { start: '', end: '' },
+    priceRange: { min: "", max: "" },
+    dateRange: { start: "", end: "" },
     page: 1,
-    limit: 20
+    limit: 20,
   });
 
   // New state for bulk operations and advanced features
   const [selectedProducts, setSelectedProducts] = useState(new Set());
-  const [bulkAction, setBulkAction] = useState('');
+  const [bulkAction, setBulkAction] = useState("");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showProductModal, setShowProductModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
-  
+
   // Add/Edit Product Modal state
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -61,52 +61,53 @@ const Products = () => {
 
   const loadProducts = async () => {
     try {
-    setLoading(true);
-    
-    // Build query parameters properly
-    const queryParams = {};
-    
-    // Basic filters
-    if (filters.search) queryParams.search = filters.search;
-    if (filters.category) queryParams.category = filters.category;
-    if (filters.status) queryParams.status = filters.status;
-    
-    // Advanced filters
-    if (filters.lowStock) queryParams.lowStock = 'true';
-    if (filters.featured) queryParams.featured = 'true';
-    if (filters.newArrival) queryParams.newArrivals = 'true';
-    
-    // Price range
-    if (filters.priceRange.min) queryParams.minPrice = filters.priceRange.min;
-    if (filters.priceRange.max) queryParams.maxPrice = filters.priceRange.max;
-    
-    // Date range
-    if (filters.dateRange.start) queryParams.startDate = filters.dateRange.start;
-    if (filters.dateRange.end) queryParams.endDate = filters.dateRange.end;
-    
-    // Pagination
-    queryParams.page = filters.page;
-    queryParams.limit = filters.limit;
-    
-    console.log('Sending query params:', queryParams);
+      setLoading(true);
 
-    const response = await productsAPI.getProducts(queryParams);
-    setProducts(response.data.products);
-    setPagination(response.data.pagination);
-  } catch (error) {
-    console.error('Failed to load products:', error);
-    toast.error('Failed to load products');
-  } finally {
-    setLoading(false);
-  }
-};
+      // Build query parameters properly
+      const queryParams = {};
+
+      // Basic filters
+      if (filters.search) queryParams.search = filters.search;
+      if (filters.category) queryParams.category = filters.category;
+      if (filters.status) queryParams.status = filters.status;
+
+      // Advanced filters
+      if (filters.lowStock) queryParams.lowStock = "true";
+      if (filters.featured) queryParams.featured = "true";
+      if (filters.newArrival) queryParams.newArrivals = "true";
+
+      // Price range
+      if (filters.priceRange.min) queryParams.minPrice = filters.priceRange.min;
+      if (filters.priceRange.max) queryParams.maxPrice = filters.priceRange.max;
+
+      // Date range
+      if (filters.dateRange.start)
+        queryParams.startDate = filters.dateRange.start;
+      if (filters.dateRange.end) queryParams.endDate = filters.dateRange.end;
+
+      // Pagination
+      queryParams.page = filters.page;
+      queryParams.limit = filters.limit;
+
+      console.log("Sending query params:", queryParams);
+
+      const response = await productsAPI.getProducts(queryParams);
+      setProducts(response.data.products);
+      setPagination(response.data.pagination);
+    } catch (error) {
+      console.error("Failed to load products:", error);
+      toast.error("Failed to load products");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadCategories = async () => {
     try {
       const response = await categoriesAPI.getCategories();
       setCategories(response.data.categories);
     } catch (error) {
-      console.error('Failed to load categories:', error);
+      console.error("Failed to load categories:", error);
     }
   };
 
@@ -131,7 +132,7 @@ const Products = () => {
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedProducts(new Set(products.map(p => p._id)));
+      setSelectedProducts(new Set(products.map((p) => p._id)));
     } else {
       setSelectedProducts(new Set());
     }
@@ -149,124 +150,148 @@ const Products = () => {
 
   const clearAllFilters = () => {
     setFilters({
-      search: '',
-      category: '',
-      status: '',
+      search: "",
+      category: "",
+      status: "",
       lowStock: false,
       featured: false,
       newArrival: false,
-      priceRange: { min: '', max: '' },
-      dateRange: { start: '', end: '' },
+      priceRange: { min: "", max: "" },
+      dateRange: { start: "", end: "" },
       page: 1,
-      limit: 20
+      limit: 20,
     });
   };
 
   const handleBulkAction = async () => {
     if (!bulkAction || selectedProducts.size === 0) return;
-    
+
     try {
       const productIds = Array.from(selectedProducts);
-      
+
       switch (bulkAction) {
-        case 'activate':
-          await adminAPI.bulkUpdateProductStatus(productIds, { status: 'active' });
+        case "activate":
+          await adminAPI.bulkUpdateProductStatus(productIds, {
+            status: "active",
+          });
           break;
-        case 'deactivate':
-          await adminAPI.bulkUpdateProductStatus(productIds, { status: 'inactive' });
+        case "deactivate":
+          await adminAPI.bulkUpdateProductStatus(productIds, {
+            status: "inactive",
+          });
           break;
-        case 'feature':
-          await adminAPI.bulkUpdateProductStatus(productIds, { featured: true });
+        case "feature":
+          await adminAPI.bulkUpdateProductStatus(productIds, {
+            featured: true,
+          });
           break;
-        case 'unfeature':
-          await adminAPI.bulkUpdateProductStatus(productIds, { featured: false });
+        case "unfeature":
+          await adminAPI.bulkUpdateProductStatus(productIds, {
+            featured: false,
+          });
           break;
-        case 'delete':
-          if (window.confirm(`Are you sure you want to delete ${selectedProducts.size} products?`)) {
+        case "delete":
+          if (
+            window.confirm(
+              `Are you sure you want to delete ${selectedProducts.size} products?`
+            )
+          ) {
             await adminAPI.bulkDeleteProducts(productIds);
           }
           break;
       }
-      
+
       toast.success(`Bulk action completed successfully`);
       setSelectedProducts(new Set());
-      setBulkAction('');
+      setBulkAction("");
       loadProducts();
     } catch (error) {
-      toast.error('Failed to perform bulk action');
+      toast.error("Failed to perform bulk action");
     }
   };
 
   const toggleProductStatus = async (productId, currentStatus) => {
     try {
-      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      const newStatus = currentStatus === "active" ? "inactive" : "active";
       await adminAPI.updateProductStatus(productId, { status: newStatus });
-      toast.success('Product status updated');
+      toast.success("Product status updated");
       loadProducts();
     } catch (error) {
-      toast.error('Failed to update product status');
+      toast.error("Failed to update product status");
     }
   };
 
   const duplicateProduct = async (productId) => {
     try {
       await adminAPI.duplicateProduct(productId);
-      toast.success('Product duplicated successfully');
+      toast.success("Product duplicated successfully");
       loadProducts();
     } catch (error) {
-      toast.error('Failed to duplicate product');
+      toast.error("Failed to duplicate product");
     }
   };
 
   const generateCSV = (products) => {
     const headers = [
-      'Name', 'SKU', 'Brand', 'Category', 'Price', 'Sale Price', 
-      'Stock', 'Status', 'Featured', 'New Arrival', 'Created Date'
+      "Name",
+      "SKU",
+      "Brand",
+      "Category",
+      "Price",
+      "Sale Price",
+      "Stock",
+      "Status",
+      "Featured",
+      "New Arrival",
+      "Created Date",
     ];
-    
-    const rows = products.map(product => [
+
+    const rows = products.map((product) => [
       product.name,
       product.sku,
       product.brand,
-      product.category?.name || 'Uncategorized',
+      product.category?.name || "Uncategorized",
       product.price,
-      product.salePrice || '',
+      product.salePrice || "",
       product.totalStock,
       product.status,
-      product.featured ? 'Yes' : 'No',
-      product.isNewArrival ? 'Yes' : 'No',
-      new Date(product.createdAt).toLocaleDateString()
+      product.featured ? "Yes" : "No",
+      product.isNewArrival ? "Yes" : "No",
+      new Date(product.createdAt).toLocaleDateString(),
     ]);
-    
+
     const csvContent = [headers, ...rows]
-      .map(row => row.map(field => `"${field}"`).join(','))
-      .join('\n');
-      
+      .map((row) => row.map((field) => `"${field}"`).join(","))
+      .join("\n");
+
     return csvContent;
   };
 
   const exportProducts = async () => {
     try {
       setLoading(true);
-      
+
       // Create CSV content from current products
       const csvContent = generateCSV(products);
-      
+
       // Create and download file
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `products-export-${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `products-export-${new Date().toISOString().split("T")[0]}.csv`
+      );
+      link.style.visibility = "hidden";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
-      toast.success('Products exported successfully');
+
+      toast.success("Products exported successfully");
     } catch (error) {
-      console.error('Export failed:', error);
-      toast.error('Failed to export products');
+      console.error("Export failed:", error);
+      toast.error("Failed to export products");
     } finally {
       setLoading(false);
     }
@@ -285,10 +310,11 @@ const Products = () => {
 
   const editProduct = async (productId) => {
     try {
-      const response = await productsAPI.getProductById(productId);
+      const response = await productsAPI.getProduct(productId);
       handleEditProduct(response.data.product);
     } catch (error) {
-      toast.error('Failed to load product for editing');
+      console.error("Error loading product:", error);
+      toast.error("Failed to load product for editing");
     }
   };
 
@@ -300,49 +326,105 @@ const Products = () => {
 
   const viewProduct = async (productId) => {
     try {
-      const response = await productsAPI.getProductById(productId);
+      const response = await productsAPI.getProduct(productId);
       setSelectedProduct(response.data.product);
       setShowProductModal(true);
     } catch (error) {
-      toast.error('Failed to load product details');
+      toast.error("Failed to load product details");
     }
   };
 
   const deleteProduct = async (productId) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
+    if (window.confirm("Are you sure you want to delete this product?")) {
       try {
         await productsAPI.deleteProduct(productId);
-        toast.success('Product deleted successfully');
+        toast.success("Product deleted successfully");
         loadProducts();
       } catch (error) {
-        toast.error('Failed to delete product');
+        toast.error("Failed to delete product");
       }
     }
   };
 
+  // FIXED: Update stock function - always fetch fresh data
   const updateStock = async (product) => {
-    setSelectedProduct(product);
-    setShowStockModal(true);
+    try {
+      // Always fetch fresh product data to ensure we have the latest stock values
+      console.log("Fetching latest product data for:", product._id);
+      const response = await productsAPI.getProduct(product._id);
+      console.log("Fresh product data:", response.data.product);
+      setSelectedProduct(response.data.product);
+      setShowStockModal(true);
+    } catch (error) {
+      console.error("Error loading product:", error);
+      toast.error("Failed to load product details");
+    }
   };
 
+  // FIXED: Handle stock update
   const handleStockUpdate = async (stockData) => {
     try {
-      await adminAPI.updateProductStock(selectedProduct._id, { variants: stockData });
-      toast.success('Stock updated successfully');
+      console.log("Updating stock with data:", stockData);
+      console.log("For product ID:", selectedProduct._id);
+
+      // Make the API call
+      const response = await adminAPI.updateProductStock(selectedProduct._id, {
+        variants: stockData,
+      });
+
+      console.log("Stock update response:", response.data);
+      console.log(
+        "Updated totalStock from server:",
+        response.data.product.totalStock
+      );
+      console.log(
+        "Updated variants from server:",
+        response.data.product.variants
+      );
+
+      // Close modal first
       setShowStockModal(false);
-      loadProducts();
+
+      // Show success message
+      toast.success("Stock updated successfully");
+
+      // Update the local state with the COMPLETE updated product from response
+      setProducts((prevProducts) => {
+        const updatedProducts = prevProducts.map((p) => {
+          if (p._id === response.data.product._id) {
+            // Replace the entire product with the updated one from the server
+            return {
+              ...p,
+              ...response.data.product,
+              totalStock: response.data.product.totalStock,
+              variants: response.data.product.variants.map((v) => ({ ...v })), // Deep copy variants
+            };
+          }
+          return p;
+        });
+        console.log("Updated products state");
+        return updatedProducts;
+      });
+
+      // Clear selected product
+      setSelectedProduct(null);
     } catch (error) {
-      toast.error('Failed to update stock');
+      console.error("Stock update error:", error);
+      console.error("Error response:", error.response?.data);
+      toast.error(error.response?.data?.message || "Failed to update stock");
+      setShowStockModal(false);
+      setSelectedProduct(null);
     }
   };
 
   const getStockStatus = (stock) => {
-    if (stock === 0) return 'out-of-stock';
-    if (stock < 10) return 'low-stock';
-    return 'in-stock';
+    if (stock === 0) return "out-of-stock";
+    if (stock < 10) return "low-stock";
+    return "in-stock";
   };
 
-  if (loading && products.length === 0) return <Loading size="lg" text="Loading products..." />;
+  if (loading && products.length === 0)
+    return <Loading size="lg" text="Loading products..." />;
 
   return (
     <div className="admin-products">
@@ -379,10 +461,10 @@ const Products = () => {
           <div className="filter-controls">
             <select
               value={filters.category}
-              onChange={(e) => handleFilterChange('category', e.target.value)}
+              onChange={(e) => handleFilterChange("category", e.target.value)}
             >
               <option value="">All Categories</option>
-              {categories.map(category => (
+              {categories.map((category) => (
                 <option key={category._id} value={category._id}>
                   {category.name}
                 </option>
@@ -391,7 +473,7 @@ const Products = () => {
 
             <select
               value={filters.status}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
+              onChange={(e) => handleFilterChange("status", e.target.value)}
             >
               <option value="">All Status</option>
               <option value="active">Active</option>
@@ -399,8 +481,8 @@ const Products = () => {
               <option value="draft">Draft</option>
             </select>
 
-            <button 
-              className={`filter-toggle ${showAdvancedFilters ? 'active' : ''}`}
+            <button
+              className={`filter-toggle ${showAdvancedFilters ? "active" : ""}`}
               onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
             >
               <Filter size={16} />
@@ -409,7 +491,7 @@ const Products = () => {
 
             <select
               value={filters.limit}
-              onChange={(e) => handleFilterChange('limit', e.target.value)}
+              onChange={(e) => handleFilterChange("limit", e.target.value)}
             >
               <option value="10">10 per page</option>
               <option value="20">20 per page</option>
@@ -430,20 +512,24 @@ const Products = () => {
                     type="number"
                     placeholder="Min"
                     value={filters.priceRange.min}
-                    onChange={(e) => handleFilterChange('priceRange', {
-                      ...filters.priceRange,
-                      min: e.target.value
-                    })}
+                    onChange={(e) =>
+                      handleFilterChange("priceRange", {
+                        ...filters.priceRange,
+                        min: e.target.value,
+                      })
+                    }
                   />
                   <span>to</span>
                   <input
                     type="number"
                     placeholder="Max"
                     value={filters.priceRange.max}
-                    onChange={(e) => handleFilterChange('priceRange', {
-                      ...filters.priceRange,
-                      max: e.target.value
-                    })}
+                    onChange={(e) =>
+                      handleFilterChange("priceRange", {
+                        ...filters.priceRange,
+                        max: e.target.value,
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -454,19 +540,23 @@ const Products = () => {
                   <input
                     type="date"
                     value={filters.dateRange.start}
-                    onChange={(e) => handleFilterChange('dateRange', {
-                      ...filters.dateRange,
-                      start: e.target.value
-                    })}
+                    onChange={(e) =>
+                      handleFilterChange("dateRange", {
+                        ...filters.dateRange,
+                        start: e.target.value,
+                      })
+                    }
                   />
                   <span>to</span>
                   <input
                     type="date"
                     value={filters.dateRange.end}
-                    onChange={(e) => handleFilterChange('dateRange', {
-                      ...filters.dateRange,
-                      end: e.target.value
-                    })}
+                    onChange={(e) =>
+                      handleFilterChange("dateRange", {
+                        ...filters.dateRange,
+                        end: e.target.value,
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -478,7 +568,9 @@ const Products = () => {
                     <input
                       type="checkbox"
                       checked={filters.lowStock}
-                      onChange={(e) => handleFilterChange('lowStock', e.target.checked)}
+                      onChange={(e) =>
+                        handleFilterChange("lowStock", e.target.checked)
+                      }
                     />
                     <span>Low Stock Only</span>
                   </label>
@@ -486,7 +578,9 @@ const Products = () => {
                     <input
                       type="checkbox"
                       checked={filters.featured}
-                      onChange={(e) => handleFilterChange('featured', e.target.checked)}
+                      onChange={(e) =>
+                        handleFilterChange("featured", e.target.checked)
+                      }
                     />
                     <span>Featured</span>
                   </label>
@@ -494,7 +588,9 @@ const Products = () => {
                     <input
                       type="checkbox"
                       checked={filters.newArrival}
-                      onChange={(e) => handleFilterChange('newArrival', e.target.checked)}
+                      onChange={(e) =>
+                        handleFilterChange("newArrival", e.target.checked)
+                      }
                     />
                     <span>New Arrivals</span>
                   </label>
@@ -503,13 +599,10 @@ const Products = () => {
             </div>
 
             <div className="filter-actions">
-              <button 
-                className="btn btn-ghost"
-                onClick={clearAllFilters}
-              >
+              <button className="btn btn-ghost" onClick={clearAllFilters}>
                 Clear All Filters
               </button>
-              <button 
+              <button
                 className="btn btn-primary"
                 onClick={() => setShowAdvancedFilters(false)}
               >
@@ -526,7 +619,7 @@ const Products = () => {
           <div className="bulk-info">
             <span>{selectedProducts.size} products selected</span>
           </div>
-          
+
           <div className="bulk-controls">
             <select
               value={bulkAction}
@@ -539,7 +632,7 @@ const Products = () => {
               <option value="unfeature">Remove Featured</option>
               <option value="delete">Delete</option>
             </select>
-            
+
             <button
               className="btn btn-primary btn-sm"
               onClick={handleBulkAction}
@@ -547,7 +640,7 @@ const Products = () => {
             >
               Apply
             </button>
-            
+
             <button
               className="btn btn-ghost btn-sm"
               onClick={() => setSelectedProducts(new Set())}
@@ -566,7 +659,10 @@ const Products = () => {
               <th>
                 <input
                   type="checkbox"
-                  checked={selectedProducts.size === products.length && products.length > 0}
+                  checked={
+                    selectedProducts.size === products.length &&
+                    products.length > 0
+                  }
                   onChange={handleSelectAll}
                 />
               </th>
@@ -581,9 +677,9 @@ const Products = () => {
           </thead>
           <tbody>
             {products.map((product) => (
-              <tr 
+              <tr
                 key={product._id}
-                className={selectedProducts.has(product._id) ? 'selected' : ''}
+                className={selectedProducts.has(product._id) ? "selected" : ""}
               >
                 <td>
                   <input
@@ -604,9 +700,15 @@ const Products = () => {
                       )}
                       {/* Product badges */}
                       <div className="product-badges">
-                        {product.featured && <span className="badge badge-featured">Featured</span>}
-                        {product.isNewArrival && <span className="badge badge-new">New</span>}
-                        {product.salePrice && <span className="badge badge-sale">Sale</span>}
+                        {product.featured && (
+                          <span className="badge badge-featured">Featured</span>
+                        )}
+                        {product.isNewArrival && (
+                          <span className="badge badge-new">New</span>
+                        )}
+                        {product.salePrice && (
+                          <span className="badge badge-sale">Sale</span>
+                        )}
                       </div>
                     </div>
                     <div className="product-details">
@@ -615,19 +717,24 @@ const Products = () => {
                       <span className="product-sku">SKU: {product.sku}</span>
                       <div className="product-meta">
                         <span>{product.variants?.length || 0} variants</span>
-                        <span>Added {new Date(product.createdAt).toLocaleDateString()}</span>
+                        <span>
+                          Added{" "}
+                          {new Date(product.createdAt).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
                   </div>
                 </td>
                 <td>
                   <span className="category-tag">
-                    {product.category?.name || 'Uncategorized'}
+                    {product.category?.name || "Uncategorized"}
                   </span>
                 </td>
                 <td>
                   <div className="price-info">
-                    <span className="current-price">₹{product.salePrice || product.price}</span>
+                    <span className="current-price">
+                      ₹{product.salePrice || product.price}
+                    </span>
                     {product.salePrice && (
                       <span className="original-price">₹{product.price}</span>
                     )}
@@ -640,10 +747,14 @@ const Products = () => {
                 </td>
                 <td>
                   <div className="stock-info">
-                    <span className={`stock-count ${getStockStatus(product.totalStock)}`}>
+                    <span
+                      className={`stock-count ${getStockStatus(
+                        product.totalStock
+                      )}`}
+                    >
                       {product.totalStock}
                     </span>
-                    <button 
+                    <button
                       onClick={() => updateStock(product)}
                       className="stock-edit-btn"
                       title="Update Stock"
@@ -665,10 +776,20 @@ const Products = () => {
                     <div className="status-actions">
                       <button
                         className="quick-status-btn"
-                        onClick={() => toggleProductStatus(product._id, product.status)}
-                        title={product.status === 'active' ? 'Deactivate' : 'Activate'}
+                        onClick={() =>
+                          toggleProductStatus(product._id, product.status)
+                        }
+                        title={
+                          product.status === "active"
+                            ? "Deactivate"
+                            : "Activate"
+                        }
                       >
-                        {product.status === 'active' ? <EyeOff size={12} /> : <Eye size={12} />}
+                        {product.status === "active" ? (
+                          <EyeOff size={20} strokeWidth={2.5} />
+                        ) : (
+                          <Eye size={20} strokeWidth={2.5} />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -676,11 +797,15 @@ const Products = () => {
                 <td>
                   <div className="performance-metrics">
                     <div className="metric">
-                      <span className="metric-value">{product.viewCount || 0}</span>
+                      <span className="metric-value">
+                        {product.viewCount || 0}
+                      </span>
                       <span className="metric-label">Views</span>
                     </div>
                     <div className="metric">
-                      <span className="metric-value">{product.salesCount || 0}</span>
+                      <span className="metric-value">
+                        {product.salesCount || 0}
+                      </span>
                       <span className="metric-label">Sales</span>
                     </div>
                     <div className="conversion-rate">
@@ -730,27 +855,33 @@ const Products = () => {
       {pagination.pages > 1 && (
         <div className="pagination-container">
           <div className="pagination-info">
-            Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} products
+            Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+            {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+            {pagination.total} products
           </div>
           <div className="pagination">
             <button
-              onClick={() => handleFilterChange('page', pagination.page - 1)}
+              onClick={() => handleFilterChange("page", pagination.page - 1)}
               disabled={pagination.page === 1}
               className="page-btn"
             >
               Previous
             </button>
-            {Array.from({ length: pagination.pages }, (_, i) => i + 1).map(page => (
-              <button
-                key={page}
-                onClick={() => handleFilterChange('page', page)}
-                className={`page-btn ${pagination.page === page ? 'active' : ''}`}
-              >
-                {page}
-              </button>
-            ))}
+            {Array.from({ length: pagination.pages }, (_, i) => i + 1).map(
+              (page) => (
+                <button
+                  key={page}
+                  onClick={() => handleFilterChange("page", page)}
+                  className={`page-btn ${
+                    pagination.page === page ? "active" : ""
+                  }`}
+                >
+                  {page}
+                </button>
+              )
+            )}
             <button
-              onClick={() => handleFilterChange('page', pagination.page + 1)}
+              onClick={() => handleFilterChange("page", pagination.page + 1)}
               disabled={pagination.page === pagination.pages}
               className="page-btn"
             >
@@ -762,7 +893,7 @@ const Products = () => {
 
       {/* Product Details Modal */}
       {showProductModal && selectedProduct && (
-        <ProductModal 
+        <ProductModal
           product={selectedProduct}
           onClose={() => setShowProductModal(false)}
         />
@@ -770,7 +901,7 @@ const Products = () => {
 
       {/* Stock Update Modal */}
       {showStockModal && selectedProduct && (
-        <StockModal 
+        <StockModal
           product={selectedProduct}
           onClose={() => setShowStockModal(false)}
           onUpdate={handleStockUpdate}
@@ -805,24 +936,51 @@ const ProductModal = ({ product, onClose }) => (
         <div className="product-modal-content">
           <div className="product-images">
             {product.images.map((image, index) => (
-              <img key={index} src={image.url} alt={`${product.name} ${index + 1}`} />
+              <img
+                key={index}
+                src={image.url}
+                alt={`${product.name} ${index + 1}`}
+              />
             ))}
           </div>
           <div className="product-info-detailed">
-            <p><strong>Brand:</strong> {product.brand}</p>
-            <p><strong>SKU:</strong> {product.sku}</p>
-            <p><strong>Category:</strong> {product.category?.name}</p>
-            <p><strong>Description:</strong> {product.description}</p>
-            <p><strong>Price:</strong> ₹{product.price}</p>
+            <p>
+              <strong>Brand:</strong> {product.brand}
+            </p>
+            <p>
+              <strong>SKU:</strong> {product.sku}
+            </p>
+            <p>
+              <strong>Category:</strong> {product.category?.name}
+            </p>
+            <p>
+              <strong>Description:</strong> {product.description}
+            </p>
+            <p>
+              <strong>Price:</strong> ₹{product.price}
+            </p>
             {product.salePrice && (
-              <p><strong>Sale Price:</strong> ₹{product.salePrice}</p>
+              <p>
+                <strong>Sale Price:</strong> ₹{product.salePrice}
+              </p>
             )}
-            <p><strong>Total Stock:</strong> {product.totalStock}</p>
-            <p><strong>Views:</strong> {product.viewCount || 0}</p>
-            <p><strong>Sales:</strong> {product.salesCount || 0}</p>
-            <p><strong>Featured:</strong> {product.featured ? 'Yes' : 'No'}</p>
-            <p><strong>New Arrival:</strong> {product.isNewArrival ? 'Yes' : 'No'}</p>
-            
+            <p>
+              <strong>Total Stock:</strong> {product.totalStock}
+            </p>
+            <p>
+              <strong>Views:</strong> {product.viewCount || 0}
+            </p>
+            <p>
+              <strong>Sales:</strong> {product.salesCount || 0}
+            </p>
+            <p>
+              <strong>Featured:</strong> {product.featured ? "Yes" : "No"}
+            </p>
+            <p>
+              <strong>New Arrival:</strong>{" "}
+              {product.isNewArrival ? "Yes" : "No"}
+            </p>
+
             <div className="variants-info">
               <h4>Variants:</h4>
               {product.variants.map((variant, index) => (
@@ -840,15 +998,29 @@ const ProductModal = ({ product, onClose }) => (
   </div>
 );
 
-// Stock Update Modal Component
+// FIXED: Stock Update Modal Component
 const StockModal = ({ product, onClose, onUpdate }) => {
-  const [variants, setVariants] = useState(
-    product.variants.map(v => ({
-      size: v.size,
-      color: v.color.name,
-      stock: v.stock
-    }))
-  );
+  // Use useEffect to update variants when product changes
+  const [variants, setVariants] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Initialize variants from product prop whenever it changes
+  useEffect(() => {
+    if (product && product.variants) {
+      console.log(
+        "🔄 StockModal: Initializing with product variants:",
+        product.variants
+      );
+      const initialVariants = product.variants.map((v) => ({
+        size: v.size,
+        color: v.color.name,
+        stock: v.stock,
+        _id: v._id,
+      }));
+      console.log("🔄 StockModal: Setting variants to:", initialVariants);
+      setVariants(initialVariants);
+    }
+  }, [product]); // Re-run when product changes
 
   const handleStockChange = (index, newStock) => {
     const updated = [...variants];
@@ -856,42 +1028,105 @@ const StockModal = ({ product, onClose, onUpdate }) => {
     setVariants(updated);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onUpdate(variants);
+    setLoading(true);
+
+    console.log("Original total stock:", product.totalStock);
+    console.log(
+      "New total stock:",
+      variants.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0)
+    );
+
+    try {
+      await onUpdate(variants);
+    } catch (error) {
+      console.error("Submit error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // Don't render until variants are loaded
+  if (!variants || variants.length === 0) {
+    return null;
+  }
+
+  const currentTotal = variants.reduce(
+    (sum, v) => sum + (parseInt(v.stock) || 0),
+    0
+  );
+  const hasChanges = currentTotal !== product.totalStock;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Update Stock - {product.name}</h2>
-          <button onClick={onClose}>×</button>
+          <button onClick={onClose} disabled={loading}>
+            ×
+          </button>
         </div>
         <div className="modal-body">
           <form onSubmit={handleSubmit} className="stock-form">
-            {variants.map((variant, index) => (
-              <div key={index} className="stock-variant">
-                <div className="variant-info">
-                  <span>Size: {variant.size}</span>
-                  <span>Color: {variant.color}</span>
+            <div className="stock-variants-list">
+              {variants.map((variant, index) => (
+                <div key={index} className="stock-variant">
+                  <div className="variant-info">
+                    <span className="variant-label">Size: {variant.size}</span>
+                    <span className="variant-label">
+                      Color: {variant.color}
+                    </span>
+                  </div>
+                  <div className="stock-input-wrapper">
+                    <label>Stock:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={variant.stock}
+                      onChange={(e) => handleStockChange(index, e.target.value)}
+                      className="stock-input"
+                      disabled={loading}
+                    />
+                  </div>
                 </div>
-                <input
-                  type="number"
-                  min="0"
-                  value={variant.stock}
-                  onChange={(e) => handleStockChange(index, e.target.value)}
-                  className="stock-input"
-                />
-              </div>
-            ))}
+              ))}
+            </div>
+
+            <div className="total-stock-display">
+              <strong>Total Stock:</strong>
+              <span className={hasChanges ? "stock-changed" : ""}>
+                {currentTotal}
+                {hasChanges && (
+                  <small
+                    style={{
+                      marginLeft: "8px",
+                      color: "#6b7280",
+                      fontSize: "0.875rem",
+                    }}
+                  >
+                    (was {product.totalStock})
+                  </small>
+                )}
+              </span>
+            </div>
+
             <div className="modal-actions">
-              <Button type="button" variant="ghost" onClick={onClose}>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={onClose}
+                disabled={loading}
+              >
                 Cancel
-              </Button>
-              <Button type="submit">
-                Update Stock
-              </Button>
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={loading}
+              >
+                {loading ? "Updating..." : "Update Stock"}
+              </button>
             </div>
           </form>
         </div>

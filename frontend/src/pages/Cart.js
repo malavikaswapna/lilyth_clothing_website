@@ -1,6 +1,13 @@
 import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Minus, Plus, Trash2, ArrowLeft, ShoppingBag } from "lucide-react";
+import {
+  Minus,
+  Plus,
+  Trash2,
+  ArrowLeft,
+  ShoppingBag,
+  ThumbsDownIcon,
+} from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import Loading from "../components/common/Loading";
@@ -8,6 +15,7 @@ import Button from "../components/common/Button";
 import "./Cart.css";
 import BackgroundWrapper from "../components/common/BackgroundWrapper";
 import ScrollReveal from "../components/common/ScrollReveal";
+import { numberValueTypes } from "framer-motion";
 
 const Cart = () => {
   const {
@@ -28,7 +36,6 @@ const Cart = () => {
   useEffect(() => {
     console.log("Cart component state:", {
       isAuthenticated,
-      authLoading,
       user: user?.firstName || "No user",
       cartItems: items?.length || 0,
       cartLoading: loading,

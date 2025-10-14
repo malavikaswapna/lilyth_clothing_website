@@ -2,8 +2,12 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const mongoose = require("mongoose"); // ADD THIS
 const errorHandler = require("./middleware/errorHandler");
 const adminRoutes = require("./routes/admin");
+const { sanitizeQuery } = require("./middleware/queryOptimizer");
+const apicache = require("apicache");
+const cache = apicache.middleware;
 require("dotenv").config();
 
 const app = express();
@@ -18,12 +22,23 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // CORS configuration
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
 const corsOptions = {
-  origin: [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    process.env.CLIENT_URL,
-  ],
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️  Blocked CORS request from: ${origin}`);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: [
@@ -42,28 +57,38 @@ app.use(cors(corsOptions));
 // body parsing middleware
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(sanitizeQuery);
 
 // static file for uploads
 app.use("/uploads", express.static("uploads"));
 
-// Routes
+// public routes
 app.use("/api/auth", require("./routes/auth"));
-app.use("/api/products", require("./routes/products"));
-app.use("/api/categories", require("./routes/categories"));
-app.use("/api/cart", require("./routes/cart"));
-app.use("/api/orders", require("./routes/orders"));
-app.use("/api/user", require("./routes/user"));
-app.use("/api/admin", require("./routes/admin"));
-app.use("/api/admin", adminRoutes);
+app.use("/api/products", cache("5 minutes"), require("./routes/products"));
+app.use("/api/categories", cache("5 minutes"), require("./routes/categories"));
 app.use("/api/reviews", require("./routes/reviews"));
 app.use("/api/contact", require("./routes/contact"));
+app.use("/api/pincode", require("./routes/pincode"));
+
+// protected routes
+app.use("/api/cart", require("./routes/cart"));
+app.use("/api/orders", require("./routes/orders")); // FIXED: This should work now
+app.use("/api/user", require("./routes/user"));
+
+// admin routes - FIXED: Only register once
+app.use("/api/admin", adminRoutes);
 
 // test route
 app.get("/", (req, res) => {
   res.json({
-    message: "Women's Fashion E-commerce API",
+    message: "Women's Fashion E-commerce API - LILYTH",
     version: "1.0.0",
     status: "Server is running!",
+    serviceArea: {
+      state: "Kerala",
+      country: "India",
+      message: "We currently deliver only within Kerala",
+    },
     endpoints: {
       auth: "/api/auth",
       products: "/api/products",
@@ -72,18 +97,41 @@ app.get("/", (req, res) => {
       orders: "/api/orders",
       user: "/api/user",
       reviews: "/api/reviews",
+      pincode: "/api/pincode",
     },
   });
 });
 
 // health check route
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
+app.get("/health", async (req, res) => {
+  const health = {
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || "development",
+  };
+
+  try {
+    await mongoose.connection.db.admin().ping();
+    health.database = "connected";
+  } catch (error) {
+    health.database = "disconnected";
+    health.status = "ERROR";
+  }
+
+  const statusCode = health.status === "OK" ? 200 : 503;
+  res.status(statusCode).json(health);
 });
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
+  console.log(`❌ 404 - Route not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+    path: req.originalUrl,
+    method: req.method,
+  });
 });
 
 // Error handling middleware

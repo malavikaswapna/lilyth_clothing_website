@@ -1,0 +1,46 @@
+/* src/components/common/KeralaDistrictSelect.css */
+.kerala-district-select {
+  width: 100%;
+}
+
+.district-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: white;
+}
+
+.district-input-container:focus-within {
+  border-color: #b87049;
+  box-shadow: 0 0 0 3px rgba(184, 112, 73, 0.1);
+}
+
+.district-icon {
+  color: #6b7280;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.district-select {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 12px 8px;
+  font-size: 1rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.district-select.error {
+  border-color: #ef4444;
+}
+
+.district-error {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.875rem;
+  color: #ef4444;
+}
