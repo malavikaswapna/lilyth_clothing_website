@@ -9,10 +9,13 @@ import {
   ArrowLeft,
   Lock,
   CheckCircle,
+  Tag,
+  X,
 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
-import { userAPI, ordersAPI, pincodeAPI } from "../services/api";
+import { userAPI, ordersAPI, pincodeAPI, promoCodeAPI } from "../services/api";
+import { useRazorpay } from "../hooks/useRazorpay";
 import Button from "../components/common/Button";
 import Loading from "../components/common/Loading";
 import BackgroundWrapper from "../components/common/BackgroundWrapper";
@@ -26,12 +29,11 @@ const Checkout = () => {
   const navigate = useNavigate();
   const { cart, items, cartTotal, clearCart, loading: cartLoading } = useCart();
   const { user, isAuthenticated } = useAuth();
+  const { processPayment, loading: paymentLoading } = useRazorpay();
 
   // Use items array as the actual cart data
   const actualCart = items || [];
   const actualTotal = cartTotal || 0;
-
-  console.log("Checkout cart data:", { cart, items, actualCart, cartTotal });
 
   // State management
   const [currentStep, setCurrentStep] = useState(1);
@@ -41,6 +43,12 @@ const Checkout = () => {
   const [selectedAddressIndex, setSelectedAddressIndex] = useState(null);
   const [pincodeAutofilled, setPincodeAutofilled] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState(null);
+
+  // ✅ NEW: Promo code state
+  const [promoCode, setPromoCode] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [showPromoInput, setShowPromoInput] = useState(false);
 
   // Form data with Kerala defaults
   const [shippingData, setShippingData] = useState({
@@ -56,60 +64,8 @@ const Checkout = () => {
   });
 
   const [paymentData, setPaymentData] = useState({
-    method: "razorpay", // Changed from "card" to match Order model enum
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
-    nameOnCard: "",
+    method: "razorpay",
   });
-
-  // Diagnostic useEffect to check cart structure
-  useEffect(() => {
-    if (actualCart && actualCart.length > 0) {
-      console.log("🛒 CART STRUCTURE DIAGNOSTIC:");
-      console.log("Full cart object:", cart);
-      console.log("Items array:", items);
-      console.log("Actual cart:", actualCart);
-      console.log("\n📋 First cart item details:");
-      const firstItem = actualCart[0];
-      console.log("First item:", firstItem);
-      console.log("Available keys:", Object.keys(firstItem));
-      console.log("Product:", firstItem.product);
-      console.log("Size field:", firstItem.size);
-      console.log("Color field:", firstItem.color);
-      console.log("Selected size:", firstItem.selectedSize);
-      console.log("Selected color:", firstItem.selectedColor);
-      console.log("Variant:", firstItem.variant);
-
-      // Check all possible locations for size and color
-      const possibleSizes = {
-        "item.size": firstItem.size,
-        "item.selectedSize": firstItem.selectedSize,
-        "item.variant?.size": firstItem.variant?.size,
-        "item.product?.size": firstItem.product?.size,
-      };
-
-      const possibleColors = {
-        "item.color": firstItem.color,
-        "item.selectedColor": firstItem.selectedColor,
-        "item.variant?.color": firstItem.variant?.color,
-        "item.variant?.color?.name": firstItem.variant?.color?.name,
-        "item.product?.color": firstItem.product?.color,
-      };
-
-      console.log("\n🔍 Possible size locations:", possibleSizes);
-      console.log("🔍 Possible color locations:", possibleColors);
-
-      console.log(
-        "\n✅ Found size:",
-        Object.entries(possibleSizes).find(([k, v]) => v)?.[1] || "NOT FOUND"
-      );
-      console.log(
-        "✅ Found color:",
-        Object.entries(possibleColors).find(([k, v]) => v)?.[1] || "NOT FOUND"
-      );
-    }
-  }, [actualCart, cart, items]);
 
   // Redirect if not authenticated or empty cart
   useEffect(() => {
@@ -168,6 +124,69 @@ const Checkout = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ✅ NEW: Apply promo code
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) {
+      toast.error("Please enter a promo code");
+      return;
+    }
+
+    try {
+      setPromoLoading(true);
+
+      const { subtotal } = calculateTotals();
+
+      // Prepare items for validation
+      const itemsForValidation = actualCart.map((item) => ({
+        productId: item.product?._id,
+        categoryId: item.product?.category,
+        quantity: item.quantity,
+      }));
+
+      const response = await promoCodeAPI.validatePromoCode({
+        code: promoCode.trim().toUpperCase(),
+        orderAmount: subtotal,
+        items: itemsForValidation,
+      });
+
+      if (response.data.success) {
+        setAppliedPromo({
+          code: response.data.promoCode.code,
+          description: response.data.promoCode.description,
+          discountAmount: response.data.discount.amount,
+          discountType: response.data.discount.type,
+        });
+
+        toast.success(`🎉 ${response.data.message}`);
+        setShowPromoInput(false);
+      }
+    } catch (error) {
+      console.error("Promo code error:", error);
+
+      const errorMessage =
+        error.response?.data?.message || "Invalid promo code";
+
+      if (error.response?.data?.minOrderAmount) {
+        toast.error(
+          `${errorMessage} (Min: ₹${error.response.data.minOrderAmount})`
+        );
+      } else {
+        toast.error(errorMessage);
+      }
+
+      setAppliedPromo(null);
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  // ✅ NEW: Remove promo code
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoCode("");
+    toast.success("Promo code removed");
   };
 
   const handleAddressSelection = (address, index) => {
@@ -234,7 +253,7 @@ const Checkout = () => {
 
   const calculateTotals = () => {
     if (!actualCart || !Array.isArray(actualCart) || actualCart.length === 0) {
-      return { subtotal: 0, shipping: 0, tax: 0, total: 0 };
+      return { subtotal: 0, shipping: 0, tax: 0, discount: 0, total: 0 };
     }
 
     let subtotal;
@@ -249,10 +268,17 @@ const Checkout = () => {
 
     // Dynamic shipping based on delivery info or default
     const shipping = deliveryInfo?.deliveryCharge ?? (subtotal > 2000 ? 0 : 99);
-    const tax = Math.round(subtotal * 0.18); // 18% GST
-    const total = subtotal + shipping + tax;
 
-    return { subtotal, shipping, tax, total };
+    // ✅ NEW: Apply discount if promo code applied
+    const discount = appliedPromo?.discountAmount || 0;
+
+    // Calculate tax on subtotal minus discount
+    const taxableAmount = Math.max(0, subtotal - discount);
+    const tax = Math.round(taxableAmount * 0.18); // 18% GST
+
+    const total = subtotal + shipping + tax - discount;
+
+    return { subtotal, shipping, tax, discount, total };
   };
 
   const handleShippingSubmit = async (e) => {
@@ -309,7 +335,6 @@ const Checkout = () => {
       }
     } catch (error) {
       console.warn("Address verification failed:", error);
-      // Continue if verification service is down
       toast.error(
         "Unable to verify PIN code. Please ensure it's a valid Kerala PIN code."
       );
@@ -320,22 +345,6 @@ const Checkout = () => {
 
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
-
-    if (paymentData.method === "razorpay") {
-      const required = ["cardNumber", "expiryDate", "cvv", "nameOnCard"];
-      const missing = required.filter((field) => !paymentData[field]?.trim());
-
-      if (missing.length > 0) {
-        toast.error(`Please fill in: ${missing.join(", ")}`);
-        return;
-      }
-
-      if (paymentData.cardNumber.replace(/\s/g, "").length < 16) {
-        toast.error("Invalid card number");
-        return;
-      }
-    }
-
     setCurrentStep(3);
   };
 
@@ -362,8 +371,7 @@ const Checkout = () => {
         console.warn("Address verification failed:", verificationError);
       }
 
-      const { subtotal, shipping, tax, total } = calculateTotals();
-      console.log("📤 Creating order...");
+      const { subtotal, shipping, tax, discount, total } = calculateTotals();
 
       const orderData = {
         items: actualCart.map((item) => {
@@ -380,7 +388,7 @@ const Checkout = () => {
             quantity: item.quantity || 1,
             size: itemSize,
             color: itemColor,
-            price: item.product?.salePrice || item.product?.price || 0, // ✅ ADD THIS
+            price: item.product?.salePrice || item.product?.price || 0,
           };
         }),
         shippingAddress: {
@@ -411,55 +419,78 @@ const Checkout = () => {
         shipping,
         tax,
         total,
+        discount,
+        promoCode: appliedPromo?.code || null,
       };
-      console.log("📤 Complete order data:", orderData);
 
-      const response = await ordersAPI.createOrder(orderData);
+      // ✅ CHECK PAYMENT METHOD AND HANDLE ACCORDINGLY
+      if (paymentData.method === "razorpay") {
+        // RAZORPAY FLOW - Open payment modal
+        console.log("💳 Initiating Razorpay payment...");
 
-      console.log("✅ Order response received:", response);
-      console.log("✅ Response data:", response.data);
+        await processPayment(
+          orderData,
+          // Success callback
+          (order) => {
+            console.log("✅ Payment successful, order created:", order);
+            toast.success("🎉 Order placed successfully!");
 
-      if (response?.data?.success && response.data.order) {
-        const orderId = response.data.order._id;
+            // Clear cart
+            clearCart().catch((err) => console.warn("Cart clear error:", err));
 
-        console.log("✅ Order created successfully with ID:", orderId);
-
-        // Show success toast
-        toast.success("🎉 Order placed successfully!");
-
-        // Navigate FIRST before clearing cart
-        navigate(`/order-success/${orderId}`, {
-          state: {
-            orderSuccess: true,
-            fromCheckout: true,
+            // Navigate to success page
+            navigate(`/order-success/${order._id}`, {
+              state: {
+                orderSuccess: true,
+                fromCheckout: true,
+                paymentMethod: "razorpay",
+              },
+              replace: true,
+            });
           },
-          replace: true,
-        });
-
-        // Clear cart AFTER navigation (in background)
-        setTimeout(() => {
-          clearCart().catch((err) => console.warn("Cart clear error:", err));
-        }, 100);
-      } else {
-        console.error("❌ Unexpected response format:", response);
-        toast.error(
-          "Order created but couldn't get details. Check your orders page."
+          // Failure callback
+          (error) => {
+            console.error("❌ Payment failed:", error);
+            setProcessing(false);
+            // Error toast already shown by useRazorpay hook
+          }
         );
-        setTimeout(() => {
-          navigate("/account/orders", { replace: true });
-        }, 1000);
+      } else if (paymentData.method === "cash_on_delivery") {
+        // COD FLOW - Create order directly
+        console.log("📦 Creating COD order...");
+
+        const response = await ordersAPI.createOrder(orderData);
+
+        if (response?.data?.success && response.data.order) {
+          const orderId = response.data.order._id;
+
+          console.log("✅ COD order created successfully with ID:", orderId);
+
+          toast.success("🎉 Order placed successfully!");
+
+          // Clear cart
+          clearCart().catch((err) => console.warn("Cart clear error:", err));
+
+          // Navigate to success page
+          navigate(`/order-success/${orderId}`, {
+            state: {
+              orderSuccess: true,
+              fromCheckout: true,
+              paymentMethod: "cod",
+            },
+            replace: true,
+          });
+        } else {
+          throw new Error("Failed to create order");
+        }
       }
     } catch (error) {
-      console.error("❌ Order creation error:", error);
-      console.error("❌ Error response:", error.response?.data);
+      console.error("❌ Order placement error:", error);
 
-      // Check if it's a timeout or network error
       if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
         toast.error(
           "Request timeout. Your order may have been created. Please check your orders page.",
-          {
-            duration: 5000,
-          }
+          { duration: 5000 }
         );
         setTimeout(() => {
           navigate("/account/orders", { replace: true });
@@ -467,20 +498,6 @@ const Checkout = () => {
         return;
       }
 
-      // Check if order was actually created (status 201)
-      if (error.response?.status === 201 || error.request?.status === 201) {
-        toast.success("Order placed successfully!");
-        // Try to extract order ID from error response
-        const orderId = error.response?.data?.order?._id;
-        if (orderId) {
-          navigate(`/order-success/${orderId}`, { replace: true });
-        } else {
-          navigate("/account/orders", { replace: true });
-        }
-        return;
-      }
-
-      // Handle specific error statuses
       if (error.response?.status === 400) {
         const errorMessage = error.response?.data?.message;
         if (Array.isArray(errorMessage)) {
@@ -500,21 +517,6 @@ const Checkout = () => {
       }
     } finally {
       setProcessing(false);
-    }
-  };
-
-  const formatCardNumber = (value) => {
-    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || "";
-    const parts = [];
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    if (parts.length) {
-      return parts.join(" ");
-    } else {
-      return v;
     }
   };
 
@@ -557,10 +559,8 @@ const Checkout = () => {
                     </div>
                   </div>
 
-                  {/* Service Area Notice */}
                   <ServiceAreaNotice variant="info" />
 
-                  {/* Saved Addresses */}
                   {userAddresses && userAddresses.length > 0 && (
                     <div className="saved-addresses">
                       <h3>Use Saved Address</h3>
@@ -628,7 +628,6 @@ const Checkout = () => {
                         onSubmit={handleShippingSubmit}
                         className="checkout-form"
                       >
-                        {/* Name Fields */}
                         <div className="form-row">
                           <div className="form-group">
                             <label>First Name *</label>
@@ -662,7 +661,6 @@ const Checkout = () => {
                           </div>
                         </div>
 
-                        {/* Contact Fields */}
                         <div className="form-row">
                           <div className="form-group">
                             <label>Email *</label>
@@ -696,7 +694,6 @@ const Checkout = () => {
                           </div>
                         </div>
 
-                        {/* Address */}
                         <div className="form-group">
                           <label>Street Address *</label>
                           <input
@@ -713,7 +710,6 @@ const Checkout = () => {
                           />
                         </div>
 
-                        {/* PIN Code (First for autofill) */}
                         <div className="form-group">
                           <label>Kerala PIN Code *</label>
                           <PincodeInput
@@ -731,7 +727,6 @@ const Checkout = () => {
                           />
                         </div>
 
-                        {/* Location Fields */}
                         <div className="form-row">
                           <div className="form-group">
                             <label>District *</label>
@@ -833,7 +828,7 @@ const Checkout = () => {
                           }
                         />
                         <CreditCard size={20} />
-                        Credit/Debit Card
+                        Pay Online (Cards/UPI/Netbanking)
                       </label>
 
                       <label className="payment-method">
@@ -855,79 +850,37 @@ const Checkout = () => {
                     </div>
 
                     {paymentData.method === "razorpay" && (
-                      <div className="card-details">
-                        <div className="form-group">
-                          <label>Name on Card *</label>
-                          <input
-                            type="text"
-                            value={paymentData.nameOnCard}
-                            onChange={(e) =>
-                              setPaymentData({
-                                ...paymentData,
-                                nameOnCard: e.target.value,
-                              })
-                            }
-                            required
-                          />
-                        </div>
-
-                        <div className="form-group">
-                          <label>Card Number *</label>
-                          <input
-                            type="text"
-                            value={paymentData.cardNumber}
-                            onChange={(e) =>
-                              setPaymentData({
-                                ...paymentData,
-                                cardNumber: formatCardNumber(e.target.value),
-                              })
-                            }
-                            placeholder="1234 5678 9012 3456"
-                            maxLength="19"
-                            required
-                          />
-                        </div>
-
-                        <div className="form-row">
-                          <div className="form-group">
-                            <label>Expiry Date *</label>
-                            <input
-                              type="text"
-                              value={paymentData.expiryDate}
-                              onChange={(e) => {
-                                let value = e.target.value.replace(/\D/g, "");
-                                if (value.length >= 2) {
-                                  value =
-                                    value.substring(0, 2) +
-                                    "/" +
-                                    value.substring(2, 4);
-                                }
-                                setPaymentData({
-                                  ...paymentData,
-                                  expiryDate: value,
-                                });
-                              }}
-                              placeholder="MM/YY"
-                              maxLength="5"
-                              required
-                            />
-                          </div>
-                          <div className="form-group">
-                            <label>CVV *</label>
-                            <input
-                              type="text"
-                              value={paymentData.cvv}
-                              onChange={(e) =>
-                                setPaymentData({
-                                  ...paymentData,
-                                  cvv: e.target.value.replace(/\D/g, ""),
-                                })
-                              }
-                              placeholder="123"
-                              maxLength="4"
-                              required
-                            />
-                          </div>
+                      <div
+                        className="payment-info"
+                        style={{
+                          padding: "20px",
+                          background: "#f9fafb",
+                          borderRadius: "8px",
+                          marginTop: "20px",
+                          marginBottom: "20px",
+                        }}
+                      >
+                        <h4 style={{ marginBottom: "10px" }}>
+                          Secure Payment via Razorpay
+                        </h4>
+                        <p style={{ marginBottom: "15px", color: "#666" }}>
+                          After clicking "Review Order", you'll be able to
+                          choose from multiple payment options including
+                          credit/debit cards, UPI, net banking, and wallets.
+                        </p>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "15px",
+                            flexWrap: "wrap",
+                            fontSize: "14px",
+                            color: "#444",
+                          }}
+                        >
+                          <span>💳 Credit/Debit Cards</span>
+                          <span>📱 UPI</span>
+                          <span>🏦 Net Banking</span>
+                          <span>💰 Wallets</span>
                         </div>
                       </div>
                     )}
@@ -965,8 +918,9 @@ const Checkout = () => {
                           <strong>
                             {shippingData.firstName} {shippingData.lastName}
                           </strong>
+                          <br />
+                          {shippingData.address}
                         </p>
-                        <p>{shippingData.address}</p>
                         <p>
                           {shippingData.city}, Kerala {shippingData.zipCode}
                         </p>
@@ -987,7 +941,7 @@ const Checkout = () => {
                       <h3>Payment Method</h3>
                       <p>
                         {paymentData.method === "razorpay"
-                          ? `Card ending in ${paymentData.cardNumber.slice(-4)}`
+                          ? "Pay Online (Cards/UPI/Netbanking)"
                           : "Cash on Delivery"}
                       </p>
                       <button
@@ -997,6 +951,83 @@ const Checkout = () => {
                       >
                         Edit
                       </button>
+                    </div>
+
+                    {/* ✅ NEW: Promo Code Section */}
+                    <div className="review-section promo-section">
+                      <h3>
+                        <Tag size={20} />
+                        Have a Promo Code?
+                      </h3>
+
+                      {!appliedPromo ? (
+                        <>
+                          {!showPromoInput ? (
+                            <button
+                              type="button"
+                              className="promo-toggle-btn"
+                              onClick={() => setShowPromoInput(true)}
+                            >
+                              + Add Promo Code
+                            </button>
+                          ) : (
+                            <div className="promo-input-group">
+                              <input
+                                type="text"
+                                value={promoCode}
+                                onChange={(e) =>
+                                  setPromoCode(e.target.value.toUpperCase())
+                                }
+                                placeholder="Enter promo code"
+                                className="promo-input"
+                                disabled={promoLoading}
+                              />
+                              <Button
+                                onClick={handleApplyPromo}
+                                loading={promoLoading}
+                                disabled={!promoCode.trim() || promoLoading}
+                                size="sm"
+                              >
+                                Apply
+                              </Button>
+                              <button
+                                type="button"
+                                className="promo-cancel-btn"
+                                onClick={() => {
+                                  setShowPromoInput(false);
+                                  setPromoCode("");
+                                }}
+                                disabled={promoLoading}
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="applied-promo">
+                          <div className="promo-info">
+                            <Tag size={18} className="promo-icon" />
+                            <div>
+                              <p className="promo-code">{appliedPromo.code}</p>
+                              <p className="promo-description">
+                                {appliedPromo.description}
+                              </p>
+                              <p className="promo-savings">
+                                You saved ₹
+                                {appliedPromo.discountAmount.toFixed(2)}!
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="remove-promo-btn"
+                            onClick={handleRemovePromo}
+                          >
+                            <X size={18} />
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="final-actions">
@@ -1009,7 +1040,7 @@ const Checkout = () => {
                         <Lock size={18} />
                         {processing
                           ? "Processing..."
-                          : `Place Order - ₹${totals.total}`}
+                          : `Place Order - ₹${totals.total.toFixed(2)}`}
                       </Button>
                     </div>
                   </div>
@@ -1081,6 +1112,20 @@ const Checkout = () => {
                   <span>Subtotal:</span>
                   <span>₹{totals.subtotal.toFixed(2)}</span>
                 </div>
+
+                {/* ✅ NEW: Show discount if applied */}
+                {appliedPromo && (
+                  <div className="total-row discount-row">
+                    <span>
+                      <Tag size={14} />
+                      Discount ({appliedPromo.code}):
+                    </span>
+                    <span className="discount-amount">
+                      -₹{totals.discount.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+
                 <div className="total-row">
                   <span>Shipping:</span>
                   <span>

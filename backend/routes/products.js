@@ -1,40 +1,13 @@
 // routes/products.js
 const express = require("express");
-const multer = require("multer");
 const path = require("path");
 const reviewRouter = require("./reviews");
 const { validateProduct } = require("../middleware/validators");
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/"); // Make sure this directory exists
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(
-      null,
-      file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname)
-    );
-  },
-});
+// Import the Cloudinary upload configuration
+const { upload } = require("../config/cloudinary");
 
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
-  fileFilter: function (req, file, cb) {
-    // Only allow image files
-    if (file.mimetype.startsWith("image/")) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only image files are allowed!"), false);
-    }
-  },
-});
-
-// Import controllers - fix the path if needed
+// Import controllers
 const {
   getProducts,
   getProduct,
@@ -43,12 +16,23 @@ const {
   createProduct,
   updateProduct,
   deleteProduct,
-} = require("../controllers/productController"); // or productsController - check which file exists
+} = require("../controllers/productController");
 
 // Import middleware
 const { protect, authorize, optionalAuth } = require("../middleware/auth");
 
 const router = express.Router();
+
+// Add this before your other routes
+router.get("/test-cloudinary", (req, res) => {
+  const { cloudinary } = require("../config/cloudinary");
+
+  res.json({
+    cloudinaryConfigured: !!cloudinary.config().cloud_name,
+    cloudName: cloudinary.config().cloud_name || "NOT SET",
+    apiKey: cloudinary.config().api_key ? "SET" : "NOT SET",
+  });
+});
 
 router.use("/:productId/reviews", reviewRouter);
 
@@ -58,22 +42,36 @@ router.get("/slug/:slug", getProductBySlug);
 router.get("/:id/related", getRelatedProducts);
 router.get("/:id", getProduct);
 
-// Admin only routes - with file upload for POST
+// Admin only routes - with Cloudinary upload
 router.post(
   "/",
   protect,
   authorize("admin"),
-  upload.array("images", 10),
+  upload.array("images", 10), // Now uploads to Cloudinary
   validateProduct,
   createProduct
 );
+
 router.put(
   "/:id",
   protect,
   authorize("admin"),
-  upload.array("images", 10),
+  upload.array("images", 10), // Now uploads to Cloudinary
   updateProduct
 );
+
 router.delete("/:id", protect, authorize("admin"), deleteProduct);
+
+// Error handling middleware for upload errors
+router.use((error, req, res, next) => {
+  if (error) {
+    console.error("Upload error:", error);
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Upload failed",
+    });
+  }
+  next();
+});
 
 module.exports = router;

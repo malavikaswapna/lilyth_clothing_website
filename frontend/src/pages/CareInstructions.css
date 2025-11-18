@@ -1,0 +1,470 @@
+/* src/pages/CareInstructions.css */
+
+.care-instructions-page {
+  padding: 60px 0;
+  min-height: 100vh;
+}
+
+.care-instructions-page .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Hero Section */
+.care-hero {
+  text-align: center;
+  padding: 60px 20px;
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.1),
+    rgba(236, 72, 153, 0.1)
+  );
+  border-radius: 20px;
+  margin-bottom: 60px;
+}
+
+.care-hero h1 {
+  font-size: 3rem;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.care-hero .subtitle {
+  font-size: 1.25rem;
+  color: #666;
+  margin-bottom: 30px;
+}
+
+.care-hero .hero-icon {
+  color: #8b5cf6;
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(1.1) rotate(5deg);
+  }
+}
+
+/* Introduction */
+.care-intro {
+  max-width: 800px;
+  margin: 0 auto 60px;
+  text-align: center;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #555;
+}
+
+/* Section Headers */
+.care-instructions-page h2 {
+  font-size: 2.5rem;
+  margin-bottom: 15px;
+  text-align: center;
+  color: #333;
+}
+
+.section-subtitle {
+  text-align: center;
+  color: #666;
+  margin-bottom: 40px;
+  font-size: 1.1rem;
+}
+
+/* Fabric Care Section */
+.fabric-care-section {
+  margin-bottom: 80px;
+}
+
+.fabric-cards {
+  display: grid;
+  gap: 20px;
+  margin-top: 40px;
+}
+
+.fabric-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.fabric-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.fabric-header {
+  padding: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.fabric-header:hover {
+  background: #f9fafb;
+}
+
+.fabric-title {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+}
+
+.fabric-icon {
+  font-size: 3rem;
+}
+
+.fabric-title h3 {
+  font-size: 1.5rem;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+.fabric-title p {
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.expand-btn {
+  background: none;
+  border: none;
+  color: #8b5cf6;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.expand-btn:hover {
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.fabric-content {
+  padding: 0 25px 25px;
+  display: grid;
+  gap: 25px;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.instruction-block {
+  background: #f9fafb;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.instruction-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 15px;
+  color: #8b5cf6;
+}
+
+.instruction-header h4 {
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.instruction-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.instruction-list li {
+  padding: 8px 0 8px 24px;
+  position: relative;
+  color: #555;
+  line-height: 1.6;
+}
+
+.instruction-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #8b5cf6;
+  font-weight: bold;
+}
+
+/* General Tips Section */
+.general-tips-section {
+  margin-bottom: 80px;
+}
+
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+  margin-top: 40px;
+}
+
+.tip-card {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.tip-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+.tip-icon {
+  color: #f4f2ea;
+  margin-bottom: 15px;
+}
+
+.tip-card h3 {
+  font-size: 1.25rem;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.tip-card p {
+  color: #666;
+  line-height: 1.6;
+}
+
+/* Symbols Section */
+.symbols-section {
+  margin-bottom: 80px;
+}
+
+.symbols-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-top: 40px;
+}
+
+.symbol-card {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.symbol-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.symbol {
+  font-size: 3rem;
+  margin-bottom: 15px;
+}
+
+.symbol-card h4 {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.symbol-card p {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+/* Stain Guide Section */
+.stain-guide-section {
+  margin-bottom: 80px;
+}
+
+.stain-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 25px;
+  margin-top: 40px;
+}
+
+.stain-card {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.stain-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.stain-card h3 {
+  font-size: 1.25rem;
+  margin-bottom: 15px;
+  color: #8b5cf6;
+}
+
+.stain-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.stain-card li {
+  padding: 8px 0 8px 24px;
+  position: relative;
+  color: #555;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.stain-card li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: #8b5cf6;
+  font-weight: bold;
+}
+
+/* Important Notes */
+.important-notes {
+  margin-bottom: 60px;
+}
+
+.note-box {
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.1),
+    rgba(249, 115, 22, 0.1)
+  );
+  padding: 30px;
+  border-radius: 12px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  border-left: 4px solid #ef4444;
+}
+
+.note-box svg {
+  color: #ef4444;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.note-box h3 {
+  font-size: 1.25rem;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.note-box ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.note-box li {
+  padding: 8px 0 8px 20px;
+  position: relative;
+  color: #555;
+  line-height: 1.6;
+}
+
+.note-box li::before {
+  content: "⚠️";
+  position: absolute;
+  left: 0;
+}
+
+/* Contact Section */
+.care-contact {
+  text-align: center;
+  padding: 60px 20px;
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.05),
+    rgba(236, 72, 153, 0.05)
+  );
+  border-radius: 12px;
+}
+
+.care-contact h2 {
+  font-size: 2rem;
+  margin-bottom: 15px;
+}
+
+.care-contact p {
+  font-size: 1.1rem;
+  color: #666;
+  margin-bottom: 25px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.contact-link {
+  display: inline-block;
+  padding: 15px 40px;
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.contact-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .care-hero h1 {
+    font-size: 2rem;
+  }
+
+  .care-hero .subtitle {
+    font-size: 1rem;
+  }
+
+  .care-instructions-page h2 {
+    font-size: 2rem;
+  }
+
+  .fabric-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .tips-grid,
+  .symbols-grid,
+  .stain-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .note-box {
+    flex-direction: column;
+  }
+}

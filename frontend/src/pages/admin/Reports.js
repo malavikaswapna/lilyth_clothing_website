@@ -1,33 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { 
+import React, { useState, useEffect } from "react";
+import {
   Download,
-  Calendar,
-  TrendingUp,
-  TrendingDown,
+  RefreshCw,
   DollarSign,
   Package,
   Users,
   ShoppingCart,
   BarChart3,
   PieChart,
-  Filter,
-  RefreshCw,
-  FileText,
   ArrowUpRight,
   ArrowDownRight,
-  Eye
-} from 'lucide-react';
-import { adminAPI } from '../../services/api';
-import Loading from '../../components/common/Loading';
-import Button from '../../components/common/Button';
-import toast from 'react-hot-toast';
-import './Reports.css';
+} from "lucide-react";
+import { adminAPI } from "../../services/api";
+import Loading from "../../components/common/Loading";
+import Button from "../../components/common/Button";
+import toast from "react-hot-toast";
+import "./Reports.css";
 
 const Reports = () => {
   const [loading, setLoading] = useState(true);
-  const [selectedDateRange, setSelectedDateRange] = useState('30');
-  const [selectedReport, setSelectedReport] = useState('overview');
-  
+  const [selectedDateRange, setSelectedDateRange] = useState("30");
+  const [selectedReport, setSelectedReport] = useState("overview");
+
   const [salesData, setSalesData] = useState({
     totalRevenue: 0,
     totalOrders: 0,
@@ -38,7 +32,7 @@ const Reports = () => {
     topProducts: [],
     salesByCategory: [],
     salesByMonth: [],
-    recentTransactions: []
+    recentTransactions: [],
   });
 
   const [inventoryData, setInventoryData] = useState({
@@ -48,7 +42,7 @@ const Reports = () => {
     totalStockValue: 0,
     fastMovingProducts: [],
     slowMovingProducts: [],
-    stockAlerts: []
+    stockAlerts: [],
   });
 
   const [customerData, setCustomerData] = useState({
@@ -58,7 +52,7 @@ const Reports = () => {
     customerGrowth: 0,
     topCustomers: [],
     customersByLocation: [],
-    acquisitionChannels: []
+    acquisitionChannels: [],
   });
 
   useEffect(() => {
@@ -68,23 +62,22 @@ const Reports = () => {
   const loadReportsData = async () => {
     try {
       setLoading(true);
-      
-      const dateParams = {
-        days: selectedDateRange
-      };
 
-      const [salesResponse, inventoryResponse, customersResponse] = await Promise.all([
-        adminAPI.getSalesReport(dateParams),
-        adminAPI.getInventoryReport(),
-        adminAPI.getCustomersReport(dateParams)
-      ]);
+      const dateParams = { days: selectedDateRange };
+
+      const [salesResponse, inventoryResponse, customersResponse] =
+        await Promise.all([
+          adminAPI.getSalesReport(dateParams),
+          adminAPI.getInventoryReport(),
+          adminAPI.getCustomersReport(dateParams),
+        ]);
 
       setSalesData(salesResponse.data);
       setInventoryData(inventoryResponse.data);
       setCustomerData(customersResponse.data);
     } catch (error) {
-      console.error('Failed to load reports data:', error);
-      toast.error('Failed to load reports data');
+      console.error("Failed to load reports data:", error);
+      toast.error("Failed to load reports data");
     } finally {
       setLoading(false);
     }
@@ -93,38 +86,38 @@ const Reports = () => {
   const exportReport = async (reportType) => {
     try {
       const response = await adminAPI.exportReport(reportType, {
-        days: selectedDateRange
+        days: selectedDateRange,
       });
-      
-      // Create and download file
-      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
+
+      const blob = new Blob([response.data], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `${reportType}-report-${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `${reportType}-report-${new Date().toISOString().split("T")[0]}.csv`
+      );
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       toast.success(`${reportType} report exported successfully`);
     } catch (error) {
-      console.error('Export failed:', error);
+      console.error("Export failed:", error);
       toast.error(`Failed to export ${reportType} report`);
     }
   };
 
-  const formatCurrency = (amount) => {
-    return `₹${(amount || 0).toLocaleString()}`;
-  };
-
-  const formatPercentage = (value) => {
-    return `${(value || 0).toFixed(1)}%`;
-  };
+  const formatCurrency = (amount) => `₹${(amount || 0).toLocaleString()}`;
+  const formatPercentage = (value) => `${(value || 0).toFixed(1)}%`;
 
   const getGrowthIcon = (growth) => {
-    if (growth > 0) return <ArrowUpRight size={16} className="growth-positive" />;
-    if (growth < 0) return <ArrowDownRight size={16} className="growth-negative" />;
+    if (growth > 0)
+      return <ArrowUpRight size={16} className="growth-positive" />;
+    if (growth < 0)
+      return <ArrowDownRight size={16} className="growth-negative" />;
     return null;
   };
 
@@ -148,7 +141,7 @@ const Reports = () => {
             <option value="90">Last 3 months</option>
             <option value="365">Last year</option>
           </select>
-          <Button variant="outline" onClick={() => loadReportsData()}>
+          <Button variant="outline" onClick={loadReportsData}>
             <RefreshCw size={18} />
             Refresh
           </Button>
@@ -157,30 +150,30 @@ const Reports = () => {
 
       {/* Report Navigation */}
       <div className="report-tabs">
-        <button 
-          className={`tab ${selectedReport === 'overview' ? 'active' : ''}`}
-          onClick={() => setSelectedReport('overview')}
+        <button
+          className={`tab ${selectedReport === "overview" ? "active" : ""}`}
+          onClick={() => setSelectedReport("overview")}
         >
           <BarChart3 size={20} />
           Overview
         </button>
-        <button 
-          className={`tab ${selectedReport === 'sales' ? 'active' : ''}`}
-          onClick={() => setSelectedReport('sales')}
+        <button
+          className={`tab ${selectedReport === "sales" ? "active" : ""}`}
+          onClick={() => setSelectedReport("sales")}
         >
           <DollarSign size={20} />
           Sales
         </button>
-        <button 
-          className={`tab ${selectedReport === 'inventory' ? 'active' : ''}`}
-          onClick={() => setSelectedReport('inventory')}
+        <button
+          className={`tab ${selectedReport === "inventory" ? "active" : ""}`}
+          onClick={() => setSelectedReport("inventory")}
         >
           <Package size={20} />
           Inventory
         </button>
-        <button 
-          className={`tab ${selectedReport === 'customers' ? 'active' : ''}`}
-          onClick={() => setSelectedReport('customers')}
+        <button
+          className={`tab ${selectedReport === "customers" ? "active" : ""}`}
+          onClick={() => setSelectedReport("customers")}
         >
           <Users size={20} />
           Customers
@@ -188,7 +181,7 @@ const Reports = () => {
       </div>
 
       {/* Overview Tab */}
-      {selectedReport === 'overview' && (
+      {selectedReport === "overview" && (
         <div className="report-content">
           {/* Key Metrics */}
           <div className="metrics-grid">
@@ -201,7 +194,9 @@ const Reports = () => {
                 <p>Total Revenue</p>
                 <div className="metric-growth">
                   {getGrowthIcon(salesData.revenueGrowth)}
-                  <span>{formatPercentage(Math.abs(salesData.revenueGrowth))}</span>
+                  <span>
+                    {formatPercentage(Math.abs(salesData.revenueGrowth))}
+                  </span>
                 </div>
               </div>
             </div>
@@ -215,7 +210,9 @@ const Reports = () => {
                 <p>Total Orders</p>
                 <div className="metric-growth">
                   {getGrowthIcon(salesData.ordersGrowth)}
-                  <span>{formatPercentage(Math.abs(salesData.ordersGrowth))}</span>
+                  <span>
+                    {formatPercentage(Math.abs(salesData.ordersGrowth))}
+                  </span>
                 </div>
               </div>
             </div>
@@ -229,7 +226,9 @@ const Reports = () => {
                 <p>Total Customers</p>
                 <div className="metric-growth">
                   {getGrowthIcon(customerData.customerGrowth)}
-                  <span>{formatPercentage(Math.abs(customerData.customerGrowth))}</span>
+                  <span>
+                    {formatPercentage(Math.abs(customerData.customerGrowth))}
+                  </span>
                 </div>
               </div>
             </div>
@@ -252,11 +251,15 @@ const Reports = () => {
           <div className="quick-stats">
             <div className="stat-item">
               <span className="stat-label">Average Order Value</span>
-              <span className="stat-value">{formatCurrency(salesData.averageOrderValue)}</span>
+              <span className="stat-value">
+                {formatCurrency(salesData.averageOrderValue)}
+              </span>
             </div>
             <div className="stat-item">
               <span className="stat-label">Conversion Rate</span>
-              <span className="stat-value">{formatPercentage(salesData.conversionRate)}</span>
+              <span className="stat-value">
+                {formatPercentage(salesData.conversionRate)}
+              </span>
             </div>
             <div className="stat-item">
               <span className="stat-label">New Customers</span>
@@ -264,7 +267,9 @@ const Reports = () => {
             </div>
             <div className="stat-item">
               <span className="stat-label">Stock Value</span>
-              <span className="stat-value">{formatCurrency(inventoryData.totalStockValue)}</span>
+              <span className="stat-value">
+                {formatCurrency(inventoryData.totalStockValue)}
+              </span>
             </div>
           </div>
 
@@ -272,36 +277,51 @@ const Reports = () => {
           <div className="overview-section">
             <div className="section-header">
               <h3>Top Performing Products</h3>
-              <Button variant="outline" onClick={() => exportReport('top-products')}>
+              <Button
+                variant="outline"
+                onClick={() => exportReport("top-products")}
+              >
                 <Download size={16} />
                 Export
               </Button>
             </div>
             <div className="products-list">
-              {salesData.topProducts.slice(0, 5).map((product, index) => (
-                <div key={product._id} className="product-item">
-                  <div className="product-rank">#{index + 1}</div>
-                  <img src={product.image} alt={product.name} />
-                  <div className="product-details">
-                    <h4>{product.name}</h4>
-                    <p>{product.sales} sales • {formatCurrency(product.revenue)}</p>
+              {salesData.topProducts?.length > 0 ? (
+                salesData.topProducts.slice(0, 5).map((product, index) => (
+                  <div key={product._id} className="product-item">
+                    <div className="product-rank">#{index + 1}</div>
+                    <img
+                      src={product.image || "/default-product.jpg"}
+                      alt={product.name}
+                      onError={(e) => {
+                        e.target.src = "/default-product.jpg";
+                      }}
+                    />
+                    <div className="product-details">
+                      <h4>{product.name}</h4>
+                      <p>
+                        {product.sales} sales •{" "}
+                        {formatCurrency(product.revenue)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="product-growth">
-                    {getGrowthIcon(product.growth)}
-                    <span>{formatPercentage(Math.abs(product.growth))}</span>
-                  </div>
+                ))
+              ) : (
+                <div className="empty-state">
+                  <Package size={40} />
+                  <p>No product sales data available</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
       )}
 
       {/* Sales Tab */}
-      {selectedReport === 'sales' && (
+      {selectedReport === "sales" && (
         <div className="report-content">
           <div className="section-actions">
-            <Button variant="outline" onClick={() => exportReport('sales')}>
+            <Button variant="outline" onClick={() => exportReport("sales")}>
               <Download size={16} />
               Export Sales Report
             </Button>
@@ -332,69 +352,93 @@ const Reports = () => {
           <div className="chart-section">
             <h3>Sales by Category</h3>
             <div className="category-chart">
-              {salesData.salesByCategory.map((category, index) => (
-                <div key={category._id} className="category-bar">
-                  <div className="category-info">
-                    <span className="category-name">{category.name}</span>
-                    <span className="category-value">{formatCurrency(category.revenue)}</span>
+              {salesData.salesByCategory?.length > 0 ? (
+                salesData.salesByCategory.map((category, index) => (
+                  <div key={category._id} className="category-bar">
+                    <div className="category-info">
+                      <span className="category-name">{category.name}</span>
+                      <span className="category-value">
+                        {formatCurrency(category.revenue)}
+                      </span>
+                    </div>
+                    <div className="category-progress">
+                      <div
+                        className="progress-fill"
+                        style={{
+                          width: `${
+                            (category.revenue / salesData.totalRevenue) * 100
+                          }%`,
+                          backgroundColor: `hsl(${index * 45}, 70%, 60%)`,
+                        }}
+                      ></div>
+                    </div>
+                    <span className="category-percentage">
+                      {formatPercentage(
+                        (category.revenue / salesData.totalRevenue) * 100
+                      )}
+                    </span>
                   </div>
-                  <div className="category-progress">
-                    <div 
-                      className="progress-fill"
-                      style={{ 
-                        width: `${(category.revenue / salesData.totalRevenue) * 100}%`,
-                        backgroundColor: `hsl(${index * 45}, 70%, 60%)`
-                      }}
-                    ></div>
-                  </div>
-                  <span className="category-percentage">
-                    {formatPercentage((category.revenue / salesData.totalRevenue) * 100)}
-                  </span>
+                ))
+              ) : (
+                <div className="empty-state">
+                  <PieChart size={40} />
+                  <p>No category sales data available</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
           {/* Recent Transactions */}
           <div className="transactions-section">
             <h3>Recent High-Value Transactions</h3>
-            <div className="transactions-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Order #</th>
-                    <th>Customer</th>
-                    <th>Amount</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {salesData.recentTransactions.map((transaction) => (
-                    <tr key={transaction._id}>
-                      <td>#{transaction.orderNumber}</td>
-                      <td>{transaction.customerName}</td>
-                      <td>{formatCurrency(transaction.amount)}</td>
-                      <td>{new Date(transaction.date).toLocaleDateString()}</td>
-                      <td>
-                        <span className={`status-badge status-${transaction.status}`}>
-                          {transaction.status}
-                        </span>
-                      </td>
+            {salesData.recentTransactions?.length > 0 ? (
+              <div className="transactions-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Order #</th>
+                      <th>Customer</th>
+                      <th>Amount</th>
+                      <th>Date</th>
+                      <th>Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {salesData.recentTransactions.map((transaction) => (
+                      <tr key={transaction._id}>
+                        <td>#{transaction.orderNumber}</td>
+                        <td>{transaction.customerName}</td>
+                        <td>{formatCurrency(transaction.amount)}</td>
+                        <td>
+                          {new Date(transaction.date).toLocaleDateString()}
+                        </td>
+                        <td>
+                          <span
+                            className={`status-badge status-${transaction.status}`}
+                          >
+                            {transaction.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="empty-state">
+                <ShoppingCart size={40} />
+                <p>No recent transactions available</p>
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* Inventory Tab */}
-      {selectedReport === 'inventory' && (
+      {selectedReport === "inventory" && (
         <div className="report-content">
           <div className="section-actions">
-            <Button variant="outline" onClick={() => exportReport('inventory')}>
+            <Button variant="outline" onClick={() => exportReport("inventory")}>
               <Download size={16} />
               Export Inventory Report
             </Button>
@@ -412,11 +456,15 @@ const Reports = () => {
                   </div>
                   <div className="stock-item">
                     <span>Low Stock Items</span>
-                    <span className="warning">{inventoryData.lowStockItems}</span>
+                    <span className="warning">
+                      {inventoryData.lowStockItems}
+                    </span>
                   </div>
                   <div className="stock-item">
                     <span>Out of Stock</span>
-                    <span className="danger">{inventoryData.outOfStockItems}</span>
+                    <span className="danger">
+                      {inventoryData.outOfStockItems}
+                    </span>
                   </div>
                   <div className="stock-item">
                     <span>Total Stock Value</span>
@@ -431,20 +479,27 @@ const Reports = () => {
           <div className="alerts-section">
             <h3>Stock Alerts</h3>
             <div className="alerts-list">
-              {inventoryData.stockAlerts.map((alert) => (
-                <div key={alert._id} className={`alert-item ${alert.level}`}>
-                  <div className="alert-icon">
-                    <Package size={20} />
+              {inventoryData.stockAlerts?.length > 0 ? (
+                inventoryData.stockAlerts.map((alert) => (
+                  <div key={alert._id} className={`alert-item ${alert.level}`}>
+                    <div className="alert-icon">
+                      <Package size={20} />
+                    </div>
+                    <div className="alert-content">
+                      <h4>{alert.productName}</h4>
+                      <p>{alert.message}</p>
+                    </div>
+                    <div className="alert-stock">
+                      <span>{alert.currentStock} left</span>
+                    </div>
                   </div>
-                  <div className="alert-content">
-                    <h4>{alert.productName}</h4>
-                    <p>{alert.message}</p>
-                  </div>
-                  <div className="alert-stock">
-                    <span>{alert.currentStock} left</span>
-                  </div>
+                ))
+              ) : (
+                <div className="empty-state">
+                  <Package size={40} />
+                  <p>No stock alerts</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -454,24 +509,36 @@ const Reports = () => {
               <div className="movement-card">
                 <h3>Fast Moving Products</h3>
                 <div className="products-list">
-                  {inventoryData.fastMovingProducts.map((product, index) => (
-                    <div key={product._id} className="product-row">
-                      <span className="product-name">{product.name}</span>
-                      <span className="product-velocity">{product.velocity} sales/day</span>
-                    </div>
-                  ))}
+                  {inventoryData.fastMovingProducts?.length > 0 ? (
+                    inventoryData.fastMovingProducts.map((product) => (
+                      <div key={product._id} className="product-row">
+                        <span className="product-name">{product.name}</span>
+                        <span className="product-velocity">
+                          {product.velocity} sales/day
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p>No data available</p>
+                  )}
                 </div>
               </div>
 
               <div className="movement-card">
                 <h3>Slow Moving Products</h3>
                 <div className="products-list">
-                  {inventoryData.slowMovingProducts.map((product, index) => (
-                    <div key={product._id} className="product-row">
-                      <span className="product-name">{product.name}</span>
-                      <span className="product-velocity">{product.daysInStock} days in stock</span>
-                    </div>
-                  ))}
+                  {inventoryData.slowMovingProducts?.length > 0 ? (
+                    inventoryData.slowMovingProducts.map((product) => (
+                      <div key={product._id} className="product-row">
+                        <span className="product-name">{product.name}</span>
+                        <span className="product-velocity">
+                          {product.daysInStock} days in stock
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p>No data available</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -480,10 +547,10 @@ const Reports = () => {
       )}
 
       {/* Customers Tab */}
-      {selectedReport === 'customers' && (
+      {selectedReport === "customers" && (
         <div className="report-content">
           <div className="section-actions">
-            <Button variant="outline" onClick={() => exportReport('customers')}>
+            <Button variant="outline" onClick={() => exportReport("customers")}>
               <Download size={16} />
               Export Customer Report
             </Button>
@@ -509,7 +576,13 @@ const Reports = () => {
                   </div>
                   <div className="customer-item">
                     <span>Customer Growth</span>
-                    <span className={customerData.customerGrowth >= 0 ? 'positive' : 'negative'}>
+                    <span
+                      className={
+                        customerData.customerGrowth >= 0
+                          ? "positive"
+                          : "negative"
+                      }
+                    >
                       {formatPercentage(customerData.customerGrowth)}
                     </span>
                   </div>
@@ -522,28 +595,37 @@ const Reports = () => {
           <div className="top-customers-section">
             <h3>Top Customers by Spending</h3>
             <div className="customers-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Customer</th>
-                    <th>Email</th>
-                    <th>Orders</th>
-                    <th>Total Spent</th>
-                    <th>Last Order</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customerData.topCustomers.map((customer) => (
-                    <tr key={customer._id}>
-                      <td>{customer.name}</td>
-                      <td>{customer.email}</td>
-                      <td>{customer.totalOrders}</td>
-                      <td>{formatCurrency(customer.totalSpent)}</td>
-                      <td>{new Date(customer.lastOrder).toLocaleDateString()}</td>
+              {customerData.topCustomers?.length > 0 ? (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Customer</th>
+                      <th>Email</th>
+                      <th>Orders</th>
+                      <th>Total Spent</th>
+                      <th>Last Order</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {customerData.topCustomers.map((customer) => (
+                      <tr key={customer._id}>
+                        <td>{customer.name}</td>
+                        <td>{customer.email}</td>
+                        <td>{customer.totalOrders}</td>
+                        <td>{formatCurrency(customer.totalSpent)}</td>
+                        <td>
+                          {new Date(customer.lastOrder).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="empty-state">
+                  <Users size={40} />
+                  <p>No customer data available</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -551,26 +633,41 @@ const Reports = () => {
           <div className="location-section">
             <h3>Customers by Location</h3>
             <div className="location-chart">
-              {customerData.customersByLocation.map((location, index) => (
-                <div key={location._id} className="location-bar">
-                  <div className="location-info">
-                    <span className="location-name">{location.city}, {location.state}</span>
-                    <span className="location-count">{location.count} customers</span>
+              {customerData.customersByLocation?.length > 0 ? (
+                customerData.customersByLocation.map((location, index) => (
+                  <div key={location._id} className="location-bar">
+                    <div className="location-info">
+                      <span className="location-name">
+                        {location.city}, {location.state}
+                      </span>
+                      <span className="location-count">
+                        {location.count} customers
+                      </span>
+                    </div>
+                    <div className="location-progress">
+                      <div
+                        className="progress-fill"
+                        style={{
+                          width: `${
+                            (location.count / customerData.totalCustomers) * 100
+                          }%`,
+                          backgroundColor: `hsl(${index * 30}, 60%, 55%)`,
+                        }}
+                      ></div>
+                    </div>
+                    <span className="location-percentage">
+                      {formatPercentage(
+                        (location.count / customerData.totalCustomers) * 100
+                      )}
+                    </span>
                   </div>
-                  <div className="location-progress">
-                    <div 
-                      className="progress-fill"
-                      style={{ 
-                        width: `${(location.count / customerData.totalCustomers) * 100}%`,
-                        backgroundColor: `hsl(${index * 30}, 60%, 55%)`
-                      }}
-                    ></div>
-                  </div>
-                  <span className="location-percentage">
-                    {formatPercentage((location.count / customerData.totalCustomers) * 100)}
-                  </span>
+                ))
+              ) : (
+                <div className="empty-state">
+                  <Users size={40} />
+                  <p>No location data available</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

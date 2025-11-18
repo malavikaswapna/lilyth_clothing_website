@@ -128,6 +128,10 @@ const productSchema = new mongoose.Schema(
           type: String,
           required: true,
         },
+        publicId: {
+          type: String,
+          required: false, // Cloudinary public ID for deletion
+        },
         alt: {
           type: String,
           default: "",
@@ -229,6 +233,25 @@ const productSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   }
 );
+
+// Virtual to handle both 'featured' and 'isFeatured'
+productSchema.virtual("featured").get(function () {
+  return this.isFeatured;
+});
+
+productSchema.virtual("featured").set(function (value) {
+  this.isFeatured = value;
+});
+
+// Also add to the toJSON options to include virtuals
+productSchema.set("toJSON", {
+  virtuals: true,
+  transform: function (doc, ret) {
+    // Ensure consistent naming in responses
+    ret.featured = ret.isFeatured;
+    return ret;
+  },
+});
 
 // Virtual for current price (sale price if available, otherwise regular price)
 productSchema.virtual("currentPrice").get(function () {

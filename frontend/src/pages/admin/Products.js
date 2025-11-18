@@ -303,19 +303,32 @@ const Products = () => {
     setShowAddProductModal(true);
   };
 
-  const handleEditProduct = (product) => {
-    setEditingProduct(product);
-    setShowAddProductModal(true);
-  };
-
+  // Update the editProduct function in Products.js
   const editProduct = async (productId) => {
     try {
+      // Always fetch fresh product data to ensure we have all fields including images
+      console.log("Fetching product for edit:", productId);
       const response = await productsAPI.getProduct(productId);
-      handleEditProduct(response.data.product);
+      console.log("Product fetched for editing:", response.data.product);
+      console.log("Product images:", response.data.product.images);
+
+      if (response.data.product) {
+        handleEditProduct(response.data.product);
+      } else {
+        toast.error("Product data not found");
+      }
     } catch (error) {
       console.error("Error loading product:", error);
       toast.error("Failed to load product for editing");
     }
+  };
+
+  // Also ensure the handleEditProduct is passing the complete product
+  const handleEditProduct = (product) => {
+    console.log("Setting product for editing:", product);
+    console.log("Product images count:", product.images?.length);
+    setEditingProduct(product);
+    setShowAddProductModal(true);
   };
 
   const handleProductSave = (savedProduct) => {
@@ -361,7 +374,7 @@ const Products = () => {
     }
   };
 
-  // FIXED: Handle stock update
+  // FIXED: Handle stock update with proper cache-busting
   const handleStockUpdate = async (stockData) => {
     try {
       console.log("Updating stock with data:", stockData);
@@ -388,26 +401,24 @@ const Products = () => {
       // Show success message
       toast.success("Stock updated successfully");
 
-      // Update the local state with the COMPLETE updated product from response
-      setProducts((prevProducts) => {
-        const updatedProducts = prevProducts.map((p) => {
-          if (p._id === response.data.product._id) {
-            // Replace the entire product with the updated one from the server
-            return {
-              ...p,
-              ...response.data.product,
-              totalStock: response.data.product.totalStock,
-              variants: response.data.product.variants.map((v) => ({ ...v })), // Deep copy variants
-            };
-          }
-          return p;
-        });
-        console.log("Updated products state");
-        return updatedProducts;
-      });
+      // IMPORTANT: Force reload products list from server (don't trust cache)
+      await loadProducts();
 
       // Clear selected product
       setSelectedProduct(null);
+
+      // Optional: Scroll to and highlight the updated product
+      setTimeout(() => {
+        const element = document.querySelector(
+          `[data-product-id="${selectedProduct._id}"]`
+        );
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          // Add a brief highlight effect
+          element.classList.add("highlight-updated");
+          setTimeout(() => element.classList.remove("highlight-updated"), 2000);
+        }
+      }, 100);
     } catch (error) {
       console.error("Stock update error:", error);
       console.error("Error response:", error.response?.data);
@@ -679,6 +690,7 @@ const Products = () => {
             {products.map((product) => (
               <tr
                 key={product._id}
+                data-product-id={product._id}
                 className={selectedProducts.has(product._id) ? "selected" : ""}
               >
                 <td>
@@ -998,9 +1010,8 @@ const ProductModal = ({ product, onClose }) => (
   </div>
 );
 
-// FIXED: Stock Update Modal Component
+// FIXED: Stock Update Modal Component with proper initialization
 const StockModal = ({ product, onClose, onUpdate }) => {
-  // Use useEffect to update variants when product changes
   const [variants, setVariants] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -1020,7 +1031,7 @@ const StockModal = ({ product, onClose, onUpdate }) => {
       console.log("🔄 StockModal: Setting variants to:", initialVariants);
       setVariants(initialVariants);
     }
-  }, [product]); // Re-run when product changes
+  }, [product]);
 
   const handleStockChange = (index, newStock) => {
     const updated = [...variants];

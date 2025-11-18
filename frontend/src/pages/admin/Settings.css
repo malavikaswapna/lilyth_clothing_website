@@ -430,18 +430,30 @@
     grid-template-columns: 240px 1fr;
     gap: 1.5rem;
   }
-  
+
   .form-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .nav-item {
-    padding: 0.75rem 1rem;
+    padding: 0.875rem 1rem;
     font-size: 0.875rem;
   }
-  
+
   .settings-section {
     padding: 1.5rem;
+  }
+
+  .section-header h2 {
+    font-size: 1.375rem;
+  }
+
+  .store-config-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -450,52 +462,72 @@
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .settings-nav {
     position: static;
     display: grid;
-    grid-template-columns: repeat(auto, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 0;
     border-radius: 0.5rem;
     overflow: hidden;
+    padding: 0;
   }
-  
+
   .nav-item {
-    padding: 1rem 0.75rem;
+    padding: 1rem 0.5rem;
     border-left: none;
-    border-bottom: 2px solid transparent;
+    border-bottom: 3px solid transparent;
     text-align: center;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.25rem;
+    font-size: 0.75rem;
   }
-  
+
+  .nav-item:hover {
+    background: #f8fafc;
+  }
+
   .nav-item.active {
+    background: #eff6ff;
     border-bottom-color: #3b82f6;
     border-left: none;
   }
-  
-  .nav-item span {
-    font-size: 0.75rem;
+
+  .nav-item svg {
+    margin-bottom: 0.25rem;
   }
-  
+
+  .nav-item span {
+    font-size: 0.7rem;
+    line-height: 1.2;
+  }
+
   .settings-section {
     padding: 1rem;
   }
-  
+
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   .notification-item {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
-  
+
   .method-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
-  
+
   .form-actions {
-    justify-content: center;
+    justify-content: stretch;
+  }
+
+  .form-actions button {
+    width: 100%;
   }
 }
 
@@ -503,33 +535,71 @@
   .admin-settings {
     padding: 0.5rem 0;
   }
-  
+
+  .settings-header {
+    padding: 0 0.5rem;
+    margin-bottom: 1rem;
+  }
+
   .settings-header h1 {
     font-size: 1.5rem;
   }
-  
+
+  .settings-nav {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
   .nav-item {
-    padding: 0.75rem 0.5rem;
+    padding: 0.75rem 0.25rem;
+    min-height: 60px;
   }
-  
+
+  .nav-item svg {
+    width: 18px;
+    height: 18px;
+  }
+
   .nav-item span {
-    display: none;
+    font-size: 0.625rem;
+    display: block;
   }
-  
+
   .settings-section {
     padding: 0.75rem;
   }
-  
+
   .section-header {
     margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
   }
-  
+
   .section-header h2 {
     font-size: 1.25rem;
   }
-  
+
+  .form-control {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
   .form-actions button {
     width: 100%;
+    padding: 0.875rem;
+  }
+
+  .notification-item {
+    padding: 1rem;
+  }
+
+  .payment-method {
+    margin-bottom: 1rem;
+  }
+
+  .method-header {
+    padding: 1rem;
+  }
+
+  .method-config {
+    padding: 1rem;
   }
 }
 

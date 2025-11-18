@@ -3,43 +3,19 @@ const Order = require("../models/Order");
 const Cart = require("../models/Cart");
 const Product = require("../models/Product");
 const User = require("../models/User");
+const PromoCode = require("../models/PromoCode"); // ✅ ADD THIS
 const asyncHandler = require("../utils/asyncHandler");
 const razorpay = require("../config/razorpay");
 const crypto = require("crypto");
 const emailService = require("../utils/emailService");
 const inventoryMonitor = require("../utils/inventoryMonitor");
 const { auditLogger } = require("../utils/auditLogger");
+const pincodeService = require("../utils/pincodeService");
 
 // @desc    Create new order
 // @route   POST /api/orders
 // @access  Private
 exports.createOrder = asyncHandler(async (req, res) => {
-  console.log("🔍 CREATE ORDER - Request body received:");
-  console.log(JSON.stringify(req.body, null, 2));
-
-  console.log("\n📋 Request body structure:");
-  console.log("  - items:", req.body.items?.length, "items");
-  console.log(
-    "  - shippingAddress:",
-    req.body.shippingAddress ? "Present" : "Missing"
-  );
-  console.log(
-    "  - billingAddress:",
-    req.body.billingAddress ? "Present" : "Missing"
-  );
-  console.log("  - paymentMethod:", req.body.paymentMethod);
-  console.log("  - shippingMethod:", req.body.shippingMethod);
-
-  if (req.body.shippingAddress) {
-    console.log("\n📫 Shipping Address Details:");
-    console.log("  - firstName:", req.body.shippingAddress.firstName);
-    console.log("  - lastName:", req.body.shippingAddress.lastName);
-    console.log("  - addressLine1:", req.body.shippingAddress.addressLine1);
-    console.log("  - city:", req.body.shippingAddress.city);
-    console.log("  - state:", req.body.shippingAddress.state);
-    console.log("  - postalCode:", req.body.shippingAddress.postalCode);
-    console.log("  - country:", req.body.shippingAddress.country);
-  }
   const {
     items,
     shippingAddress,
@@ -49,6 +25,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
     specialInstructions,
     isGift,
     giftMessage,
+    promoCode, // ✅ NEW: Promo code from request
   } = req.body;
 
   if (!items || items.length === 0) {
@@ -64,7 +41,6 @@ exports.createOrder = asyncHandler(async (req, res) => {
   const stockUpdates = [];
 
   for (const item of items) {
-    // FIXED: Check for both 'product' and 'productId' fields
     const productId = item.product || item.productId;
 
     if (!productId) {
@@ -122,6 +98,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
       quantity: item.quantity,
       unitPrice,
       totalPrice,
+      categoryId: product.category, // ✅ ADD THIS for promo code applicability check
     });
 
     subtotal += totalPrice;
@@ -135,10 +112,140 @@ exports.createOrder = asyncHandler(async (req, res) => {
   // Calculate tax (18% GST for India)
   const tax = req.body.tax || subtotal * 0.18;
 
-  // Calculate total
-  const total = req.body.total || subtotal + shippingCost + tax;
+  // ✅ NEW: Apply promo code if provided
+  let discountAmount = 0;
+  let promoCodeDoc = null;
+  let promoCodeError = null;
 
-  // Create order
+  if (promoCode && promoCode.trim()) {
+    try {
+      promoCodeDoc = await PromoCode.findOne({
+        code: promoCode.toUpperCase().trim(),
+      });
+
+      if (promoCodeDoc) {
+        // Check if promo code is active
+        if (!promoCodeDoc.isActive) {
+          promoCodeError = "This promo code is no longer active";
+        }
+        // Check validity period
+        else {
+          const now = new Date();
+          if (now < promoCodeDoc.startDate) {
+            promoCodeError = "This promo code is not yet active";
+          } else if (now > promoCodeDoc.endDate) {
+            promoCodeError = "This promo code has expired";
+          }
+          // Check usage limits
+          else if (
+            promoCodeDoc.maxUsageCount !== null &&
+            promoCodeDoc.currentUsageCount >= promoCodeDoc.maxUsageCount
+          ) {
+            promoCodeError = "This promo code has reached its usage limit";
+          }
+          // Check if user can use this code
+          else if (!promoCodeDoc.canUserUse(req.user._id)) {
+            promoCodeError =
+              "You have already used this promo code maximum allowed times";
+          }
+          // Check minimum order amount
+          else if (subtotal < promoCodeDoc.minOrderAmount) {
+            promoCodeError = `Minimum order amount of ₹${promoCodeDoc.minOrderAmount} required to use this code`;
+          }
+          // Check first order only restriction
+          else {
+            if (promoCodeDoc.firstOrderOnly) {
+              const userOrderCount = await Order.countDocuments({
+                user: req.user._id,
+                status: { $ne: "cancelled" },
+              });
+
+              if (userOrderCount > 0) {
+                promoCodeError =
+                  "This promo code is only valid for first orders";
+              }
+            }
+
+            // Check product/category applicability
+            if (
+              !promoCodeError &&
+              !promoCodeDoc.isApplicableToAll &&
+              orderItems.length > 0
+            ) {
+              const applicableProductIds = promoCodeDoc.applicableProducts.map(
+                (id) => id.toString()
+              );
+              const applicableCategoryIds =
+                promoCodeDoc.applicableCategories.map((id) => id.toString());
+
+              const hasApplicableItem = orderItems.some((item) => {
+                return (
+                  applicableProductIds.includes(item.product.toString()) ||
+                  applicableCategoryIds.includes(item.categoryId?.toString())
+                );
+              });
+
+              if (!hasApplicableItem) {
+                promoCodeError =
+                  "This promo code is not applicable to items in your cart";
+              }
+            }
+
+            // If all checks pass, calculate and apply discount
+            if (!promoCodeError) {
+              discountAmount = promoCodeDoc.calculateDiscount(subtotal);
+
+              // Update promo code usage
+              promoCodeDoc.currentUsageCount += 1;
+              promoCodeDoc.usedBy.push({
+                user: req.user._id,
+                usedAt: new Date(),
+                discountAmount: discountAmount,
+              });
+
+              await promoCodeDoc.save();
+
+              // Log promo code application
+              await auditLogger.log({
+                userId: req.user._id,
+                userName: `${req.user.firstName} ${req.user.lastName}`,
+                userEmail: req.user.email,
+                action: "PROMO_CODE_APPLIED",
+                resource: "promo_code",
+                resourceId: promoCodeDoc._id,
+                details: {
+                  code: promoCodeDoc.code,
+                  discountAmount: discountAmount,
+                  orderSubtotal: subtotal,
+                },
+                ipAddress: req.ip,
+                userAgent: req.headers["user-agent"],
+              });
+            }
+          }
+        }
+      } else {
+        promoCodeError = "Invalid promo code";
+      }
+    } catch (error) {
+      console.error("Promo code error:", error);
+      promoCodeError = "Error applying promo code";
+    }
+  }
+
+  // If there's a promo code error, return it
+  if (promoCodeError) {
+    return res.status(400).json({
+      success: false,
+      message: promoCodeError,
+    });
+  }
+
+  // Calculate total with discount
+  const total =
+    req.body.total || subtotal + shippingCost + tax - discountAmount;
+
+  // Create order with promo code discount
   const order = await Order.create({
     user: req.user.id,
     items: orderItems,
@@ -148,6 +255,13 @@ exports.createOrder = asyncHandler(async (req, res) => {
       method: shippingMethod || "standard",
     },
     tax,
+    discount: {
+      // ✅ NEW: Discount object
+      amount: discountAmount,
+      code: promoCode || null,
+      promoCode: promoCodeDoc ? promoCodeDoc._id : null,
+      type: promoCodeDoc ? promoCodeDoc.discountType : "none",
+    },
     total,
     shippingAddress,
     billingAddress: billingAddress || shippingAddress,
@@ -160,11 +274,11 @@ exports.createOrder = asyncHandler(async (req, res) => {
     giftMessage,
   });
 
-  // Update product stock and analytics - FIXED VERSION
+  // Update product stock and analytics
   for (const { product, variant, quantity } of stockUpdates) {
     await Product.findOneAndUpdate(
       {
-        _id: product._id, // ✅ FIXED
+        _id: product._id,
         "variants.size": variant.size,
         "variants.color.name": variant.color.name,
       },
@@ -172,7 +286,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
         $inc: {
           "variants.$.stock": -quantity,
           purchases: quantity,
-          revenue: quantity * (product.salePrice || product.price), // ✅ FIXED
+          revenue: quantity * (product.salePrice || product.price),
         },
       }
     );
@@ -203,14 +317,17 @@ exports.createOrder = asyncHandler(async (req, res) => {
   // Populate order details
   const populatedOrder = await Order.findById(order._id)
     .populate("user", "firstName lastName email")
-    .populate("items.product", "name slug images");
+    .populate("items.product", "name slug images")
+    .populate(
+      "discount.promoCode",
+      "code description discountType discountValue"
+    ); // ✅ NEW: Populate promo code
 
   // Send order confirmation email
   try {
     await emailService.sendOrderConfirmation(populatedOrder, req.user);
   } catch (emailError) {
     console.error("Failed to send order confirmation email:", emailError);
-    // Don't fail the order if email fails
   }
 
   // Log audit trail
@@ -218,34 +335,43 @@ exports.createOrder = asyncHandler(async (req, res) => {
     await auditLogger.logOrderAction("ORDER_CREATED", req.user, order._id, {
       orderNumber: order.orderNumber,
       total: order.total,
+      discountAmount: discountAmount,
+      promoCode: promoCode || null,
     });
   } catch (auditError) {
     console.error("Failed to log audit trail:", auditError);
-    // Don't fail the order if audit logging fails
   }
 
   res.status(201).json({
     success: true,
     message: "Order created successfully",
     order: populatedOrder,
+    promoCodeApplied:
+      discountAmount > 0
+        ? {
+            code: promoCode,
+            discountAmount: discountAmount,
+            message: `You saved ₹${discountAmount.toFixed(2)}!`,
+          }
+        : null,
   });
 });
 
 // Helper function to calculate shipping cost
 const calculateShippingCost = (method, subtotal) => {
-  if (subtotal >= 100) return 0; // Free shipping over $100
+  if (subtotal >= 1000) return 0; // Free shipping over ₹1000
 
   switch (method) {
     case "standard":
-      return 5.99;
+      return 50;
     case "expedited":
-      return 12.99;
+      return 100;
     case "overnight":
-      return 24.99;
+      return 200;
     case "pickup":
       return 0;
     default:
-      return 5.99;
+      return 50;
   }
 };
 
@@ -257,13 +383,22 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 10;
   const startIndex = (page - 1) * limit;
 
-  const orders = await Order.find({ user: req.user.id })
+  // Build query
+  let query = { user: req.user.id };
+
+  // Filter by status if provided
+  if (req.query.status) {
+    query.status = req.query.status;
+  }
+
+  const orders = await Order.find(query)
     .sort({ createdAt: -1 })
     .skip(startIndex)
     .limit(limit)
-    .populate("items.product", "name slug images");
+    .populate("items.product", "name slug images")
+    .populate("discount.promoCode", "code description"); // ✅ NEW: Populate promo code
 
-  const total = await Order.countDocuments({ user: req.user.id });
+  const total = await Order.countDocuments(query);
 
   res.status(200).json({
     success: true,
@@ -286,7 +421,11 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
 exports.getOrder = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id)
     .populate("user", "firstName lastName email")
-    .populate("items.product", "name slug images brand");
+    .populate("items.product", "name slug images brand")
+    .populate(
+      "discount.promoCode",
+      "code description discountType discountValue"
+    ); // ✅ NEW
 
   if (!order) {
     return res.status(404).json({
@@ -465,6 +604,31 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
     );
   }
 
+  // ✅ NEW: Restore promo code usage if applicable
+  if (order.discount && order.discount.promoCode) {
+    try {
+      const promoCode = await PromoCode.findById(order.discount.promoCode);
+      if (promoCode) {
+        // Decrease usage count
+        promoCode.currentUsageCount = Math.max(
+          0,
+          promoCode.currentUsageCount - 1
+        );
+
+        // Remove from usedBy array
+        promoCode.usedBy = promoCode.usedBy.filter(
+          (usage) =>
+            usage.order && usage.order.toString() !== order._id.toString()
+        );
+
+        await promoCode.save();
+      }
+    } catch (error) {
+      console.error("Error restoring promo code usage:", error);
+      // Don't fail the cancellation if this fails
+    }
+  }
+
   // Update order status
   order.status = "cancelled";
   order.statusHistory.push({
@@ -516,7 +680,8 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
   // Populate user and product details
   query = query
     .populate("user", "firstName lastName email")
-    .populate("items.product", "name slug");
+    .populate("items.product", "name slug")
+    .populate("discount.promoCode", "code"); // ✅ NEW
 
   const orders = await query;
   const total = await Order.countDocuments();
@@ -594,6 +759,7 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
         specialInstructions,
         isGift,
         giftMessage,
+        promoCode, // ✅ NEW: Get promo code from order data
       } = orderData;
 
       // Validate all products and calculate totals
@@ -601,7 +767,6 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
       let subtotal = 0;
 
       for (const item of items) {
-        // FIXED: Check for both 'product' and 'productId' fields
         const productId = item.product || item.productId;
 
         if (!productId) {
@@ -658,14 +823,44 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
           quantity: item.quantity,
           unitPrice,
           totalPrice,
+          categoryId: product.category,
         });
 
         subtotal += totalPrice;
       }
 
       const shippingCost = calculateShippingCost(shippingMethod, subtotal);
-      const tax = subtotal * 0.18; // 18% GST for India
-      const total = subtotal + shippingCost + tax;
+      const tax = subtotal * 0.18;
+
+      // ✅ NEW: Apply promo code
+      let discountAmount = 0;
+      let promoCodeDoc = null;
+
+      if (promoCode && promoCode.trim()) {
+        promoCodeDoc = await PromoCode.findOne({
+          code: promoCode.toUpperCase().trim(),
+        });
+
+        if (promoCodeDoc && promoCodeDoc.isValid) {
+          if (promoCodeDoc.canUserUse(req.user._id)) {
+            if (subtotal >= promoCodeDoc.minOrderAmount) {
+              discountAmount = promoCodeDoc.calculateDiscount(subtotal);
+
+              // Update promo code usage
+              promoCodeDoc.currentUsageCount += 1;
+              promoCodeDoc.usedBy.push({
+                user: req.user._id,
+                usedAt: new Date(),
+                discountAmount: discountAmount,
+              });
+
+              await promoCodeDoc.save();
+            }
+          }
+        }
+      }
+
+      const total = subtotal + shippingCost + tax - discountAmount;
 
       // Create order with payment success
       const order = await Order.create({
@@ -677,6 +872,13 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
           method: shippingMethod || "standard",
         },
         tax,
+        discount: {
+          // ✅ NEW
+          amount: discountAmount,
+          code: promoCode || null,
+          promoCode: promoCodeDoc ? promoCodeDoc._id : null,
+          type: promoCodeDoc ? promoCodeDoc.discountType : "none",
+        },
         total,
         shippingAddress,
         billingAddress: billingAddress || shippingAddress,
@@ -693,11 +895,11 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
         giftMessage,
       });
 
-      // Update product stock - FIXED VERSION
+      // Update product stock
       for (const item of orderItems) {
         await Product.findOneAndUpdate(
           {
-            _id: item.product, // ✅ This is correct - uses the MongoDB ObjectId
+            _id: item.product,
             "variants.size": item.variant.size,
             "variants.color.name": item.variant.color.name,
           },
@@ -727,7 +929,50 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
 
       const populatedOrder = await Order.findById(order._id)
         .populate("user", "firstName lastName email")
-        .populate("items.product", "name slug images");
+        .populate("items.product", "name slug images")
+        .populate("discount.promoCode", "code description");
+
+      // Send notification to admin if enabled
+      try {
+        const admin = await User.findOne({
+          role: "admin",
+          "notificationSettings.orderUpdates": true,
+        });
+
+        if (admin && admin.email) {
+          await emailService.sendEmail({
+            to: admin.email,
+            subject: `🎉 New Order #${order.orderNumber}`,
+            html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: #3b82f6; color: white; padding: 20px; text-align: center;">
+            <h1>New Order Received!</h1>
+          </div>
+          <div style="padding: 20px; background: #f9fafb;">
+            <h2>Order #${order.orderNumber}</h2>
+            <p><strong>Customer:</strong> ${order.user.firstName} ${
+              order.user.lastName
+            }</p>
+            <p><strong>Email:</strong> ${order.user.email}</p>
+            <p><strong>Total:</strong> ₹${order.total.toLocaleString()}</p>
+            <p><strong>Items:</strong> ${order.items.length}</p>
+            <p><strong>Date:</strong> ${new Date(
+              order.createdAt
+            ).toLocaleString()}</p>
+            <a href="${process.env.CLIENT_URL}/admin/orders" 
+               style="display: inline-block; background: #3b82f6; color: white; 
+                      padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px;">
+              View Orders
+            </a>
+          </div>
+        </div>
+      `,
+          });
+        }
+      } catch (emailError) {
+        console.error("Failed to send order notification:", emailError);
+        // Don't fail the order creation if email fails
+      }
 
       res.status(201).json({
         success: true,
@@ -756,7 +1001,6 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
 exports.handlePaymentFailure = asyncHandler(async (req, res) => {
   const { razorpay_order_id, error_description } = req.body;
 
-  // Log payment failure
   console.log("Payment failed:", { razorpay_order_id, error_description });
 
   res.status(200).json({
@@ -774,7 +1018,7 @@ exports.razorpayWebhook = asyncHandler(async (req, res) => {
 
   if (!process.env.RAZORPAY_WEBHOOK_SECRET) {
     console.error("RAZORPAY_WEBHOOK_SECRET not configured");
-    return res.status(500).json({ error: "Webhook not configured " });
+    return res.status(500).json({ error: "Webhook not configured" });
   }
 
   const body = JSON.stringify(req.body);
@@ -788,7 +1032,6 @@ exports.razorpayWebhook = asyncHandler(async (req, res) => {
     const event = req.body;
 
     if (event.event === "payment.captured") {
-      // Update order status
       await Order.findOneAndUpdate(
         { "payment.razorpayOrderId": event.payload.payment.entity.order_id },
         {
@@ -800,7 +1043,7 @@ exports.razorpayWebhook = asyncHandler(async (req, res) => {
 
     res.status(200).json({ status: "ok" });
   } else {
-    console.warn("Invalid webhook signature");
+    console.warn("⚠️ Invalid webhook signature");
     res.status(400).json({ error: "Invalid signature" });
   }
 });

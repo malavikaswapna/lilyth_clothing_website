@@ -52,6 +52,25 @@ exports.register = asyncHandler(async (req, res) => {
     emailVerificationExpire: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
   });
 
+  // ✅ NEW: Notify admin of new user registration
+  try {
+    const admin = await User.findOne({
+      role: "admin",
+      "notificationSettings.newUsers": true,
+    });
+
+    if (admin && admin.email) {
+      await emailService.sendNewUserNotification({
+        adminEmail: admin.email,
+        user: user,
+      });
+      console.log("✅ Admin notified of new user registration");
+    }
+  } catch (emailError) {
+    console.error("Failed to send new user notification:", emailError);
+    // Don't fail registration if email fails
+  }
+
   // Send verification email
   await emailService.sendVerificationEmail(user, emailVerificationToken);
 
@@ -283,6 +302,7 @@ exports.googleAuth = asyncHandler(async (req, res) => {
 
     // Check if user exists
     let user = await User.findOne({ email: email.toLowerCase() });
+    let isNewUser = false;
 
     if (user) {
       // Update existing user
@@ -315,6 +335,7 @@ exports.googleAuth = asyncHandler(async (req, res) => {
       });
     } else {
       // Create new user
+      isNewUser = true;
       user = await User.create({
         firstName,
         lastName,
@@ -325,6 +346,25 @@ exports.googleAuth = asyncHandler(async (req, res) => {
         authProvider: "google",
         firebaseUid: uid,
       });
+
+      // ✅ NEW: Notify admin of new Google user registration
+      try {
+        const admin = await User.findOne({
+          role: "admin",
+          "notificationSettings.newUsers": true,
+        });
+
+        if (admin && admin.email) {
+          await emailService.sendNewUserNotification({
+            adminEmail: admin.email,
+            user: user,
+          });
+          console.log("✅ Admin notified of new Google user registration");
+        }
+      } catch (emailError) {
+        console.error("Failed to send new user notification:", emailError);
+        // Don't fail registration if email fails
+      }
 
       // Log registration
       await auditLogger.log({
@@ -606,6 +646,8 @@ exports.getMe = asyncHandler(async (req, res) => {
 // @route   PUT /api/auth/profile
 // @access  Private
 exports.updateProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user.id);
+
   const fieldsToUpdate = {
     firstName: req.body.firstName,
     lastName: req.body.lastName,
@@ -614,6 +656,35 @@ exports.updateProfile = asyncHandler(async (req, res) => {
     gender: req.body.gender,
   };
 
+  // ✅ ALLOW EMAIL CHANGE WITH VALIDATION
+  if (req.body.email && req.body.email !== user.email) {
+    const newEmail = req.body.email.toLowerCase().trim();
+
+    // Check if email already exists
+    const existingUser = await User.findOne({
+      email: newEmail,
+      _id: { $ne: req.user.id },
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "This email address is already registered to another account",
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
+    if (!emailRegex.test(newEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid email address",
+      });
+    }
+
+    fieldsToUpdate.email = newEmail;
+  }
+
   // Remove undefined fields
   Object.keys(fieldsToUpdate).forEach((key) => {
     if (fieldsToUpdate[key] === undefined) {
@@ -621,14 +692,18 @@ exports.updateProfile = asyncHandler(async (req, res) => {
     }
   });
 
-  const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
-    new: true,
-    runValidators: true,
-  });
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user.id,
+    fieldsToUpdate,
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
 
   res.status(200).json({
     success: true,
-    user: user.getPublicProfile(),
+    user: updatedUser.getPublicProfile(),
     message: "Profile updated successfully",
   });
 });

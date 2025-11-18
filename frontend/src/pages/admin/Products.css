@@ -1,3 +1,5 @@
+/* Products.css - Complete with highlight animations for cache updates */
+
 .admin-products {
   padding: 0;
 }
@@ -271,6 +273,26 @@
 .products-table td:first-child {
   width: 40px;
   text-align: center;
+}
+
+/* Highlight Animation for Updated Products - NEW */
+@keyframes highlightUpdate {
+  0% {
+    background-color: #dcfce7;
+    transform: scale(1);
+  }
+  50% {
+    background-color: #bbf7d0;
+    transform: scale(1.01);
+  }
+  100% {
+    background-color: transparent;
+    transform: scale(1);
+  }
+}
+
+.products-table tr.highlight-updated {
+  animation: highlightUpdate 2s ease-in-out;
 }
 
 /* Product Info Cell */

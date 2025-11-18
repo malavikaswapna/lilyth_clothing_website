@@ -1,18 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Package, 
-  ShoppingCart, 
+// src/pages/admin/Dashboard.js
+import React, { useState, useEffect } from "react";
+import {
+  Users,
+  Package,
+  ShoppingCart,
   DollarSign,
   TrendingUp,
   AlertTriangle,
-  Eye
-} from 'lucide-react';
-import { adminAPI } from '../../services/api';
-import Loading from '../../components/common/Loading';
-import './Dashboard.css';
+  Eye,
+  Tag,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { adminAPI } from "../../services/api";
+import Loading from "../../components/common/Loading";
+import "./Dashboard.css";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -28,8 +32,8 @@ const Dashboard = () => {
       const response = await adminAPI.getDashboard();
       setDashboard(response.data.dashboard);
     } catch (error) {
-      console.error('Failed to load dashboard:', error);
-      setError('Failed to load dashboard data');
+      console.error("Failed to load dashboard:", error);
+      setError("Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
@@ -77,23 +81,14 @@ const Dashboard = () => {
     topProducts = [],
     lowStockProducts = [],
     orderStatusBreakdown = {},
-    recentOrders = []
+    recentOrders = [],
   } = dashboard;
 
   // Provide default values for totals
-  const {
-    users = 0,
-    products = 0,
-    orders = 0,
-    revenue = 0
-  } = totals;
+  const { users = 0, products = 0, orders = 0, revenue = 0 } = totals;
 
   // Provide default values for recent
-  const {
-    newUsers = 0,
-    weeklyOrders = 0,
-    monthlyRevenue = 0
-  } = recent;
+  const { newUsers = 0, weeklyOrders = 0, monthlyRevenue = 0 } = recent;
 
   return (
     <div className="admin-dashboard">
@@ -122,7 +117,9 @@ const Dashboard = () => {
           <div className="stat-content">
             <h3>{products.toLocaleString()}</h3>
             <p>Total Products</p>
-            <span className="stat-change">{lowStockProducts.length} low stock</span>
+            <span className="stat-change">
+              {lowStockProducts.length} low stock
+            </span>
           </div>
         </div>
 
@@ -144,7 +141,64 @@ const Dashboard = () => {
           <div className="stat-content">
             <h3>₹{revenue.toLocaleString()}</h3>
             <p>Total Revenue</p>
-            <span className="stat-change">₹{monthlyRevenue.toLocaleString()} this month</span>
+            <span className="stat-change">
+              ₹{monthlyRevenue.toLocaleString()} this month
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ✅ NEW: Quick Actions */}
+      <div className="quick-actions">
+        <div
+          className="quick-action-card"
+          onClick={() => navigate("/admin/promo-codes")}
+        >
+          <div className="quick-action-icon promo">
+            <Tag size={24} />
+          </div>
+          <div className="quick-action-content">
+            <h3>Promo Codes</h3>
+            <p>Manage discount codes and promotions</p>
+          </div>
+        </div>
+
+        <div
+          className="quick-action-card"
+          onClick={() => navigate("/admin/products")}
+        >
+          <div className="quick-action-icon products-action">
+            <Package size={24} />
+          </div>
+          <div className="quick-action-content">
+            <h3>Add Product</h3>
+            <p>Create new product listings</p>
+          </div>
+        </div>
+
+        <div
+          className="quick-action-card"
+          onClick={() => navigate("/admin/orders")}
+        >
+          <div className="quick-action-icon orders-action">
+            <ShoppingCart size={24} />
+          </div>
+          <div className="quick-action-content">
+            <h3>View Orders</h3>
+            <p>Manage customer orders</p>
+          </div>
+        </div>
+
+        <div
+          className="quick-action-card"
+          onClick={() => navigate("/admin/users")}
+        >
+          <div className="quick-action-icon users-action">
+            <Users size={24} />
+          </div>
+          <div className="quick-action-content">
+            <h3>User Management</h3>
+            <p>View and manage users</p>
           </div>
         </div>
       </div>
@@ -164,7 +218,9 @@ const Dashboard = () => {
                   <img src={product.images?.[0]?.url} alt={product.name} />
                   <div className="product-details">
                     <h4>{product.name}</h4>
-                    <p>{product.purchases} sold • ₹{product.revenue}</p>
+                    <p>
+                      {product.purchases} sold • ₹{product.revenue}
+                    </p>
                   </div>
                 </div>
               ))
@@ -186,11 +242,15 @@ const Dashboard = () => {
                 <div key={product._id} className="stock-item">
                   <h4>{product.name}</h4>
                   <div className="stock-info">
-                    <span className="stock-count">{product.totalStock} left</span>
+                    <span className="stock-count">
+                      {product.totalStock} left
+                    </span>
                     <div className="stock-bar">
-                      <div 
+                      <div
                         className="stock-fill"
-                        style={{ width: `${Math.min(product.totalStock * 10, 100)}%` }}
+                        style={{
+                          width: `${Math.min(product.totalStock * 10, 100)}%`,
+                        }}
                       ></div>
                     </div>
                   </div>
@@ -225,13 +285,14 @@ const Dashboard = () => {
                     <tr key={order._id}>
                       <td>#{order.orderNumber}</td>
                       <td>
-                        {order.user ? 
-                        `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() || 'Unknown User'
-                        : 'Unknown User'
-                        }
-                        </td>
-                        <td>₹{order.total}</td>
-                        <td>
+                        {order.user
+                          ? `${order.user.firstName || ""} ${
+                              order.user.lastName || ""
+                            }`.trim() || "Unknown User"
+                          : "Unknown User"}
+                      </td>
+                      <td>₹{order.total}</td>
+                      <td>
                         <span className={`status-badge status-${order.status}`}>
                           {order.status}
                         </span>

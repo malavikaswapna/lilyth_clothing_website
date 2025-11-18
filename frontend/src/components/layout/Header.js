@@ -253,7 +253,7 @@ const Header = () => {
               <Link to="/shop" className="mobile-nav-link" onClick={toggleMenu}>
                 All Items
               </Link>
-              <Link
+              {/* <Link
                 to="/shop?category=dresses"
                 className="mobile-nav-link"
                 onClick={toggleMenu}
@@ -266,7 +266,7 @@ const Header = () => {
                 onClick={toggleMenu}
               >
                 Activewear
-              </Link>
+              </Link> */}
               <Link
                 to="/shop?category=indo-western"
                 className="mobile-nav-link"
@@ -274,7 +274,7 @@ const Header = () => {
               >
                 Indo-Western
               </Link>
-              <Link
+              {/* <Link
                 to="/shop?category=tops"
                 className="mobile-nav-link"
                 onClick={toggleMenu}
@@ -301,7 +301,7 @@ const Header = () => {
                 onClick={toggleMenu}
               >
                 Cord Sets
-              </Link>
+              </Link> */}
             </div>
 
             {isAuthenticated ? (

@@ -86,9 +86,7 @@ button.mobile-menu-btn:hover {
 
 /* Override global .btn styles for header action buttons */
 .header .action-btn,
-.header-actions .action-btn,
-button.action-btn,
-a.action-btn {
+.header-actions .action-btn {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;

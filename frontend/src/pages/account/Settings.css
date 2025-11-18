@@ -15,7 +15,6 @@
   box-sizing: border-box;
 }
 
-
 .settings-header {
   text-align: center;
   margin-bottom: var(--spacing-2xl);
@@ -315,7 +314,7 @@
 
 .toggle-slider:before {
   position: absolute;
-  content: '';
+  content: "";
   height: 18px;
   width: 18px;
   left: 3px;
@@ -375,7 +374,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    flex-shrink: 0; 
+    flex-shrink: 0;
     justify-content: center;
     text-align: center;
   }
@@ -407,7 +406,7 @@
     min-width: 0;
   }
 
-    .form-control {
+  .form-control {
     width: 100%;
     min-width: 0;
     box-sizing: border-box;
@@ -507,7 +506,7 @@
 
   /* Add scroll indicator */
   .settings-nav::after {
-    content: '→';
+    content: "→";
     position: absolute;
     right: 0;
     top: 50%;
@@ -526,7 +525,7 @@
 
 .nav-scroll-container::before,
 .nav-scroll-container::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   bottom: 0;
@@ -537,10 +536,10 @@
 
 .nav-scroll-container::before {
   left: 0;
-  background: linear-gradient(to right, rgba(255,255,255,0.9), transparent);
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.9), transparent);
 }
 
 .nav-scroll-container::after {
   right: 0;
-  background: linear-gradient(to left, rgba(255,255,255,0.9), transparent);
+  background: linear-gradient(to left, rgba(255, 255, 255, 0.9), transparent);
 }

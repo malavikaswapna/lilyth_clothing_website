@@ -8,6 +8,8 @@ const inventoryMonitor = require("./utils/inventoryMonitor");
 const { StandardValidation } = require("express-validator/lib/context-items");
 const { ShaCertificate } = require("firebase-admin/project-management");
 const { youtube } = require("googleapis/build/src/apis/youtube");
+const reportScheduler = require("./utils/reportScheduler");
+const cron = require("node-cron");
 
 const PORT = process.env.PORT || 3001;
 
@@ -44,6 +46,8 @@ const server = app.listen(PORT, () => {
   }
 });
 
+reportScheduler.scheduleWeeklySalesReport();
+
 // Handle unhandled promise rejections
 process.on("unhandledRejection", (err, promise) => {
   console.log(`Error: ${err.message}`);
@@ -52,6 +56,14 @@ process.on("unhandledRejection", (err, promise) => {
     process.exit(1);
   });
 });
+
+// Check low stock daily at 9:00 AM
+cron.schedule("0 9 * * *", async () => {
+  console.log("🔍 Running daily low stock check...");
+  await inventoryMonitor.checkLowStockAndNotify();
+});
+
+console.log("📅 Scheduled daily low stock notifications at 9:00 AM");
 
 // shutdown
 process.on("SIGTERM", () => {

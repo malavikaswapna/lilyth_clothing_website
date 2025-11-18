@@ -176,6 +176,34 @@ const userSchema = new mongoose.Schema(
       default: 0,
     },
 
+    // Notification Settings
+    notificationSettings: {
+      emailNotifications: {
+        type: Boolean,
+        default: true,
+      },
+      orderUpdates: {
+        type: Boolean,
+        default: true,
+      },
+      newUsers: {
+        type: Boolean,
+        default: true,
+      },
+      lowStock: {
+        type: Boolean,
+        default: true,
+      },
+      salesReports: {
+        type: Boolean,
+        default: false,
+      },
+      systemUpdates: {
+        type: Boolean,
+        default: true,
+      },
+    },
+
     lastLoginIP: String,
     loginAttempts: {
       type: Number,

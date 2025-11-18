@@ -1,8 +1,10 @@
+// app.js
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const mongoose = require("mongoose"); // ADD THIS
+const mongoose = require("mongoose");
+const path = require("path"); // ✅ ADD THIS
 const errorHandler = require("./middleware/errorHandler");
 const adminRoutes = require("./routes/admin");
 const { sanitizeQuery } = require("./middleware/queryOptimizer");
@@ -35,7 +37,7 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.warn(`⚠️  Blocked CORS request from: ${origin}`);
+      console.warn(`⚠️ Blocked CORS request from: ${origin}`);
       callback(new Error("Not allowed by CORS"));
     }
   },
@@ -44,6 +46,9 @@ const corsOptions = {
   allowedHeaders: [
     "Content-Type",
     "Authorization",
+    "Cache-Control",
+    "Pragma",
+    "Expires",
     "X-Requested-With",
     "Accept",
     "Origin",
@@ -59,23 +64,28 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(sanitizeQuery);
 
-// static file for uploads
-app.use("/uploads", express.static("uploads"));
+// ✅ ADD: Serve static files (for uploaded images)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // public routes
 app.use("/api/auth", require("./routes/auth"));
-app.use("/api/products", cache("5 minutes"), require("./routes/products"));
+app.use("/api/products", require("./routes/products"));
 app.use("/api/categories", cache("5 minutes"), require("./routes/categories"));
 app.use("/api/reviews", require("./routes/reviews"));
 app.use("/api/contact", require("./routes/contact"));
 app.use("/api/pincode", require("./routes/pincode"));
+app.use("/api/newsletter", require("./routes/newsletter"));
 
 // protected routes
 app.use("/api/cart", require("./routes/cart"));
-app.use("/api/orders", require("./routes/orders")); // FIXED: This should work now
+app.use("/api/orders", require("./routes/orders"));
 app.use("/api/user", require("./routes/user"));
+app.use("/api/promo-codes", require("./routes/promoCodes"));
 
-// admin routes - FIXED: Only register once
+// ✅ ADD: Payment routes
+app.use("/api/payments", require("./routes/payments"));
+
+// admin routes
 app.use("/api/admin", adminRoutes);
 
 // test route
@@ -98,6 +108,9 @@ app.get("/", (req, res) => {
       user: "/api/user",
       reviews: "/api/reviews",
       pincode: "/api/pincode",
+      payments: "/api/payments", // ✅ ADD THIS
+      promoCodes: "/api/promo-codes",
+      newsletter: "/api/newsletter",
     },
   });
 });

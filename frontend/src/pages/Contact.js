@@ -94,7 +94,7 @@ const Contact = () => {
                     </div>
                     <div className="method-details">
                       <h3>Email Us</h3>
-                      <p>support@lilyth.com</p>
+                      <p>clothingbrand@lilyth.in</p>
                       <span>We'll respond within 24 hours</span>
                     </div>
                   </div>
@@ -104,8 +104,8 @@ const Contact = () => {
                       <Phone size={24} />
                     </div>
                     <div className="method-details">
-                      <h3>Call Us</h3>
-                      <p>+91 1234567890</p>
+                      <h3>WhatsApp Us</h3>
+                      <p>+91 9447598431</p>
                       <span>Mon-Fri, 9AM-6PM</span>
                     </div>
                   </div>

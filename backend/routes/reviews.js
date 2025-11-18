@@ -1,5 +1,5 @@
-// routes/reviews.js
-const express = require('express');
+// routes/reviews.js - CLEAN VERSION
+const express = require("express");
 const {
   getProductReviews,
   createReview,
@@ -9,27 +9,28 @@ const {
   flagReview,
   getUserReviews,
   getAllReviews,
-  moderateReview
-} = require('../controllers/reviewController');
-const { protect, authorize } = require('../middleware/auth');
+  moderateReview,
+} = require("../controllers/reviewController");
+const { protect, authorize } = require("../middleware/auth");
 
+// mergeParams: true allows access to parent route params (productId)
+// This is needed for /products/:productId/reviews
+// For /api/reviews/:id, it just passes through the :id param normally
 const router = express.Router({ mergeParams: true });
 
-// Public routes
-router.get('/', getProductReviews);
-router.get('/my-reviews', getUserReviews);
+// Specific routes MUST come before /:id routes
+router.get("/user/reviews", protect, getUserReviews);
+router.get("/admin/all", protect, authorize("admin"), getAllReviews);
 
-// Admin routes first (more specific)
-router.get('/admin/all', authorize('admin'), getAllReviews);
-router.put('/:id/moderate', authorize('admin'), moderateReview);
+// Product review routes
+router.get("/", getProductReviews);
+router.post("/", protect, createReview);
 
-// Protected routes with an id last
-router.post('/', createReview);
-router.put('/:id', protect, updateReview);
-router.get('/user/reviews', protect, getUserReviews);
-router.delete('/:id', protect, deleteReview);
-router.post('/:id/helpful', markHelpful);
-router.post('/:id/flag', flagReview);
-
+// ID-based routes (work for both /api/reviews/:id and /products/:productId/reviews/:id)
+router.put("/:id", protect, updateReview);
+router.delete("/:id", protect, deleteReview);
+router.post("/:id/helpful", protect, markHelpful);
+router.post("/:id/flag", protect, flagReview);
+router.put("/:id/moderate", protect, authorize("admin"), moderateReview);
 
 module.exports = router;

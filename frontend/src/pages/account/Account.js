@@ -1,16 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { User, Package, Heart, MapPin, Settings as SettingsIcon, ChevronRight, Star } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { userAPI, ordersAPI } from '../../services/api';
-import Loading from '../../components/common/Loading';
-import Button from '../../components/common/Button';
-import BackgroundWrapper from '../../components/common/BackgroundWrapper';
-import Addresses from './Addresses';
-import './Account.css';
-import Settings from './Settings';
-import UserReviews from './UserReviews';
-
+import React, { useState, useEffect } from "react";
+import {
+  Routes,
+  Route,
+  Link,
+  useLocation,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
+import {
+  User,
+  Package,
+  Heart,
+  MapPin,
+  Settings as SettingsIcon,
+  ChevronRight,
+  Star,
+} from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { userAPI, ordersAPI } from "../../services/api";
+import Loading from "../../components/common/Loading";
+import Button from "../../components/common/Button";
+import BackgroundWrapper from "../../components/common/BackgroundWrapper";
+import Addresses from "./Addresses";
+import "./Account.css";
+import Settings from "./Settings";
+import UserReviews from "./UserReviews";
+import toast from "react-hot-toast";
 
 const AccountDashboard = () => {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -28,20 +43,20 @@ const AccountDashboard = () => {
     try {
       const [analyticsRes, ordersRes] = await Promise.all([
         userAPI.getUserAnalytics(),
-        ordersAPI.getMyOrders({ limit: 3 })
+        ordersAPI.getMyOrders({ limit: 3 }),
       ]);
-      
+
       setStats(analyticsRes.data.analytics);
       setRecentOrders(ordersRes.data.orders);
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
+      console.error("Failed to load dashboard data:", error);
     } finally {
       setLoading(false);
     }
   };
 
   if (authLoading) return <Loading size="lg" fullScreen />;
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -67,7 +82,7 @@ const AccountDashboard = () => {
               <p>Total Orders</p>
             </div>
           </div>
-          
+
           <div className="stat-card">
             <div className="stat-icon">
               <Heart size={24} />
@@ -77,13 +92,13 @@ const AccountDashboard = () => {
               <p>Wishlist Items</p>
             </div>
           </div>
-          
+
           <div className="stat-card">
             <div className="stat-icon">
               <User size={24} />
             </div>
             <div className="stat-details">
-              <h3>₹{stats?.totalSpent?.toFixed(2) || '0.00'}</h3>
+              <h3>₹{stats?.totalSpent?.toFixed(2) || "0.00"}</h3>
               <p>Total Spent</p>
             </div>
           </div>
@@ -125,12 +140,14 @@ const AccountDashboard = () => {
         <div className="recent-orders">
           <div className="section-header">
             <h2>Recent Orders</h2>
-            <Link to="/account/orders" className="view-all-link">View All</Link>
+            <Link to="/account/orders" className="view-all-link">
+              View All
+            </Link>
           </div>
-          
+
           {recentOrders.length > 0 ? (
             <div className="orders-list">
-              {recentOrders.map(order => (
+              {recentOrders.map((order) => (
                 <div key={order._id} className="order-item">
                   <div className="order-info">
                     <h4>Order #{order.orderNumber}</h4>
@@ -138,12 +155,11 @@ const AccountDashboard = () => {
                   </div>
                   <div className="order-status">
                     <span className={`status-badge status-${order.status}`}>
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      {order.status.charAt(0).toUpperCase() +
+                        order.status.slice(1)}
                     </span>
                   </div>
-                  <div className="order-total">
-                    ${order.total.toFixed(2)}
-                  </div>
+                  <div className="order-total">₹{order.total.toFixed(2)}</div>
                 </div>
               ))}
             </div>
@@ -164,10 +180,11 @@ const AccountDashboard = () => {
 };
 
 const OrdersPage = () => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
-  const [reviewModal, setReviewModal] = useState({ isOpen: false, productId: null, orderId: null });
+  const [cancellingOrder, setCancellingOrder] = useState(null);
 
   useEffect(() => {
     loadOrders();
@@ -179,17 +196,43 @@ const OrdersPage = () => {
       setOrders(response.data.orders);
       setPagination(response.data.pagination);
     } catch (error) {
-      console.error('Failed to load orders:', error);
+      console.error("Failed to load orders:", error);
+      toast.error("Failed to load orders");
     } finally {
       setLoading(false);
     }
   };
 
-  const openReviewModal = (productId, orderId) => {
-    setReviewModal({
-      isOpen: true,
-      productId,
-      orderId
+  const handleViewDetails = (orderId) => {
+    // Navigate to order details page
+    navigate(`/order-success/${orderId}`);
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to cancel this order? This action cannot be undone."
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setCancellingOrder(orderId);
+      await ordersAPI.cancelOrder(orderId, "Cancelled by customer");
+      toast.success("Order cancelled successfully");
+      // Reload orders to show updated status
+      loadOrders();
+    } catch (error) {
+      console.error("Failed to cancel order:", error);
+      toast.error(error.response?.data?.message || "Failed to cancel order");
+    } finally {
+      setCancellingOrder(null);
+    }
+  };
+
+  const handleWriteReview = (productId, productSlug) => {
+    // Navigate to the product detail page where the review section is
+    navigate(`/product/${productSlug}`, {
+      state: { scrollToReviews: true, openReviewForm: true },
     });
   };
 
@@ -204,7 +247,7 @@ const OrdersPage = () => {
 
       {orders.length > 0 ? (
         <div className="orders-grid">
-          {orders.map(order => (
+          {orders.map((order) => (
             <div key={order._id} className="order-card">
               <div className="order-header">
                 <h3>Order #{order.orderNumber}</h3>
@@ -212,37 +255,58 @@ const OrdersPage = () => {
                   {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                 </span>
               </div>
-              
+
               <div className="order-details">
-                <p><strong>Date:</strong> {new Date(order.createdAt).toLocaleDateString()}</p>
-                <p><strong>Items:</strong> {order.items.length}</p>
-                <p><strong>Total:</strong> ${order.total.toFixed(2)}</p>
+                <p>
+                  <strong>Date:</strong>{" "}
+                  {new Date(order.createdAt).toLocaleDateString()}
+                </p>
+                <p>
+                  <strong>Items:</strong> {order.items.length}
+                </p>
+                <p>
+                  <strong>Total:</strong> ₹{order.total.toFixed(2)}
+                </p>
               </div>
 
               <div className="order-items">
                 {order.items.map((item, index) => (
                   <div key={index} className="order-item-row">
                     <div className="order-item">
-                      <img src={item.productImage} alt={item.productName} />
+                      <img
+                        src={item.productImage}
+                        alt={item.productName}
+                        onError={(e) => {
+                          e.target.src = "/placeholder-product.png";
+                        }}
+                      />
                       <div className="item-details">
                         <p>{item.productName}</p>
-                        <p>Size: {item.variant?.size} | Color: {item.variant?.color?.name}</p>
+                        <p>
+                          Size: {item.variant?.size} | Color:{" "}
+                          {item.variant?.color?.name}
+                        </p>
+                        <p>
+                          Qty: {item.quantity} × ₹{item.unitPrice}
+                        </p>
                       </div>
                     </div>
-                    
+
                     <div className="item-actions">
-                      {order.status === 'delivered' && !item.hasReview && (
+                      {order.status === "delivered" && (
                         <Button
                           size="sm"
-                          onClick={() => openReviewModal(item.product, order._id)}
+                          onClick={() =>
+                            handleWriteReview(
+                              item.product._id || item.product,
+                              item.product.slug
+                            )
+                          }
                           className="review-btn"
                         >
+                          <Star size={14} />
                           Write Review
                         </Button>
-                      )}
-                      
-                      {item.hasReview && (
-                        <span className="reviewed-badge">✓ Reviewed</span>
                       )}
                     </div>
                   </div>
@@ -250,11 +314,21 @@ const OrdersPage = () => {
               </div>
 
               <div className="order-actions">
-                <Button variant="outline" size="sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleViewDetails(order._id)}
+                >
                   View Details
                 </Button>
-                {order.status === 'pending' && (
-                  <Button variant="ghost" size="sm">
+                {["pending", "confirmed"].includes(order.status) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCancelOrder(order._id)}
+                    loading={cancellingOrder === order._id}
+                    disabled={cancellingOrder === order._id}
+                  >
                     Cancel Order
                   </Button>
                 )}
@@ -289,7 +363,7 @@ const WishlistPage = () => {
       const response = await userAPI.getWishlist();
       setWishlist(response.data.wishlist);
     } catch (error) {
-      console.error('Failed to load wishlist:', error);
+      console.error("Failed to load wishlist:", error);
     } finally {
       setLoading(false);
     }
@@ -298,9 +372,11 @@ const WishlistPage = () => {
   const removeFromWishlist = async (productId) => {
     try {
       await userAPI.removeFromWishlist(productId);
-      setWishlist(wishlist.filter(item => item._id !== productId));
+      setWishlist(wishlist.filter((item) => item._id !== productId));
+      toast.success("Removed from wishlist");
     } catch (error) {
-      console.error('Failed to remove from wishlist:', error);
+      console.error("Failed to remove from wishlist:", error);
+      toast.error("Failed to remove from wishlist");
     }
   };
 
@@ -315,11 +391,11 @@ const WishlistPage = () => {
 
       {wishlist.length > 0 ? (
         <div className="wishlist-grid">
-          {wishlist.map(product => (
+          {wishlist.map((product) => (
             <div key={product._id} className="wishlist-item">
               <div className="item-image">
                 <img src={product.images[0]?.url} alt={product.name} />
-                <button 
+                <button
                   className="remove-btn"
                   onClick={() => removeFromWishlist(product._id)}
                 >
@@ -329,8 +405,11 @@ const WishlistPage = () => {
               <div className="item-info">
                 <h3>{product.name}</h3>
                 <p className="brand">{product.brand}</p>
-                <p className="price">${product.salePrice || product.price}</p>
-                <Link to={`/product/${product.slug}`} className="btn btn-primary btn-sm">
+                <p className="price">₹{product.salePrice || product.price}</p>
+                <Link
+                  to={`/product/${product.slug}`}
+                  className="btn btn-primary btn-sm"
+                >
                   View Product
                 </Link>
               </div>
@@ -356,78 +435,90 @@ const Account = () => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) return <Loading size="lg" fullScreen />;
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   return (
     <BackgroundWrapper>
-    <div className="account-page">
-      <div className="container">
-        <div className="account-layout">
-          {/* Sidebar Navigation */}
-          <div className="account-sidebar">
-            <nav className="account-nav">
-              <Link 
-                to="/account" 
-                className={`nav-link ${location.pathname === '/account' ? 'active' : ''}`}
-              >
-                <User size={20} />
-                Dashboard
-              </Link>
-              <Link 
-                to="/account/orders" 
-                className={`nav-link ${location.pathname === '/account/orders' ? 'active' : ''}`}
-              >
-                <Package size={20} />
-                My Orders
-              </Link>
-              <Link 
-                to="/account/wishlist" 
-                className={`nav-link ${location.pathname === '/account/wishlist' ? 'active' : ''}`}
-              >
-                <Heart size={20} />
-                Wishlist
-              </Link>
-              <Link 
-                to="/account/addresses" 
-                className={`nav-link ${location.pathname === '/account/addresses' ? 'active' : ''}`}
-              >
-                <MapPin size={20} />
-                Addresses
-              </Link>
-              <Link 
-                to="/account/reviews" 
-                className={`nav-link ${location.pathname === '/account/reviews' ? 'active' : ''}`}
-              >
-                <Star size={20} />  {/* Add this import: import { Star } from 'lucide-react' */}
-                My Reviews
-              </Link>
-              <Link 
-                to="/account/profile" 
-                className={`nav-link ${location.pathname === '/account/profile' ? 'active' : ''}`}
-              >
-                <SettingsIcon size={20} />
-                Settings
-              </Link>
-            </nav>
-          </div>
+      <div className="account-page">
+        <div className="container">
+          <div className="account-layout">
+            {/* Sidebar Navigation */}
+            <div className="account-sidebar">
+              <nav className="account-nav">
+                <Link
+                  to="/account"
+                  className={`nav-link ${
+                    location.pathname === "/account" ? "active" : ""
+                  }`}
+                >
+                  <User size={20} />
+                  Dashboard
+                </Link>
+                <Link
+                  to="/account/orders"
+                  className={`nav-link ${
+                    location.pathname === "/account/orders" ? "active" : ""
+                  }`}
+                >
+                  <Package size={20} />
+                  My Orders
+                </Link>
+                <Link
+                  to="/account/wishlist"
+                  className={`nav-link ${
+                    location.pathname === "/account/wishlist" ? "active" : ""
+                  }`}
+                >
+                  <Heart size={20} />
+                  Wishlist
+                </Link>
+                <Link
+                  to="/account/addresses"
+                  className={`nav-link ${
+                    location.pathname === "/account/addresses" ? "active" : ""
+                  }`}
+                >
+                  <MapPin size={20} />
+                  Addresses
+                </Link>
+                <Link
+                  to="/account/reviews"
+                  className={`nav-link ${
+                    location.pathname === "/account/reviews" ? "active" : ""
+                  }`}
+                >
+                  <Star size={20} />
+                  My Reviews
+                </Link>
+                <Link
+                  to="/account/profile"
+                  className={`nav-link ${
+                    location.pathname === "/account/profile" ? "active" : ""
+                  }`}
+                >
+                  <SettingsIcon size={20} />
+                  Settings
+                </Link>
+              </nav>
+            </div>
 
-          {/* Main Content */}
-          <div className="account-main">
-            <Routes>
-              <Route index element={<AccountDashboard />} />
-              <Route path="orders" element={<OrdersPage />} />
-              <Route path="wishlist" element={<WishlistPage />} />
-              <Route path="addresses" element={<Addresses />} />
-              <Route path="profile" element={<Settings/>} />
-              <Route path="reviews" element={<UserReviews />} />
-            </Routes>
+            {/* Main Content */}
+            <div className="account-main">
+              <Routes>
+                <Route index element={<AccountDashboard />} />
+                <Route path="orders" element={<OrdersPage />} />
+                <Route path="wishlist" element={<WishlistPage />} />
+                <Route path="addresses" element={<Addresses />} />
+                <Route path="profile" element={<Settings />} />
+                <Route path="reviews" element={<UserReviews />} />
+              </Routes>
+            </div>
           </div>
         </div>
       </div>
-    </div>
     </BackgroundWrapper>
   );
 };

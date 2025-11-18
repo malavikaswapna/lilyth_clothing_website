@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Heart,
   ShoppingBag,
@@ -10,10 +10,6 @@ import {
   RefreshCw,
   Shield,
   ArrowLeft,
-  ChartNoAxesColumnIncreasing,
-  AlignVerticalJustifyCenterIcon,
-  Ticket,
-  Space,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
@@ -33,8 +29,10 @@ import ProductReviews from "../../components/ProductReviews";
 const ProductDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated } = useAuth();
   const { addToCart } = useCart();
+  const reviewsSectionRef = useRef(null);
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -56,18 +54,64 @@ const ProductDetail = () => {
   useEffect(() => {
     if (isAuthenticated && product) {
       checkUserCanReview();
-
-      // TEMPORARY: Allow all authenticated users to review for testing
-      console.log("TEMP: Setting userCanReview to true for testing");
-      setUserCanReview(true);
     }
   }, [isAuthenticated, product]);
+
+  // Handle scroll to reviews section when navigated from orders page
+  useEffect(() => {
+    if (location.state?.scrollToReviews && reviewsSectionRef.current) {
+      setTimeout(() => {
+        reviewsSectionRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 500);
+    }
+  }, [location, product]);
 
   const loadProduct = async () => {
     try {
       setLoading(true);
       const response = await productsAPI.getProductBySlug(slug);
       const productData = response.data.product;
+
+      // ========== ADD THIS DEBUG CODE ==========
+      console.log("\n===========================================");
+      console.log("🔍 PRODUCT DETAILS DEBUG");
+      console.log("===========================================");
+      console.log("Product Name:", productData.name);
+      console.log("Product SKU:", productData.sku);
+      console.log("---");
+
+      // Check materials
+      console.log("📦 MATERIALS:");
+      console.log("  Type:", typeof productData.materials);
+      console.log("  Is Array?", Array.isArray(productData.materials));
+      console.log("  Length:", productData.materials?.length || 0);
+      console.log("  Value:", productData.materials);
+      console.log("---");
+
+      // Check features
+      console.log("✨ FEATURES:");
+      console.log("  Type:", typeof productData.features);
+      console.log("  Is Array?", Array.isArray(productData.features));
+      console.log("  Length:", productData.features?.length || 0);
+      console.log("  Value:", productData.features);
+      console.log("---");
+
+      // Check care instructions
+      console.log("🧼 CARE INSTRUCTIONS:");
+      console.log("  Type:", typeof productData.careInstructions);
+      console.log("  Is Array?", Array.isArray(productData.careInstructions));
+      console.log("  Length:", productData.careInstructions?.length || 0);
+      console.log("  Value:", productData.careInstructions);
+      console.log("---");
+
+      // Full product data (collapsed in console)
+      console.log("📋 FULL PRODUCT DATA:", productData);
+      console.log("===========================================\n");
+      // ========== END DEBUG CODE ==========
+
       setProduct(productData);
 
       // Set default selections
@@ -105,7 +149,7 @@ const ProductDetail = () => {
     console.log("Product ID:", product._id);
 
     try {
-      // Check if user has purchased this product and can review it
+      // Check if user has purchased this product and it's been delivered
       const response = await ordersAPI.getMyOrders({
         status: "delivered",
       });
@@ -114,29 +158,36 @@ const ProductDetail = () => {
 
       if (response.data.orders && response.data.orders.length > 0) {
         console.log("Found delivered orders:", response.data.orders.length);
+
         // Find orders that contain this product
         const orderWithProduct = response.data.orders.find((order) => {
           console.log("Checking order:", order._id);
           console.log("Order items:", order.items);
 
           return order.items.some((item) => {
-            console.log("Item product ID:", item.product._id || item.product);
+            const itemProductId = item.product._id || item.product;
+            console.log("Item product ID:", itemProductId);
             console.log("Current product ID:", product._id);
-            return (
-              item.product._id === product._id || item.product === product._id
-            );
+            return itemProductId === product._id;
           });
         });
 
         console.log("Order with product found:", !!orderWithProduct);
 
         if (orderWithProduct) {
-          setUserCanReview(true);
           setRelevantOrderId(orderWithProduct._id);
-          console.log("User can review: TRUE");
+          console.log("User has purchased this product");
+        } else {
+          console.log("User has not purchased this product");
+          setUserCanReview(false);
+          setUserExistingReview(null);
+          return;
         }
       } else {
         console.log("No delivered orders found");
+        setUserCanReview(false);
+        setUserExistingReview(null);
+        return;
       }
 
       // Check if user already has a review for this product
@@ -147,10 +198,10 @@ const ProductDetail = () => {
         reviewResponse.data.reviews &&
         reviewResponse.data.reviews.length > 0
       ) {
-        const existingReview = reviewResponse.data.reviews.find(
-          (review) =>
-            review.product._id === product._id || review.product === product._id
-        );
+        const existingReview = reviewResponse.data.reviews.find((review) => {
+          const reviewProductId = review.product._id || review.product;
+          return reviewProductId === product._id;
+        });
 
         console.log("Existing review found:", !!existingReview);
 
@@ -158,12 +209,49 @@ const ProductDetail = () => {
           setUserExistingReview(existingReview);
           setUserCanReview(false);
           console.log("User can review: FALSE (already reviewed)");
+        } else {
+          setUserExistingReview(null);
+          setUserCanReview(true);
+          console.log("User can review: TRUE (purchased but not reviewed)");
         }
+      } else {
+        setUserExistingReview(null);
+        setUserCanReview(true);
+        console.log("User can review: TRUE (no reviews yet)");
       }
     } catch (error) {
       console.error("Failed to check review eligibility:", error);
       setUserCanReview(false);
+      setUserExistingReview(null);
     }
+  };
+
+  const handleReviewChanged = (changeInfo) => {
+    console.log("=== REVIEW CHANGED CALLBACK ===");
+    console.log("Change info:", changeInfo);
+
+    if (changeInfo.action === "created") {
+      // User created a review - they can no longer add another
+      setUserExistingReview(changeInfo.review);
+      setUserCanReview(false);
+      console.log("Review created - user can no longer add review");
+    } else if (changeInfo.action === "updated") {
+      // User updated their review - update the reference
+      setUserExistingReview(changeInfo.review);
+      setUserCanReview(false);
+      console.log("Review updated - reference updated");
+    } else if (changeInfo.action === "deleted") {
+      // User deleted their review - they can add a new one
+      setUserExistingReview(null);
+      setUserCanReview(true);
+      console.log("Review deleted - user can now add new review");
+    }
+  };
+
+  const handleReviewDeleted = () => {
+    console.log("=== REVIEW DELETED CALLBACK ===");
+    setUserExistingReview(null);
+    setUserCanReview(true);
   };
 
   const handleAddToCart = async () => {
@@ -539,24 +627,90 @@ const ProductDetail = () => {
             <div className="tab-content">
               <div className="details-section">
                 <h3>Product Details</h3>
-                {product.materials && (
-                  <div className="detail-item">
-                    <strong>Materials:</strong> {product.materials.join(", ")}
+
+                {/* Full Description */}
+                {product.description && (
+                  <div className="detail-item" style={{ marginBottom: "20px" }}>
+                    <p>{product.description}</p>
                   </div>
                 )}
-                {product.features && (
-                  <div className="detail-item">
-                    <strong>Features:</strong> {product.features.join(", ")}
-                  </div>
-                )}
-                {product.careInstructions && (
-                  <div className="detail-item">
-                    <strong>Care Instructions:</strong>
-                    <ul>
+
+                {/* Materials Section - NOW ALWAYS SHOWS */}
+                <div className="detail-item">
+                  <strong>Materials:</strong>{" "}
+                  {product.materials && product.materials.length > 0 ? (
+                    <span>{product.materials.join(", ")}</span>
+                  ) : (
+                    <span
+                      className="not-available"
+                      style={{ color: "#999", fontStyle: "italic" }}
+                    >
+                      Material information not available
+                    </span>
+                  )}
+                </div>
+
+                {/* Features Section - NOW ALWAYS SHOWS */}
+                <div className="detail-item">
+                  <strong>Features:</strong>{" "}
+                  {product.features && product.features.length > 0 ? (
+                    <span>{product.features.join(", ")}</span>
+                  ) : (
+                    <span
+                      className="not-available"
+                      style={{ color: "#999", fontStyle: "italic" }}
+                    >
+                      Features not specified
+                    </span>
+                  )}
+                </div>
+
+                {/* Care Instructions Section - NOW ALWAYS SHOWS */}
+                <div className="detail-item">
+                  <strong>Care Instructions:</strong>
+                  {product.careInstructions &&
+                  product.careInstructions.length > 0 ? (
+                    <ul style={{ marginLeft: "20px", marginTop: "8px" }}>
                       {product.careInstructions.map((instruction, index) => (
                         <li key={index}>{instruction}</li>
                       ))}
                     </ul>
+                  ) : (
+                    <p
+                      className="not-available"
+                      style={{
+                        color: "#999",
+                        fontStyle: "italic",
+                        marginLeft: "0",
+                        marginTop: "8px",
+                      }}
+                    >
+                      Care instructions not available
+                    </p>
+                  )}
+                </div>
+
+                {/* Measurements - if available */}
+                {product.measurements && (
+                  <div className="detail-item" style={{ marginTop: "20px" }}>
+                    <strong>Measurements:</strong>
+                    <div style={{ marginLeft: "20px", marginTop: "8px" }}>
+                      {product.measurements.bust && (
+                        <div>Bust: {product.measurements.bust}</div>
+                      )}
+                      {product.measurements.waist && (
+                        <div>Waist: {product.measurements.waist}</div>
+                      )}
+                      {product.measurements.hips && (
+                        <div>Hips: {product.measurements.hips}</div>
+                      )}
+                      {product.measurements.length && (
+                        <div>Length: {product.measurements.length}</div>
+                      )}
+                      {product.measurements.sleeves && (
+                        <div>Sleeves: {product.measurements.sleeves}</div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -597,12 +751,17 @@ const ProductDetail = () => {
             </div>
           )}
 
-          <ProductReviews
-            productId={product._id}
-            userCanReview={userCanReview}
-            orderId={relevantOrderId}
-            existingUserReview={userExistingReview}
-          />
+          {/* Reviews Section with ref for scrolling */}
+          <div ref={reviewsSectionRef}>
+            <ProductReviews
+              productId={product._id}
+              userCanReview={userCanReview}
+              orderId={relevantOrderId}
+              existingUserReview={userExistingReview}
+              onReviewChanged={handleReviewChanged}
+              autoOpenForm={location.state?.openReviewForm}
+            />
+          </div>
         </div>
       </div>
     </BackgroundWrapper>

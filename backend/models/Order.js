@@ -195,6 +195,25 @@ const orderSchema = new mongoose.Schema(
       },
     },
 
+    // Discount/Promo Code
+    discount: {
+      amount: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      code: String,
+      promoCode: {
+        type: mongoose.Schema.ObjectId,
+        ref: "PromoCode",
+      },
+      type: {
+        type: String,
+        enum: ["percentage", "fixed", "none"],
+        default: "none",
+      },
+    },
+
     // Order Status and Tracking
     status: {
       type: String,

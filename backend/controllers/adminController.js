@@ -8,6 +8,7 @@ const csv = require("csv-stringify");
 const crypto = require("crypto");
 const { auditLogger, AuditLog } = require("../utils/auditLogger");
 const inventoryMonitor = require("../utils/inventoryMonitor");
+const StoreSettings = require("../models/StoreSettings");
 
 // @desc    Get admin dashboard analytics
 // @route   GET /api/admin/dashboard
@@ -1288,7 +1289,11 @@ exports.getSalesReport = asyncHandler(async (req, res) => {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    // Get sales data
+    // Calculate previous period for growth comparison
+    const previousStartDate = new Date(startDate);
+    previousStartDate.setDate(previousStartDate.getDate() - days);
+
+    // Get current period sales data
     const salesStats = await Order.aggregate([
       {
         $match: {
@@ -1306,7 +1311,50 @@ exports.getSalesReport = asyncHandler(async (req, res) => {
       },
     ]);
 
-    // Get top products
+    // Get previous period sales data for growth calculation
+    const previousSalesStats = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: previousStartDate, $lt: startDate },
+          status: { $nin: ["cancelled"] },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$total" },
+          totalOrders: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const stats = salesStats[0] || {
+      totalRevenue: 0,
+      totalOrders: 0,
+      averageOrderValue: 0,
+    };
+
+    const prevStats = previousSalesStats[0] || {
+      totalRevenue: 0,
+      totalOrders: 0,
+    };
+
+    // Calculate real growth percentages
+    const revenueGrowth =
+      prevStats.totalRevenue > 0
+        ? ((stats.totalRevenue - prevStats.totalRevenue) /
+            prevStats.totalRevenue) *
+          100
+        : 0;
+
+    const ordersGrowth =
+      prevStats.totalOrders > 0
+        ? ((stats.totalOrders - prevStats.totalOrders) /
+            prevStats.totalOrders) *
+          100
+        : 0;
+
+    // Get top products with real growth data
     const topProducts = await Order.aggregate([
       {
         $match: {
@@ -1319,7 +1367,7 @@ exports.getSalesReport = asyncHandler(async (req, res) => {
         $group: {
           _id: "$items.product",
           sales: { $sum: "$items.quantity" },
-          revenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } },
+          revenue: { $sum: "$items.totalPrice" },
         },
       },
       { $sort: { revenue: -1 } },
@@ -1339,7 +1387,6 @@ exports.getSalesReport = asyncHandler(async (req, res) => {
           image: { $arrayElemAt: ["$productInfo.images.url", 0] },
           sales: 1,
           revenue: 1,
-          growth: { $literal: Math.random() * 20 - 10 }, // Placeholder for growth calculation
         },
       },
     ]);
@@ -1375,33 +1422,88 @@ exports.getSalesReport = asyncHandler(async (req, res) => {
         $group: {
           _id: "$category._id",
           name: { $first: "$category.name" },
-          revenue: { $sum: { $multiply: ["$items.price", "$items.quantity"] } },
+          revenue: { $sum: "$items.totalPrice" },
         },
       },
       { $sort: { revenue: -1 } },
     ]);
 
-    const stats = salesStats[0] || {
-      totalRevenue: 0,
-      totalOrders: 0,
-      averageOrderValue: 0,
-    };
+    // Get sales by month (for charts)
+    const salesByMonth = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate },
+          status: { $nin: ["cancelled"] },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" },
+          },
+          revenue: { $sum: "$total" },
+          orders: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } },
+      {
+        $project: {
+          month: {
+            $concat: [
+              { $toString: "$_id.year" },
+              "-",
+              { $toString: "$_id.month" },
+            ],
+          },
+          revenue: 1,
+          orders: 1,
+        },
+      },
+    ]);
+
+    // Get recent high-value transactions
+    const recentTransactions = await Order.find({
+      createdAt: { $gte: startDate },
+      status: { $nin: ["cancelled"] },
+    })
+      .sort({ total: -1 })
+      .limit(10)
+      .populate("user", "firstName lastName email")
+      .select("orderNumber total status createdAt user");
+
+    // Calculate conversion rate (orders / total site visitors - placeholder)
+    // You would need to track site visitors separately
+    const conversionRate = 3.5; // Placeholder
 
     res.status(200).json({
       success: true,
-      ...stats,
-      revenueGrowth: Math.random() * 20 - 10, // Placeholder
-      ordersGrowth: Math.random() * 20 - 10, // Placeholder
-      conversionRate: Math.random() * 5 + 2, // Placeholder
+      totalRevenue: stats.totalRevenue,
+      totalOrders: stats.totalOrders,
+      averageOrderValue: stats.averageOrderValue,
+      revenueGrowth,
+      ordersGrowth,
+      conversionRate,
       topProducts,
       salesByCategory,
-      recentTransactions: [], // Add recent high-value transactions if needed
+      salesByMonth,
+      recentTransactions: recentTransactions.map((order) => ({
+        _id: order._id,
+        orderNumber: order.orderNumber,
+        customerName: order.user
+          ? `${order.user.firstName} ${order.user.lastName}`
+          : "Guest",
+        amount: order.total,
+        date: order.createdAt,
+        status: order.status,
+      })),
     });
   } catch (error) {
     console.error("Sales report error:", error);
     res.status(500).json({
       success: false,
       message: "Error generating sales report",
+      error: error.message,
     });
   }
 });
@@ -1553,12 +1655,32 @@ exports.getCustomersReport = asyncHandler(async (req, res) => {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const totalCustomers = await User.countDocuments({ role: "user" });
+    // Calculate previous period for growth comparison
+    const previousStartDate = new Date(startDate);
+    previousStartDate.setDate(previousStartDate.getDate() - days);
+
+    // Get total customers (using 'customer' role, not 'user')
+    const totalCustomers = await User.countDocuments({ role: "customer" });
+
+    // Get new customers in current period
     const newCustomers = await User.countDocuments({
-      role: "user",
+      role: "customer",
       createdAt: { $gte: startDate },
     });
 
+    // Get new customers in previous period for growth calculation
+    const previousNewCustomers = await User.countDocuments({
+      role: "customer",
+      createdAt: { $gte: previousStartDate, $lt: startDate },
+    });
+
+    // Calculate real customer growth
+    const customerGrowth =
+      previousNewCustomers > 0
+        ? ((newCustomers - previousNewCustomers) / previousNewCustomers) * 100
+        : 0;
+
+    // Get repeat customers (customers with more than 1 order)
     const repeatCustomers = await Order.aggregate([
       {
         $group: {
@@ -1574,6 +1696,7 @@ exports.getCustomersReport = asyncHandler(async (req, res) => {
       },
     ]);
 
+    // Get top customers by spending
     const topCustomers = await Order.aggregate([
       {
         $group: {
@@ -1605,9 +1728,10 @@ exports.getCustomersReport = asyncHandler(async (req, res) => {
       },
     ]);
 
+    // Get customers by location
     const customersByLocation = await User.aggregate([
-      { $match: { role: "user" } },
-      { $unwind: { path: "$addresses", preserveNullAndEmptyArrays: true } },
+      { $match: { role: "customer" } },
+      { $unwind: { path: "$addresses", preserveNullAndEmptyArrays: false } },
       {
         $group: {
           _id: {
@@ -1617,10 +1741,12 @@ exports.getCustomersReport = asyncHandler(async (req, res) => {
           count: { $sum: 1 },
         },
       },
+      { $match: { "_id.city": { $ne: null }, "_id.state": { $ne: null } } },
       { $sort: { count: -1 } },
       { $limit: 10 },
       {
         $project: {
+          _id: { $concat: ["$_id.city", ", ", "$_id.state"] },
           city: "$_id.city",
           state: "$_id.state",
           count: 1,
@@ -1633,15 +1759,17 @@ exports.getCustomersReport = asyncHandler(async (req, res) => {
       totalCustomers,
       newCustomers,
       repeatCustomers: repeatCustomers[0]?.repeatCustomers || 0,
-      customerGrowth: Math.random() * 20 - 5, // Placeholder
+      customerGrowth,
       topCustomers,
       customersByLocation,
+      acquisitionChannels: [], // Placeholder - would need tracking implementation
     });
   } catch (error) {
     console.error("Customers report error:", error);
     res.status(500).json({
       success: false,
       message: "Error generating customers report",
+      error: error.message,
     });
   }
 });
@@ -1684,6 +1812,141 @@ exports.getReviewStats = asyncHandler(async (req, res) => {
       averageRating: averageRating[0]?.average || 0,
       ratingDistribution,
     },
+  });
+});
+
+// @desc    Get notification settings
+// @route   GET /api/admin/settings/notifications
+// @access  Private/Admin
+exports.getNotificationSettings = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user.id).select("notificationSettings");
+
+  res.status(200).json({
+    success: true,
+    settings: user.notificationSettings || {
+      emailNotifications: true,
+      orderUpdates: true,
+      newUsers: true,
+      lowStock: true,
+      salesReports: false,
+      systemUpdates: true,
+    },
+  });
+});
+
+// @desc    Update notification settings
+// @route   PUT /api/admin/settings/notifications
+// @access  Private/Admin
+exports.updateNotificationSettings = asyncHandler(async (req, res) => {
+  const { notificationSettings } = req.body;
+
+  const user = await User.findByIdAndUpdate(
+    req.user.id,
+    { notificationSettings },
+    { new: true, runValidators: true }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Notification settings updated",
+    settings: user.notificationSettings,
+  });
+});
+
+// @desc    Get store settings
+// @route   GET /api/admin/settings/store
+// @access  Private/Admin
+exports.getStoreSettings = asyncHandler(async (req, res) => {
+  const settings = await StoreSettings.getSettings();
+
+  res.status(200).json({
+    success: true,
+    settings,
+  });
+});
+
+// @desc    Update store settings
+// @route   PUT /api/admin/settings/store
+// @access  Private/Admin
+exports.updateStoreSettings = asyncHandler(async (req, res) => {
+  const {
+    storeName,
+    storeDescription,
+    currency,
+    timezone,
+    language,
+    taxRate,
+    freeShippingThreshold,
+    standardShippingCost,
+    expressShippingCost,
+    businessInfo,
+    features,
+  } = req.body;
+
+  // Validate numeric fields
+  if (taxRate !== undefined && (taxRate < 0 || taxRate > 100)) {
+    return res.status(400).json({
+      success: false,
+      message: "Tax rate must be between 0 and 100",
+    });
+  }
+
+  if (freeShippingThreshold !== undefined && freeShippingThreshold < 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Free shipping threshold cannot be negative",
+    });
+  }
+
+  if (standardShippingCost !== undefined && standardShippingCost < 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Standard shipping cost cannot be negative",
+    });
+  }
+
+  if (expressShippingCost !== undefined && expressShippingCost < 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Express shipping cost cannot be negative",
+    });
+  }
+
+  // Build update object with only provided fields
+  const updates = {};
+  if (storeName !== undefined) updates.storeName = storeName;
+  if (storeDescription !== undefined)
+    updates.storeDescription = storeDescription;
+  if (currency !== undefined) updates.currency = currency;
+  if (timezone !== undefined) updates.timezone = timezone;
+  if (language !== undefined) updates.language = language;
+  if (taxRate !== undefined) updates.taxRate = taxRate;
+  if (freeShippingThreshold !== undefined)
+    updates.freeShippingThreshold = freeShippingThreshold;
+  if (standardShippingCost !== undefined)
+    updates.standardShippingCost = standardShippingCost;
+  if (expressShippingCost !== undefined)
+    updates.expressShippingCost = expressShippingCost;
+  if (businessInfo !== undefined) updates.businessInfo = businessInfo;
+  if (features !== undefined) updates.features = features;
+
+  const settings = await StoreSettings.updateSettings(updates, req.user._id);
+
+  // Log the change
+  await auditLogger.log({
+    userId: req.user._id,
+    action: "UPDATE_STORE_SETTINGS",
+    resource: "store_settings",
+    resourceId: settings._id,
+    details: {
+      updates: Object.keys(updates),
+    },
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Store settings updated successfully",
+    settings,
   });
 });
 

@@ -206,7 +206,7 @@
 }
 
 .review-meta .star-rating {
-  display: flex !important;      /* make sure gap works */
+  display: flex !important; /* make sure gap works */
   gap: 0.5rem !important;
 }
 
@@ -294,7 +294,7 @@
 }
 
 .checkbox-container input[type="checkbox"]:checked + .checkmark::after {
-  content: '✓';
+  content: "✓";
   position: absolute;
   color: white;
   font-size: 0.875rem;
@@ -445,7 +445,7 @@
 
 .owner-actions {
   display: flex !important;
-  gap: 0.75rem !important;   /* space between buttons */
+  gap: 0.75rem !important; /* space between buttons */
   flex-wrap: wrap;
 }
 
@@ -569,4 +569,60 @@
     text-align: center;
     gap: 0.75rem;
   }
+}
+
+.flag-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.flag-btn:hover {
+  background: #fee;
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.flag-modal {
+  max-width: 500px;
+}
+
+.flag-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.flag-reason-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.flag-reason-option:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.flag-reason-option input[type="radio"]:checked + span {
+  font-weight: 600;
+}
+
+.flag-reason-option input[type="radio"] {
+  width: 18px;
+  height: 18px;
 }

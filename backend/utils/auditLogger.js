@@ -53,6 +53,13 @@ const auditLogSchema = new mongoose.Schema(
         "PINCODE_VALIADTED",
         "PINCODE_VERIFIED",
         "ADDRESS_AUTOCORRECTED",
+        // Promo Code actions
+        "PROMO_CODE_CREATED",
+        "PROMO_CODE_UPDATED",
+        "PROMO_CODE_DELETED",
+        "PROMO_CODE_STATUS_CHANGED",
+        "PROMO_CODE_VALIDATED",
+        "PROMO_CODE_APPLIED",
         // Inventory alerts - ADD THIS
         "INVENTORY_ALERT",
         "STOCK_WARNING",

@@ -429,7 +429,9 @@ const OrderSuccess = () => {
             <p>
               If you have any questions about your order, please contact our
               customer support at{" "}
-              <a href="mailto:support@lilyth.com">support@lilyth.com</a>
+              <a href="mailto:clothingbrand@lilyth.in">
+                clothingbrand@lilyth.in
+              </a>
             </p>
           </div>
         </div>

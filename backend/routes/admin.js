@@ -25,6 +25,10 @@ const {
   getInventoryAlerts,
   getStockPrediction,
   getReviewStats,
+  getNotificationSettings,
+  updateNotificationSettings,
+  getStoreSettings,
+  updateStoreSettings,
 } = require("../controllers/adminController");
 const { protect, authorize } = require("../middleware/auth");
 const {
@@ -34,6 +38,15 @@ const {
 const { getContactStats } = require("../controllers/contactController");
 const { getDefaultHighWaterMark } = require("nodemailer/lib/xoauth2");
 const { MongoServerSelectionError } = require("mongodb");
+const {
+  getAllPromoCodes,
+  getPromoCode,
+  createPromoCode,
+  updatePromoCode,
+  togglePromoCodeStatus,
+  deletePromoCode,
+  getPromoCodeStats,
+} = require("../controllers/promoCodeController");
 
 const router = express.Router();
 
@@ -106,5 +119,22 @@ router.get("/contact/stats", getContactStats);
 router.get("/reviews", getAllReviews);
 router.get("/reviews/stats", getReviewStats);
 router.put("/reviews/:id/moderate", moderateReview);
+
+// promo code routes
+router.get("/promo-codes", getAllPromoCodes);
+router.get("/promo-codes/stats", getPromoCodeStats);
+router.get("/promo-codes/:id", getPromoCode);
+router.post("/promo-codes", createPromoCode);
+router.put("/promo-codes/:id", updatePromoCode);
+router.put("/promo-codes/:id/toggle", togglePromoCodeStatus);
+router.delete("/promo-codes/:id", deletePromoCode);
+
+// Notification settings routes
+router.get("/settings/notifications", getNotificationSettings);
+router.put("/settings/notifications", updateNotificationSettings);
+
+// Store settings routes
+router.get("/settings/store", getStoreSettings);
+router.put("/settings/store", updateStoreSettings);
 
 module.exports = router;

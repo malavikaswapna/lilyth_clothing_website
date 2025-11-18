@@ -4,18 +4,28 @@ import axios from "axios";
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || "http://localhost:3001/api",
   timeout: 30000,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  // DON'T set Content-Type here - let axios handle it automatically
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token and handle FormData
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // CRITICAL: Only set Content-Type to application/json if NOT FormData
+    // If it's FormData, let the browser set the Content-Type automatically
+    // (it needs to include the boundary parameter)
+    if (!(config.data instanceof FormData)) {
+      config.headers["Content-Type"] = "application/json";
+    }
+    // If it IS FormData, delete any Content-Type to let browser handle it
+    else {
+      delete config.headers["Content-Type"];
+    }
+
     return config;
   },
   (error) => {
@@ -42,6 +52,7 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 // Auth API calls
 export const authAPI = {
   login: (credentials) => api.post("/auth/login", credentials),
@@ -58,13 +69,52 @@ export const authAPI = {
 
 // Products API calls
 export const productsAPI = {
-  getProducts: (params) => api.get("/products", { params }),
+  getProducts: (params) => {
+    // Add timestamp to prevent caching
+    const paramsWithTimestamp = {
+      ...params,
+      _t: Date.now(),
+    };
 
-  // FIXED: Simple cache-busting with timestamp only (no custom headers)
-  getProduct: (id) => api.get(`/products/${id}?_t=${Date.now()}`),
+    return api.get("/products", {
+      params: paramsWithTimestamp,
+      headers: {
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    });
+  },
 
-  getProductBySlug: (slug) => api.get(`/products/slug/${slug}`),
-  getRelatedProducts: (id) => api.get(`/products/${id}/related`),
+  getProduct: (id) => {
+    return api.get(`/products/${id}`, {
+      params: { _t: Date.now() },
+      headers: {
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    });
+  },
+
+  getProductBySlug: (slug) => {
+    return api.get(`/products/slug/${slug}`, {
+      params: { _t: Date.now() },
+      headers: {
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    });
+  },
+
+  getRelatedProducts: (id) => {
+    return api.get(`/products/${id}/related`, {
+      params: { _t: Date.now() },
+      headers: {
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    });
+  },
+
   // Admin only
   createProduct: (data) => api.post("/products", data),
   updateProduct: (id, data) => api.put(`/products/${id}`, data),
@@ -131,11 +181,29 @@ export const ordersAPI = {
   },
 
   getMyOrders: (params) => api.get("/orders", { params }),
-  getOrder: (id) => api.get(`/orders/${id}`),
+
+  getOrder: (id) => {
+    return api.get(`/orders/${id}`).then((response) => {
+      // Ensure product slugs are available in items
+      if (response.data.order && response.data.order.items) {
+        response.data.order.items = response.data.order.items.map((item) => ({
+          ...item,
+          product: {
+            ...item.product,
+            slug: item.product?.slug || null,
+          },
+        }));
+      }
+      return response;
+    });
+  },
+
   cancelOrder: (id, reason) => api.put(`/orders/${id}/cancel`, { reason }),
-  createPaymentOrder: (data) => api.post("/orders/create-payment", data),
-  verifyPayment: (data) => api.post("/orders/verify-payment", data),
-  handlePaymentFailure: (data) => api.post("/orders/payment-failed", data),
+
+  // Payment related endpoints - Updated to match backend routes
+  createPaymentOrder: (data) => api.post("/payments/create-order", data),
+  verifyPayment: (data) => api.post("/payments/verify", data),
+  handlePaymentFailure: (data) => api.post("/payments/failure", data),
 };
 
 // User API calls
@@ -165,42 +233,58 @@ export const contactAPI = {
   },
 };
 
-// Reviews API calls
+// Reviews API calls - FIXED VERSION
 export const reviewsAPI = {
   // Get reviews for a product
   getProductReviews: (productId, params = {}) => {
+    console.log("Getting product reviews for:", productId);
     const queryString = new URLSearchParams(params).toString();
-    return api.get(`/products/${productId}/reviews?${queryString}`);
+    const url = `/products/${productId}/reviews${
+      queryString ? `?${queryString}` : ""
+    }`;
+    console.log("Full URL:", url);
+    return api.get(url);
   },
 
   // Create a review
   createReview: (productId, reviewData) => {
+    console.log("Creating review for product:", productId);
+    console.log("Review data:", reviewData);
     return api.post(`/products/${productId}/reviews`, reviewData);
   },
 
   // Update a review
   updateReview: (reviewId, reviewData) => {
+    console.log("Updating review:", reviewId);
+    console.log("Update data:", reviewData);
     return api.put(`/reviews/${reviewId}`, reviewData);
   },
 
   // Delete a review
   deleteReview: (reviewId) => {
+    console.log("Deleting review:", reviewId);
     return api.delete(`/reviews/${reviewId}`);
   },
 
   // Mark review as helpful
   markHelpful: (reviewId, data) => {
+    console.log("Marking review helpful:", reviewId, data);
     return api.post(`/reviews/${reviewId}/helpful`, data);
   },
 
-  // Get user's reviews
+  // Get user's reviews - FIXED ENDPOINT
   getUserReviews: (params = {}) => {
+    console.log("Getting user reviews");
     const queryString = new URLSearchParams(params).toString();
-    return api.get(`/user/reviews?${queryString}`);
+    // Use the correct endpoint from user routes
+    const url = `/user/reviews${queryString ? `?${queryString}` : ""}`;
+    console.log("Full URL:", url);
+    return api.get(url);
   },
 
   // Flag a review
   flagReview: (reviewId, data) => {
+    console.log("Flagging review:", reviewId, data);
     return api.post(`/reviews/${reviewId}/flag`, data);
   },
 };
@@ -214,6 +298,43 @@ export const pincodeAPI = {
   verifyAddress: (data) => api.post("/pincode/verify-address", data),
   getDeliveryInfo: (pincode) => api.get(`/pincode/delivery-info/${pincode}`),
   getServiceAreas: () => api.get("/pincode/service-areas"),
+};
+
+// promo code API
+export const promoCodeAPI = {
+  // Customer APIs
+  validatePromoCode: (data) => api.post("/promo-codes/validate", data),
+
+  // Admin APIs
+  getAllPromoCodes: (params) => api.get("/promo-codes/admin/all", { params }),
+  getPromoCode: (id) => api.get(`/promo-codes/admin/${id}`),
+  createPromoCode: (data) => api.post("/promo-codes/admin/create", data),
+  updatePromoCode: (id, data) => api.put(`/promo-codes/admin/${id}`, data),
+  togglePromoCodeStatus: (id) => api.put(`/promo-codes/admin/${id}/toggle`),
+  deletePromoCode: (id) => api.delete(`/promo-codes/admin/${id}`),
+  getPromoCodeStats: () => api.get("/promo-codes/admin/stats"),
+};
+
+// Newsletter API calls
+export const newsletterAPI = {
+  // Subscribe to newsletter
+  subscribe: (data) => api.post("/newsletter/subscribe", data),
+
+  // Unsubscribe from newsletter
+  unsubscribe: (email) => api.post("/newsletter/unsubscribe", { email }),
+
+  // Admin only - get newsletter stats
+  getStats: () => api.get("/newsletter/stats"),
+
+  // Admin only - get all subscribers
+  getSubscribers: (params) => api.get("/newsletter/subscribers", { params }),
+
+  // Admin only - export subscribers
+  exportSubscribers: (params) =>
+    api.get("/newsletter/export", {
+      params,
+      responseType: "blob",
+    }),
 };
 
 // Admin API calls
@@ -265,6 +386,15 @@ export const adminAPI = {
       params,
       responseType: "blob",
     }),
+
+  // Notification Settings
+  getNotificationSettings: () => api.get("/admin/settings/notifications"),
+  updateNotificationSettings: (data) =>
+    api.put("/admin/settings/notifications", data),
+
+  // Store Settings  ← ADD THESE TWO LINES
+  getStoreSettings: () => api.get("/admin/settings/store"),
+  updateStoreSettings: (data) => api.put("/admin/settings/store", data),
 };
 
 export default api;

@@ -1,21 +1,21 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { authAPI } from '../services/api';
-import toast from 'react-hot-toast';
+import React, { createContext, useContext, useReducer, useEffect } from "react";
+import { authAPI } from "../services/api";
+import toast from "react-hot-toast";
 
 const AuthContext = createContext();
 
 const initialState = {
   user: null,
-  token: localStorage.getItem('token'),
+  token: localStorage.getItem("token"),
   isAuthenticated: false,
   loading: true,
 };
 
 const authReducer = (state, action) => {
   switch (action.type) {
-    case 'AUTH_START':
+    case "AUTH_START":
       return { ...state, loading: true };
-    case 'AUTH_SUCCESS':
+    case "AUTH_SUCCESS":
       return {
         ...state,
         user: action.payload.user,
@@ -23,7 +23,7 @@ const authReducer = (state, action) => {
         isAuthenticated: true,
         loading: false,
       };
-    case 'AUTH_FAIL':
+    case "AUTH_FAIL":
       return {
         ...state,
         user: null,
@@ -31,7 +31,7 @@ const authReducer = (state, action) => {
         isAuthenticated: false,
         loading: false,
       };
-    case 'LOGOUT':
+    case "LOGOUT":
       return {
         ...state,
         user: null,
@@ -39,7 +39,7 @@ const authReducer = (state, action) => {
         isAuthenticated: false,
         loading: false,
       };
-    case 'UPDATE_USER':
+    case "UPDATE_USER":
       return {
         ...state,
         user: { ...state.user, ...action.payload },
@@ -55,28 +55,28 @@ export const AuthProvider = ({ children }) => {
   // Check if user is logged in on mount
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-      
+      const token = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
+
       if (token && storedUser) {
         try {
           // Verify token is still valid
           const response = await authAPI.getProfile();
           dispatch({
-            type: 'AUTH_SUCCESS',
+            type: "AUTH_SUCCESS",
             payload: {
               user: response.data.user,
               token,
             },
           });
         } catch (error) {
-          console.log('Token invalid or expired');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          dispatch({ type: 'AUTH_FAIL' });
+          console.log("Token invalid or expired");
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          dispatch({ type: "AUTH_FAIL" });
         }
       } else {
-        dispatch({ type: 'AUTH_FAIL' });
+        dispatch({ type: "AUTH_FAIL" });
       }
     };
 
@@ -85,28 +85,28 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      dispatch({ type: 'AUTH_START' });
+      dispatch({ type: "AUTH_START" });
       const response = await authAPI.login(credentials);
       const { user, token } = response.data;
 
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
 
       dispatch({
-        type: 'AUTH_SUCCESS',
+        type: "AUTH_SUCCESS",
         payload: { user, token },
       });
 
       toast.success(`Welcome back, ${user.firstName}!`);
 
-      if (user.role === 'admin') {
+      if (user.role === "admin") {
         return { success: true, isAdmin: true };
-    }
+      }
 
       return { success: true, isAdmin: false };
     } catch (error) {
-      dispatch({ type: 'AUTH_FAIL' });
-      const message = error.response?.data?.message || 'Login failed';
+      dispatch({ type: "AUTH_FAIL" });
+      const message = error.response?.data?.message || "Login failed";
       toast.error(message);
       return { success: false, message };
     }
@@ -114,23 +114,23 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      dispatch({ type: 'AUTH_START' });
+      dispatch({ type: "AUTH_START" });
       const response = await authAPI.register(userData);
       const { user, token } = response.data;
 
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
 
       dispatch({
-        type: 'AUTH_SUCCESS',
+        type: "AUTH_SUCCESS",
         payload: { user, token },
       });
 
-      toast.success(`Welcome to AMOURA, ${user.firstName}!`);
+      toast.success(`Welcome to LILYTH, ${user.firstName}!`);
       return { success: true };
     } catch (error) {
-      dispatch({ type: 'AUTH_FAIL' });
-      const message = error.response?.data?.message || 'Registration failed';
+      dispatch({ type: "AUTH_FAIL" });
+      const message = error.response?.data?.message || "Registration failed";
       toast.error(message);
       return { success: false, message };
     }
@@ -139,41 +139,42 @@ export const AuthProvider = ({ children }) => {
   // NEW: Google authentication method
   const googleAuth = async (userData) => {
     try {
-      dispatch({ type: 'AUTH_START' });
+      dispatch({ type: "AUTH_START" });
       const response = await authAPI.googleAuth(userData);
       const { user, token } = response.data;
 
       // Store in localStorage
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
 
       // Update state
       dispatch({
-        type: 'AUTH_SUCCESS',
+        type: "AUTH_SUCCESS",
         payload: { user, token },
       });
 
-      console.log('Google auth successful:', user); // Debug log
+      console.log("Google auth successful:", user); // Debug log
       return { success: true };
     } catch (error) {
-      console.error('Google auth error:', error); // Debug log
-      dispatch({ type: 'AUTH_FAIL' });
-      const message = error.response?.data?.message || 'Google authentication failed';
+      console.error("Google auth error:", error); // Debug log
+      dispatch({ type: "AUTH_FAIL" });
+      const message =
+        error.response?.data?.message || "Google authentication failed";
       return { success: false, message };
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    dispatch({ type: 'LOGOUT' });
-    toast.success('Logged out successfully');
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    dispatch({ type: "LOGOUT" });
+    toast.success("Logged out successfully");
   };
 
   const updateUser = (userData) => {
     const updatedUser = { ...state.user, ...userData };
-    dispatch({ type: 'UPDATE_USER', payload: userData });
-    localStorage.setItem('user', JSON.stringify(updatedUser));
+    dispatch({ type: "UPDATE_USER", payload: userData });
+    localStorage.setItem("user", JSON.stringify(updatedUser));
   };
 
   const value = {
@@ -191,7 +192,7 @@ export const AuthProvider = ({ children }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

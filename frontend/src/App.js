@@ -12,6 +12,7 @@ import { useAuth } from "./context/AuthContext";
 // Layout Components
 import Layout from "./components/layout/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
+import AdminRoute from "./components/admin/AdminRoute";
 
 // Public Pages
 import Home from "./pages/Home";
@@ -26,6 +27,7 @@ import FAQ from "./pages/FAQ";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
+import CareInstructions from "./pages/CareInstructions";
 
 // Auth Pages
 import Login from "./pages/auth/Login";
@@ -33,6 +35,8 @@ import Register from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 import VerifyEmail from "./pages/auth/VerifyEmail";
+import PromoCodes from "./pages/admin/PromoCodes";
+import PromoCodeForm from "./pages/admin/PromoCodeForm";
 
 // Customer Pages
 import Account from "./pages/account/Account";
@@ -45,6 +49,7 @@ import Products from "./pages/admin/Products";
 import Orders from "./pages/admin/Orders";
 import Reports from "./pages/admin/Reports";
 import Settings from "./pages/admin/Settings";
+import Newsletter from "./pages/admin/Newsletter";
 
 // Components
 import Loading from "./components/common/Loading";
@@ -65,6 +70,7 @@ const CustomerRoutes = () => (
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/about" element={<About />} />
       <Route path="/contact" element={<Contact />} />
+      <Route path="/care-instructions" element={<CareInstructions />} />
 
       {/* Email Verification Route */}
       <Route path="/verify-email/:token" element={<VerifyEmail />} />
@@ -104,11 +110,15 @@ const AdminRoutes = () => (
     <Routes>
       <Route index element={<Dashboard />} />
       <Route path="users" element={<Users />} />
-      {/* Add other admin routes here as you create them */}
       <Route path="products" element={<Products />} />
       <Route path="orders" element={<Orders />} />
       <Route path="reports" element={<Reports />} />
       <Route path="settings" element={<Settings />} />
+      <Route path="promo-codes" element={<PromoCodes />} />
+      <Route path="promo-codes/create" element={<PromoCodeForm />} />
+      <Route path="promo-codes/edit/:id" element={<PromoCodeForm />} />
+      <Route path="promo-codes/:id" element={<PromoCodeForm />} />
+      <Route path="newsletter" element={<Newsletter />} />
 
       {/* Redirect any unmatched admin routes to dashboard */}
       <Route path="*" element={<Navigate to="/admin" replace />} />
