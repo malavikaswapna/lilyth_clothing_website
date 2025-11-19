@@ -12,7 +12,8 @@ import {
   LogOut,
   Menu,
   X,
-  Tag, // ✅ NEW: Import Tag icon for Promo Codes
+  Tag, // ✅ Import Tag icon for Promo Codes
+  Mail, // ✅ NEW: Import Mail icon for Newsletter
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import "./AdminLayout.css";
@@ -40,6 +41,11 @@ const AdminLayout = ({ children }) => {
       path: "/admin/promo-codes",
       icon: <Tag size={20} />,
       label: "Promo Codes",
+    },
+    {
+      path: "/admin/newsletter",
+      icon: <Mail size={20} />,
+      label: "Newsletter",
     }, // ✅ NEW
     { path: "/admin/reports", icon: <BarChart3 size={20} />, label: "Reports" },
     {

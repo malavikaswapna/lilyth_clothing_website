@@ -111,7 +111,7 @@ const Home = () => {
                 className="category-card available"
               >
                 <img
-                  src="https://i.pinimg.com/736x/80/97/91/809791d59aa6ab9ec3eaad9a657278d3.jpg"
+                  src="https://i.pinimg.com/736x/c7/39/ac/c739ac1b82625b7bc05d2a3a5c1fe1b7.jpg"
                   alt="Indo-Western"
                   className="category-image"
                 />

@@ -41,6 +41,7 @@ import PromoCodeForm from "./pages/admin/PromoCodeForm";
 // Customer Pages
 import Account from "./pages/account/Account";
 import OrderSuccess from "./pages/OrderSuccess";
+import Unsubscribe from "./pages/Unsubscribe";
 
 // Admin Pages
 import Dashboard from "./pages/admin/Dashboard";
@@ -70,6 +71,7 @@ const CustomerRoutes = () => (
       <Route path="/checkout" element={<Checkout />} />
       <Route path="/about" element={<About />} />
       <Route path="/contact" element={<Contact />} />
+      <Route path="/unsubscribe" element={<Unsubscribe />} />
       <Route path="/care-instructions" element={<CareInstructions />} />
 
       {/* Email Verification Route */}

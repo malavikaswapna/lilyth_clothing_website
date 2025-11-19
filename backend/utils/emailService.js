@@ -670,6 +670,75 @@ const emailService = {
     return sendEmail(email, template);
   },
 
+  // Newsletter campaign email
+  sendNewsletterCampaign: async ({
+    email,
+    subject,
+    message,
+    campaignType,
+    isPreview = false,
+  }) => {
+    const template = {
+      subject: isPreview ? `[PREVIEW] ${subject}` : subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #44465d; color: white; padding: 40px 20px; text-align: center; }
+            .content { background: #f9f9f9; padding: 30px 20px; }
+            .button { display: inline-block; background: #c98b63; color: white; padding: 15px 30px; 
+                     text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 20px; padding: 20px; font-size: 12px; color: #666; }
+            ${
+              isPreview
+                ? ".preview-banner { background: #fbbf24; color: #78350f; padding: 10px; text-align: center; font-weight: bold; }"
+                : ""
+            }
+          </style>
+        </head>
+        <body>
+          ${
+            isPreview
+              ? '<div class="preview-banner">⚠️ THIS IS A PREVIEW EMAIL - NOT SENT TO SUBSCRIBERS ⚠️</div>'
+              : ""
+          }
+          <div class="container">
+            <div class="header">
+              <h1>LILYTH</h1>
+            </div>
+            <div class="content">
+              ${message}
+              
+              <div class="footer">
+                <p>© 2025 LILYTH. All rights reserved.</p>
+                <p style="margin-top: 10px;">
+                  <a href="${
+                    process.env.CLIENT_URL
+                  }" style="color: #c98b63; text-decoration: none;">Visit Website</a> | 
+                  <a href="${
+                    process.env.CLIENT_URL
+                  }/contact" style="color: #c98b63; text-decoration: none;">Contact Us</a>
+                </p>
+                <p style="margin-top: 10px; color: #999; font-size: 11px;">
+                  You received this email because you subscribed to LILYTH newsletter.<br>
+                  <a href="${
+                    process.env.CLIENT_URL
+                  }/unsubscribe?email=${email}" style="color: #999;">Unsubscribe</a>
+                </p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    };
+    return sendEmail(email, template);
+  },
+
   // Generic send email for custom notifications
   sendEmail: async ({ to, subject, html, text }) => {
     const template = { subject, html };

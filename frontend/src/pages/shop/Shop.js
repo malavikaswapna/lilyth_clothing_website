@@ -1,6 +1,6 @@
 // Shop.js
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Filter, Grid, List, ChevronDown, X } from "lucide-react";
 import { productsAPI, categoriesAPI } from "../../services/api";
 import ProductCard from "../../components/product/ProductCard";
@@ -11,12 +11,13 @@ import BackgroundWrapper from "../../components/common/BackgroundWrapper";
 
 const Shop = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState("grid");
   const [showFilters, setShowFilters] = useState(false);
-  const [pagination, setPagination] = useState({});
+  const [pagination, setPagination] = useState({ total: 0, pages: 0, page: 1 });
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -142,7 +143,7 @@ const Shop = () => {
   const clearFilters = () => {
     const clearedFilters = {
       category: "",
-      search: filters.search, // Keep search term
+      search: "",
       sort: "newest",
       minPrice: "",
       maxPrice: "",
@@ -152,13 +153,10 @@ const Shop = () => {
       newArrivals: false,
       onSale: false,
     };
-    setFilters(clearedFilters);
 
-    const newParams = new URLSearchParams();
-    if (filters.search) {
-      newParams.set("search", filters.search);
-    }
-    setSearchParams(newParams);
+    setFilters(clearedFilters);
+    setSearchParams(new URLSearchParams());
+    navigate("/shop"); // ← This makes it work!
   };
 
   const getActiveFiltersCount = () => {
@@ -192,8 +190,7 @@ const Shop = () => {
               <h1 className="shop-title">{getPageTitle()}</h1>
               {!loading && (
                 <p className="shop-subtitle">
-                  {pagination.total || 0}{" "}
-                  {pagination.total === 1 ? "item" : "items"}
+                  {products.length} {products.length === 1 ? "item" : "items"}
                 </p>
               )}
             </div>

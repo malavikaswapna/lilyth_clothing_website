@@ -7,6 +7,11 @@ const {
   getAllSubscribers,
   exportSubscribers,
 } = require("../controllers/newsletterController");
+const {
+  sendCampaign,
+  getCampaignTemplates,
+  previewCampaign,
+} = require("../controllers/newsletterCampaignController"); // ✅ ADD THIS
 const { protect, authorize } = require("../middleware/auth");
 const rateLimit = require("express-rate-limit");
 
@@ -26,9 +31,15 @@ const subscribeLimiter = rateLimit({
 router.post("/subscribe", subscribeLimiter, subscribe);
 router.post("/unsubscribe", unsubscribe);
 
-// Admin routes
+// Admin routes - Newsletter management
 router.get("/stats", protect, authorize("admin"), getNewsletterStats);
 router.get("/subscribers", protect, authorize("admin"), getAllSubscribers);
 router.get("/export", protect, authorize("admin"), exportSubscribers);
+
+// ✅ ADD THESE THREE ROUTES:
+// Admin routes - Campaign management
+router.post("/send-campaign", protect, authorize("admin"), sendCampaign);
+router.get("/templates", protect, authorize("admin"), getCampaignTemplates);
+router.post("/preview", protect, authorize("admin"), previewCampaign);
 
 module.exports = router;

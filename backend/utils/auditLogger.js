@@ -64,6 +64,11 @@ const auditLogSchema = new mongoose.Schema(
         "INVENTORY_ALERT",
         "STOCK_WARNING",
         "STOCKOUT_PREDICTED",
+        // Newsletter actions - ADD THESE
+        "NEWSLETTER_SUBSCRIBE",
+        "NEWSLETTER_UNSUBSCRIBE",
+        "NEWSLETTER_CAMPAIGN_SENT",
+        "NEWSLETTER_PREVIEW_SENT",
         // Other
         "DATA_EXPORT",
         "SETTINGS_CHANGED",

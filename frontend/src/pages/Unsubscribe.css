@@ -1,0 +1,257 @@
+/* Unsubscribe.css */
+
+.unsubscribe-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.unsubscribe-container {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  padding: 3rem;
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+}
+
+.unsubscribe-icon {
+  margin-bottom: 2rem;
+  color: #64748b;
+}
+
+.unsubscribe-icon.success {
+  color: #10b981;
+}
+
+.unsubscribe-icon.error {
+  color: #ef4444;
+}
+
+.unsubscribe-icon.info {
+  color: #3b82f6;
+}
+
+.unsubscribe-container h1 {
+  font-size: 2rem;
+  color: #1e293b;
+  margin-bottom: 1rem;
+}
+
+.email-display {
+  font-size: 1.125rem;
+  color: #64748b;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #f1f5f9;
+  border-radius: 0.5rem;
+  display: inline-block;
+}
+
+.confirmation-text {
+  color: #64748b;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  font-size: 1.05rem;
+}
+
+.goodbye-text,
+.resubscribe-text {
+  color: #64748b;
+  line-height: 1.6;
+  margin: 1.5rem 0;
+}
+
+.unsubscribe-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.unsubscribe-btn,
+.retry-btn {
+  padding: 1rem 2rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.unsubscribe-btn:hover:not(:disabled),
+.retry-btn:hover:not(:disabled) {
+  background: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.unsubscribe-btn:disabled,
+.retry-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancel-link,
+.home-link,
+.shop-link {
+  padding: 1rem 2rem;
+  color: #64748b;
+  text-decoration: none;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: all 0.3s;
+  display: inline-block;
+}
+
+.cancel-link:hover,
+.home-link:hover,
+.shop-link:hover {
+  color: #1e293b;
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.home-link {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.home-link:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: white;
+}
+
+.shop-link {
+  background: transparent;
+  color: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.shop-link:hover {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #2563eb;
+}
+
+.what-youll-miss {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #fef3c7;
+  border-radius: 0.75rem;
+  border: 2px solid #fbbf24;
+}
+
+.what-youll-miss h3 {
+  color: #92400e;
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+}
+
+.what-youll-miss ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.what-youll-miss li {
+  color: #78350f;
+  padding: 0.5rem 0;
+  text-align: left;
+  font-weight: 500;
+}
+
+.help-text {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.help-text a {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.help-text a:hover {
+  text-decoration: underline;
+}
+
+/* Loading state */
+.unsubscribe-btn:disabled::after {
+  content: "";
+  width: 16px;
+  height: 16px;
+  margin-left: 8px;
+  border: 2px solid white;
+  border-top-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .unsubscribe-page {
+    padding: 1rem;
+  }
+
+  .unsubscribe-container {
+    padding: 2rem 1.5rem;
+  }
+
+  .unsubscribe-container h1 {
+    font-size: 1.5rem;
+  }
+
+  .email-display {
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .confirmation-text {
+    font-size: 0.95rem;
+  }
+
+  .unsubscribe-btn,
+  .retry-btn,
+  .cancel-link,
+  .home-link,
+  .shop-link {
+    padding: 0.875rem 1.5rem;
+    font-size: 0.95rem;
+  }
+
+  .what-youll-miss {
+    padding: 1rem;
+  }
+
+  .what-youll-miss h3 {
+    font-size: 1rem;
+  }
+
+  .what-youll-miss li {
+    font-size: 0.9rem;
+  }
+}
