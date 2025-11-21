@@ -60,7 +60,6 @@ exports.updateAddress = asyncHandler(async (req, res) => {
       addr.isDefault = false;
     });
   }
-
   // Update address fields
   Object.assign(address, req.body);
   await user.save();
@@ -244,5 +243,63 @@ exports.getUserAnalytics = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     analytics,
+  });
+});
+
+// @desc    Update notification settings
+// @route   PUT /api/user/notifications
+// @access  Private
+exports.updateNotificationSettings = asyncHandler(async (req, res) => {
+  const { notificationSettings } = req.body;
+
+  // Validate notification settings structure
+  const allowedSettings = [
+    "emailNotifications",
+    "orderUpdates",
+    "newUsers",
+    "lowStock",
+    "salesReports",
+    "systemUpdates",
+  ];
+
+  // Filter out any invalid keys
+  const validSettings = {};
+  if (notificationSettings) {
+    Object.keys(notificationSettings).forEach((key) => {
+      if (allowedSettings.includes(key)) {
+        validSettings[key] = Boolean(notificationSettings[key]);
+      }
+    });
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user.id,
+    { notificationSettings: validSettings },
+    { new: true, runValidators: true }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Notification settings updated successfully",
+    user: user.getPublicProfile(),
+  });
+});
+
+// @desc    Get notification settings
+// @route   GET /api/user/notifications
+// @access  Private
+exports.getNotificationSettings = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user.id).select("notificationSettings");
+
+  res.status(200).json({
+    success: true,
+    notificationSettings: user.notificationSettings || {
+      emailNotifications: true,
+      orderUpdates: true,
+      newUsers: true,
+      lowStock: true,
+      salesReports: false,
+      systemUpdates: true,
+    },
   });
 });

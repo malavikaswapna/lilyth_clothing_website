@@ -454,10 +454,10 @@ const ProductDetail = () => {
                           product.variants.map((v) => [v.color.name, v.color])
                         ).values(),
                       ].map((color) => (
-                        <button
+                        <div
                           key={color.name}
                           className={`color-option ${
-                            selectedColor === color.name ? "active" : ""
+                            selectedColor === color.name ? "selected" : ""
                           }`}
                           onClick={() => {
                             setSelectedColor(color.name);
@@ -472,11 +472,16 @@ const ProductDetail = () => {
                               setSelectedSize(availableSizes[0] || "");
                             }
                           }}
-                          style={{ backgroundColor: color.hexCode }}
-                          title={color.name}
+                          data-color-name={color.name}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Select ${color.name} color`}
                         >
-                          <span className="color-name">{color.name}</span>
-                        </button>
+                          <div
+                            className="color-inner"
+                            style={{ backgroundColor: color.hexCode }}
+                          />
+                        </div>
                       ))}
                     </div>
                   </div>

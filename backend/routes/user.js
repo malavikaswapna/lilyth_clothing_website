@@ -10,6 +10,8 @@ const {
   removeFromWishlist,
   updatePreferredSizes,
   getUserAnalytics,
+  updateNotificationSettings,
+  getNotificationSettings,
 } = require("../controllers/userController");
 const { protect } = require("../middleware/auth");
 const { getUserReviews } = require("../controllers/reviewController");
@@ -34,8 +36,14 @@ router.delete("/wishlist/:productId", removeFromWishlist);
 // Preferences
 router.put("/sizes", updatePreferredSizes);
 
+// Notification Settings
+router.get("/notifications", getNotificationSettings);
+router.put("/notifications", updateNotificationSettings);
+
 // Analytics
 router.get("/analytics", getUserAnalytics);
 
+// Reviews
 router.get("/reviews", getUserReviews);
+
 module.exports = router;

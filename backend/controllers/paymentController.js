@@ -41,7 +41,7 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
 
     const razorpayOrder = await razorpay.orders.create(options);
 
-    console.log("✅ Razorpay order created:", razorpayOrder.id);
+    console.log("âœ… Razorpay order created:", razorpayOrder.id);
 
     res.status(200).json({
       success: true,
@@ -54,7 +54,7 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("❌ Razorpay order creation error:", error);
+    console.error("âŒ Razorpay order creation error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to create payment order",
@@ -74,7 +74,7 @@ const verifyPayment = asyncHandler(async (req, res) => {
     orderData,
   } = req.body;
 
-  console.log("🔍 Verifying payment...");
+  console.log("ðŸ” Verifying payment...");
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
     return res.status(400).json({
@@ -100,14 +100,14 @@ const verifyPayment = asyncHandler(async (req, res) => {
   const isAuthentic = expectedSignature === razorpay_signature;
 
   if (!isAuthentic) {
-    console.error("❌ Invalid payment signature");
+    console.error("âŒ Invalid payment signature");
     return res.status(400).json({
       success: false,
       message: "Payment verification failed - Invalid signature",
     });
   }
 
-  console.log("✅ Payment signature verified");
+  console.log("âœ… Payment signature verified");
 
   try {
     // Validate all products and calculate totals
@@ -255,7 +255,7 @@ const verifyPayment = asyncHandler(async (req, res) => {
       userAgent: req.headers["user-agent"],
     });
 
-    console.log("✅ Order created successfully:", order._id);
+    console.log("âœ… Order created successfully:", order._id);
 
     res.status(200).json({
       success: true,
@@ -265,7 +265,7 @@ const verifyPayment = asyncHandler(async (req, res) => {
       razorpay_order_id,
     });
   } catch (error) {
-    console.error("❌ Order creation error:", error);
+    console.error("âŒ Order creation error:", error);
     res.status(500).json({
       success: false,
       message: "Payment verified but order creation failed",
@@ -280,7 +280,7 @@ const verifyPayment = asyncHandler(async (req, res) => {
 const handlePaymentFailure = asyncHandler(async (req, res) => {
   const { error, razorpay_order_id, razorpay_payment_id } = req.body;
 
-  console.log("❌ Payment failed:", {
+  console.log("âŒ Payment failed:", {
     error,
     razorpay_order_id,
     razorpay_payment_id,
@@ -299,10 +299,10 @@ const handlePaymentFailure = asyncHandler(async (req, res) => {
 const razorpayWebhook = asyncHandler(async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
 
-  console.log("📨 Received Razorpay webhook");
+  console.log("ðŸ“¨ Received Razorpay webhook");
 
   if (!process.env.RAZORPAY_WEBHOOK_SECRET) {
-    console.error("⚠️ RAZORPAY_WEBHOOK_SECRET not configured");
+    console.error("âš ï¸ RAZORPAY_WEBHOOK_SECRET not configured");
     return res.status(500).json({ error: "Webhook not configured" });
   }
 
@@ -313,7 +313,7 @@ const razorpayWebhook = asyncHandler(async (req, res) => {
     .digest("hex");
 
   if (signature !== expectedSignature) {
-    console.warn("⚠️ Invalid webhook signature");
+    console.warn("âš ï¸ Invalid webhook signature");
     return res.status(400).json({ error: "Invalid signature" });
   }
 
@@ -323,15 +323,15 @@ const razorpayWebhook = asyncHandler(async (req, res) => {
   try {
     switch (event.event) {
       case "payment.captured":
-        console.log("💰 Payment captured:", event.payload.payment.entity.id);
+        console.log("ðŸ’° Payment captured:", event.payload.payment.entity.id);
         break;
 
       case "payment.failed":
-        console.log("❌ Payment failed:", event.payload.payment.entity.id);
+        console.log("âŒ Payment failed:", event.payload.payment.entity.id);
         break;
 
       case "order.paid":
-        console.log("✅ Order paid:", event.payload.order.entity.id);
+        console.log("âœ… Order paid:", event.payload.order.entity.id);
         break;
 
       default:
@@ -391,7 +391,7 @@ const refundPayment = asyncHandler(async (req, res) => {
   }
 });
 
-// ✅ EXPORT ALL FUNCTIONS
+//  EXPORT ALL FUNCTIONS
 module.exports = {
   createRazorpayOrder,
   verifyPayment,

@@ -1,35 +1,35 @@
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { Eye, EyeOff, User, Lock, Mail, Bell } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { authAPI } from '../../services/api';
-import Button from '../../components/common/Button';
-import toast from 'react-hot-toast';
-import './Settings.css';
+import React, { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { Eye, EyeOff, User, Lock, Mail, Bell } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { authAPI } from "../../services/api";
+import Button from "../../components/common/Button";
+import toast from "react-hot-toast";
+import "./Settings.css";
 
 const Settings = () => {
   const { user, updateUser } = useAuth();
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState("profile");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const ProfileSettings = () => {
     const [loading, setLoading] = useState(false);
-    
+
     const {
       register,
       handleSubmit,
-      formState: { errors }
+      formState: { errors },
     } = useForm({
       defaultValues: {
-        firstName: user?.firstName || '',
-        lastName: user?.lastName || '',
-        email: user?.email || '',
-        phone: user?.phone || '',
-        dateOfBirth: user?.dateOfBirth ? user.dateOfBirth.split('T')[0] : '',
-        gender: user?.gender || ''
-      }
+        firstName: user?.firstName || "",
+        lastName: user?.lastName || "",
+        email: user?.email || "",
+        phone: user?.phone || "",
+        dateOfBirth: user?.dateOfBirth ? user.dateOfBirth.split("T")[0] : "",
+        gender: user?.gender || "",
+      },
     });
 
     const onSubmit = async (data) => {
@@ -37,9 +37,9 @@ const Settings = () => {
         setLoading(true);
         const response = await authAPI.updateProfile(data);
         updateUser(response.data.user);
-        toast.success('Profile updated successfully');
+        toast.success("Profile updated successfully");
       } catch (error) {
-        toast.error('Failed to update profile');
+        toast.error("Failed to update profile");
       } finally {
         setLoading(false);
       }
@@ -62,9 +62,13 @@ const Settings = () => {
               <input
                 type="text"
                 className="form-control"
-                {...register('firstName', { required: 'First name is required' })}
+                {...register("firstName", {
+                  required: "First name is required",
+                })}
               />
-              {errors.firstName && <span className="form-error">{errors.firstName.message}</span>}
+              {errors.firstName && (
+                <span className="form-error">{errors.firstName.message}</span>
+              )}
             </div>
 
             <div className="form-group">
@@ -72,9 +76,11 @@ const Settings = () => {
               <input
                 type="text"
                 className="form-control"
-                {...register('lastName', { required: 'Last name is required' })}
+                {...register("lastName", { required: "Last name is required" })}
               />
-              {errors.lastName && <span className="form-error">{errors.lastName.message}</span>}
+              {errors.lastName && (
+                <span className="form-error">{errors.lastName.message}</span>
+              )}
             </div>
           </div>
 
@@ -83,15 +89,17 @@ const Settings = () => {
             <input
               type="email"
               className="form-control"
-              {...register('email', {
-                required: 'Email is required',
+              {...register("email", {
+                required: "Email is required",
                 pattern: {
                   value: /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-                  message: 'Invalid email address'
-                }
+                  message: "Invalid email address",
+                },
               })}
             />
-            {errors.email && <span className="form-error">{errors.email.message}</span>}
+            {errors.email && (
+              <span className="form-error">{errors.email.message}</span>
+            )}
           </div>
 
           <div className="form-group">
@@ -100,7 +108,7 @@ const Settings = () => {
               type="tel"
               className="form-control"
               placeholder="+91 1234567890"
-              {...register('phone')}
+              {...register("phone")}
             />
           </div>
 
@@ -110,13 +118,13 @@ const Settings = () => {
               <input
                 type="date"
                 className="form-control"
-                {...register('dateOfBirth')}
+                {...register("dateOfBirth")}
               />
             </div>
 
             <div className="form-group">
               <label className="form-label">Gender</label>
-              <select className="form-control" {...register('gender')}>
+              <select className="form-control" {...register("gender")}>
                 <option value="">Prefer not to say</option>
                 <option value="female">Female</option>
                 <option value="male">Male</option>
@@ -135,34 +143,34 @@ const Settings = () => {
 
   const PasswordSettings = () => {
     const [loading, setLoading] = useState(false);
-    
+
     const {
       register,
       handleSubmit,
       formState: { errors },
       reset,
-      watch
+      watch,
     } = useForm();
 
-    const newPassword = watch('newPassword');
+    const newPassword = watch("newPassword");
 
     const onSubmit = async (data) => {
       try {
         setLoading(true);
         await authAPI.updatePassword({
           currentPassword: data.currentPassword,
-          newPassword: data.newPassword
+          newPassword: data.newPassword,
         });
-        toast.success('Password updated successfully');
+        toast.success("Password updated successfully");
         reset();
       } catch (error) {
-        toast.error('Failed to update password');
+        toast.error("Failed to update password");
       } finally {
         setLoading(false);
       }
     };
 
-    if (user?.authProvider === 'google') {
+    if (user?.authProvider === "google") {
       return (
         <div className="settings-section">
           <div className="section-header">
@@ -172,12 +180,15 @@ const Settings = () => {
               <p>Manage your account password</p>
             </div>
           </div>
-          
+
           <div className="google-auth-notice">
-            <p>You're signed in with Google. Password changes are managed through your Google account.</p>
-            <a 
-              href="https://myaccount.google.com/security" 
-              target="_blank" 
+            <p>
+              You're signed in with Google. Password changes are managed through
+              your Google account.
+            </p>
+            <a
+              href="https://myaccount.google.com/security"
+              target="_blank"
               rel="noopener noreferrer"
               className="btn btn-outline"
             >
@@ -203,9 +214,11 @@ const Settings = () => {
             <label className="form-label">Current Password</label>
             <div className="password-input">
               <input
-                type={showCurrentPassword ? 'text' : 'password'}
+                type={showCurrentPassword ? "text" : "password"}
                 className="form-control"
-                {...register('currentPassword', { required: 'Current password is required' })}
+                {...register("currentPassword", {
+                  required: "Current password is required",
+                })}
               />
               <button
                 type="button"
@@ -215,21 +228,25 @@ const Settings = () => {
                 {showCurrentPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
-            {errors.currentPassword && <span className="form-error">{errors.currentPassword.message}</span>}
+            {errors.currentPassword && (
+              <span className="form-error">
+                {errors.currentPassword.message}
+              </span>
+            )}
           </div>
 
           <div className="form-group">
             <label className="form-label">New Password</label>
             <div className="password-input">
               <input
-                type={showNewPassword ? 'text' : 'password'}
+                type={showNewPassword ? "text" : "password"}
                 className="form-control"
-                {...register('newPassword', {
-                  required: 'New password is required',
+                {...register("newPassword", {
+                  required: "New password is required",
                   minLength: {
                     value: 6,
-                    message: 'Password must be at least 6 characters'
-                  }
+                    message: "Password must be at least 6 characters",
+                  },
                 })}
               />
               <button
@@ -240,18 +257,21 @@ const Settings = () => {
                 {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
-            {errors.newPassword && <span className="form-error">{errors.newPassword.message}</span>}
+            {errors.newPassword && (
+              <span className="form-error">{errors.newPassword.message}</span>
+            )}
           </div>
 
           <div className="form-group">
             <label className="form-label">Confirm New Password</label>
             <div className="password-input">
               <input
-                type={showConfirmPassword ? 'text' : 'password'}
+                type={showConfirmPassword ? "text" : "password"}
                 className="form-control"
-                {...register('confirmPassword', {
-                  required: 'Please confirm your password',
-                  validate: value => value === newPassword || 'Passwords do not match'
+                {...register("confirmPassword", {
+                  required: "Please confirm your password",
+                  validate: (value) =>
+                    value === newPassword || "Passwords do not match",
                 })}
               />
               <button
@@ -262,7 +282,11 @@ const Settings = () => {
                 {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
-            {errors.confirmPassword && <span className="form-error">{errors.confirmPassword.message}</span>}
+            {errors.confirmPassword && (
+              <span className="form-error">
+                {errors.confirmPassword.message}
+              </span>
+            )}
           </div>
 
           <Button type="submit" loading={loading} className="save-btn">
@@ -274,23 +298,62 @@ const Settings = () => {
   };
 
   const NotificationSettings = () => {
+    const [loading, setLoading] = useState(false);
     const [notifications, setNotifications] = useState({
       orderUpdates: true,
       promotions: true,
       newArrivals: false,
       backInStock: true,
-      priceDrops: false
+      priceDrops: false,
     });
 
+    // Load user's notification preferences when component mounts
+    useEffect(() => {
+      if (user?.notificationSettings) {
+        setNotifications({
+          orderUpdates: user.notificationSettings.orderUpdates ?? true,
+          promotions: user.notificationSettings.emailNotifications ?? true,
+          newArrivals: user.notificationSettings.newUsers ?? false,
+          backInStock: user.notificationSettings.lowStock ?? true,
+          priceDrops: user.notificationSettings.salesReports ?? false,
+        });
+      }
+    }, [user]);
+
     const handleNotificationChange = (key) => {
-      setNotifications(prev => ({
+      setNotifications((prev) => ({
         ...prev,
-        [key]: !prev[key]
+        [key]: !prev[key],
       }));
     };
 
-    const saveNotifications = () => {
-      toast.success('Notification preferences updated');
+    const saveNotifications = async () => {
+      try {
+        setLoading(true);
+
+        // Map frontend notification keys to backend schema
+        const notificationData = {
+          notificationSettings: {
+            emailNotifications: notifications.promotions,
+            orderUpdates: notifications.orderUpdates,
+            newUsers: notifications.newArrivals,
+            lowStock: notifications.backInStock,
+            salesReports: notifications.priceDrops,
+          },
+        };
+
+        const response = await authAPI.updateProfile(notificationData);
+        updateUser(response.data.user);
+        toast.success("Notification preferences saved successfully");
+      } catch (error) {
+        console.error("Failed to save notification preferences:", error);
+        toast.error(
+          error.response?.data?.message ||
+            "Failed to save notification preferences"
+        );
+      } finally {
+        setLoading(false);
+      }
     };
 
     return (
@@ -307,13 +370,15 @@ const Settings = () => {
           <div className="notification-item">
             <div className="notification-info">
               <h4>Order Updates</h4>
-              <p>Receive emails about order confirmations, shipping, and delivery</p>
+              <p>
+                Receive emails about order confirmations, shipping, and delivery
+              </p>
             </div>
             <label className="toggle-switch">
               <input
                 type="checkbox"
                 checked={notifications.orderUpdates}
-                onChange={() => handleNotificationChange('orderUpdates')}
+                onChange={() => handleNotificationChange("orderUpdates")}
               />
               <span className="toggle-slider"></span>
             </label>
@@ -328,7 +393,7 @@ const Settings = () => {
               <input
                 type="checkbox"
                 checked={notifications.promotions}
-                onChange={() => handleNotificationChange('promotions')}
+                onChange={() => handleNotificationChange("promotions")}
               />
               <span className="toggle-slider"></span>
             </label>
@@ -343,7 +408,7 @@ const Settings = () => {
               <input
                 type="checkbox"
                 checked={notifications.newArrivals}
-                onChange={() => handleNotificationChange('newArrivals')}
+                onChange={() => handleNotificationChange("newArrivals")}
               />
               <span className="toggle-slider"></span>
             </label>
@@ -358,7 +423,7 @@ const Settings = () => {
               <input
                 type="checkbox"
                 checked={notifications.backInStock}
-                onChange={() => handleNotificationChange('backInStock')}
+                onChange={() => handleNotificationChange("backInStock")}
               />
               <span className="toggle-slider"></span>
             </label>
@@ -373,13 +438,17 @@ const Settings = () => {
               <input
                 type="checkbox"
                 checked={notifications.priceDrops}
-                onChange={() => handleNotificationChange('priceDrops')}
+                onChange={() => handleNotificationChange("priceDrops")}
               />
               <span className="toggle-slider"></span>
             </label>
           </div>
 
-          <Button onClick={saveNotifications} className="save-btn">
+          <Button
+            onClick={saveNotifications}
+            loading={loading}
+            className="save-btn"
+          >
             Save Preferences
           </Button>
         </div>
@@ -388,9 +457,9 @@ const Settings = () => {
   };
 
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: <User size={20} /> },
-    { id: 'password', label: 'Password', icon: <Lock size={20} /> },
-    { id: 'notifications', label: 'Notifications', icon: <Bell size={20} /> }
+    { id: "profile", label: "Profile", icon: <User size={20} /> },
+    { id: "password", label: "Password", icon: <Lock size={20} /> },
+    { id: "notifications", label: "Notifications", icon: <Bell size={20} /> },
   ];
 
   return (
@@ -403,23 +472,24 @@ const Settings = () => {
       <div className="settings-layout">
         <div className="settings-sidebar">
           <nav className="settings-nav">
-            {tabs.map(tab => (
+            {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`nav-tab ${activeTab === tab.id ? 'active' : ''}`}
+                className={`nav-tab ${activeTab === tab.id ? "active" : ""}`}
+                aria-label={tab.label}
               >
                 {tab.icon}
-                {tab.label}
+                <span className="tab-label">{tab.label}</span>
               </button>
             ))}
           </nav>
         </div>
 
         <div className="settings-content">
-          {activeTab === 'profile' && <ProfileSettings />}
-          {activeTab === 'password' && <PasswordSettings />}
-          {activeTab === 'notifications' && <NotificationSettings />}
+          {activeTab === "profile" && <ProfileSettings />}
+          {activeTab === "password" && <PasswordSettings />}
+          {activeTab === "notifications" && <NotificationSettings />}
         </div>
       </div>
     </div>

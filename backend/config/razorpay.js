@@ -1,7 +1,7 @@
 // config/razorpay.js
 const Razorpay = require("razorpay");
 
-// Validate environment variables
+// validate environment variables
 if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
   console.error(
     "❌ RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be defined in .env file"
@@ -9,19 +9,19 @@ if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
   process.exit(1);
 }
 
-// Initialize Razorpay instance
+// initialize Razorpay
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// Log mode (test/live)
+// log mode (test/live)
 const mode = process.env.RAZORPAY_KEY_ID.startsWith("rzp_test_")
   ? "TEST"
   : "LIVE";
 console.log(`🔐 Razorpay initialized in ${mode} mode`);
 
-// Verify credentials on startup
+// verify credentials on start
 razorpay.payments
   .all({ count: 1 })
   .then(() => {

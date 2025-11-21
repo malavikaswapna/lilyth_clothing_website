@@ -3,7 +3,7 @@ const Order = require("../models/Order");
 const Cart = require("../models/Cart");
 const Product = require("../models/Product");
 const User = require("../models/User");
-const PromoCode = require("../models/PromoCode"); // ✅ ADD THIS
+const PromoCode = require("../models/PromoCode");
 const asyncHandler = require("../utils/asyncHandler");
 const razorpay = require("../config/razorpay");
 const crypto = require("crypto");
@@ -328,6 +328,16 @@ exports.createOrder = asyncHandler(async (req, res) => {
     await emailService.sendOrderConfirmation(populatedOrder, req.user);
   } catch (emailError) {
     console.error("Failed to send order confirmation email:", emailError);
+  }
+
+  // Send admin notification email
+  try {
+    await emailService.sendNewOrderNotification(
+      process.env.ADMIN_EMAIL,
+      populatedOrder
+    );
+  } catch (emailError) {
+    console.error("Failed to send admin order notification:", emailError);
   }
 
   // Log audit trail

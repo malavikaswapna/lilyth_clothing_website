@@ -10,7 +10,7 @@ const Unsubscribe = () => {
   const [searchParams] = useSearchParams();
   const email = searchParams.get("email");
 
-  const [status, setStatus] = useState("confirming"); // confirming, success, error, already
+  const [status, setStatus] = useState("confirming");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 

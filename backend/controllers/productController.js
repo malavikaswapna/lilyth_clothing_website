@@ -4,6 +4,7 @@ const Category = require("../models/Category");
 const mongoose = require("mongoose");
 const asyncHandler = require("../utils/asyncHandler");
 const {
+  uploadToCloudinary,
   deleteFromCloudinary,
   deleteMultipleFromCloudinary,
 } = require("../config/cloudinary");
@@ -18,63 +19,79 @@ const addNoCacheHeaders = (res) => {
   });
 };
 
-// @desc    Get all products
-// @route   GET /api/products
-// @access  Public
+// Utility: safely parse JSON, return fallback on error
+const safeJSONParse = (value, fallback = null) => {
+  if (!value) return fallback;
+  try {
+    return typeof value === "string" ? JSON.parse(value) : value;
+  } catch (err) {
+    return fallback;
+  }
+};
+
+// Extract arrays helper (handles indexed form fields, arrays, comma-separated string)
+const extractArrayFromRequest = (req, fieldName) => {
+  const out = [];
+
+  // indexed fields: fieldName[0], fieldName[1], ...
+  let idx = 0;
+  while (req.body[`${fieldName}[${idx}]`]) {
+    const v = req.body[`${fieldName}[${idx}]`];
+    if (v && v.toString().trim()) out.push(v.toString().trim());
+    idx++;
+  }
+
+  if (out.length > 0) return out;
+
+  // direct array
+  if (Array.isArray(req.body[fieldName])) {
+    req.body[fieldName].forEach((v) => {
+      if (v && v.toString().trim()) out.push(v.toString().trim());
+    });
+    return out;
+  }
+
+  // comma separated string or single string
+  if (typeof req.body[fieldName] === "string") {
+    const val = req.body[fieldName].trim();
+    if (!val) return [];
+    if (val.includes(",")) {
+      return val
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+    }
+    return [val];
+  }
+
+  return [];
+};
+
+// --------------------------------------------------------
+// GET PRODUCTS
+// --------------------------------------------------------
 exports.getProducts = asyncHandler(async (req, res) => {
-  // Add no-cache headers
   addNoCacheHeaders(res);
 
-  // Build query
-  let query = {};
+  const query = {};
 
-  // For admin users, allow filtering by any status
-  // For public users, only show active products
+  // status logic
   if (req.user && req.user.role === "admin") {
-    // Admin can filter by specific status or see all
-    if (req.query.status) {
-      query.status = req.query.status;
-    }
-    // If no status specified, show all statuses for admin
+    if (req.query.status) query.status = req.query.status;
   } else {
-    // Public users only see active products
     query.status = "active";
   }
 
-  // Category filter - handle both slug and ID
+  // category (slug or id)
   if (req.query.category) {
-    try {
-      // First try to find category by slug
-      const category = await Category.findOne({
-        slug: req.query.category,
-        isActive: true,
-      });
-
-      if (category) {
-        query.category = category._id;
-      } else {
-        // If not found by slug, try as ObjectId (but validate first)
-        if (mongoose.Types.ObjectId.isValid(req.query.category)) {
-          query.category = req.query.category;
-        } else {
-          // Invalid category - return empty results
-          return res.status(200).json({
-            success: true,
-            count: 0,
-            total: 0,
-            pagination: {
-              page: 1,
-              pages: 0,
-              limit: 12,
-              hasNext: false,
-              hasPrev: false,
-            },
-            products: [],
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Category lookup error:", error);
+    const cat = await Category.findOne({
+      slug: req.query.category,
+      isActive: true,
+    });
+    if (cat) query.category = cat._id;
+    else if (mongoose.Types.ObjectId.isValid(req.query.category))
+      query.category = req.query.category;
+    else {
       return res.status(200).json({
         success: true,
         count: 0,
@@ -91,29 +108,16 @@ exports.getProducts = asyncHandler(async (req, res) => {
     }
   }
 
-  // Brand filter
-  if (req.query.brand) {
-    query.brand = new RegExp(req.query.brand, "i");
-  }
-
-  // Size filter
-  if (req.query.size) {
-    query["variants.size"] = req.query.size;
-  }
-
-  // Color filter
-  if (req.query.color) {
+  // other filters
+  if (req.query.brand) query.brand = new RegExp(req.query.brand, "i");
+  if (req.query.size) query["variants.size"] = req.query.size;
+  if (req.query.color)
     query["variants.color.name"] = new RegExp(req.query.color, "i");
-  }
-
-  // Price range filter
   if (req.query.minPrice || req.query.maxPrice) {
     query.price = {};
     if (req.query.minPrice) query.price.$gte = Number(req.query.minPrice);
     if (req.query.maxPrice) query.price.$lte = Number(req.query.maxPrice);
   }
-
-  // Search by name, description, or tags
   if (req.query.search) {
     query.$or = [
       { name: { $regex: req.query.search, $options: "i" } },
@@ -122,50 +126,30 @@ exports.getProducts = asyncHandler(async (req, res) => {
       { tags: { $in: [new RegExp(req.query.search, "i")] } },
     ];
   }
-
-  // Featured products only
-  if (req.query.featured === "true") {
-    query.isFeatured = true;
-  }
-
-  // New arrivals only
-  if (req.query.newArrivals === "true") {
-    query.isNewArrival = true;
-  }
-
-  // On sale only
-  if (req.query.onSale === "true") {
+  if (req.query.featured === "true") query.isFeatured = true;
+  if (req.query.newArrivals === "true") query.isNewArrival = true;
+  if (req.query.onSale === "true")
     query.salePrice = { $exists: true, $ne: null };
-  }
+  if (req.query.lowStock === "true") query.totalStock = { $lt: 10 };
 
-  // Low stock filter (admin only)
-  if (req.query.lowStock === "true") {
-    query.totalStock = { $lt: 10 };
-  }
-
-  // Date range filter
+  // date range
   if (req.query.startDate || req.query.endDate) {
     query.createdAt = {};
-    if (req.query.startDate) {
+    if (req.query.startDate)
       query.createdAt.$gte = new Date(req.query.startDate);
-    }
     if (req.query.endDate) {
-      // Add 1 day to include the entire end date
       const endDate = new Date(req.query.endDate);
       endDate.setDate(endDate.getDate() + 1);
       query.createdAt.$lt = endDate;
     }
   }
 
-  console.log("Final query:", JSON.stringify(query, null, 2));
+  // build query
+  let mongooseQuery = Product.find(query).populate("category", "name slug");
 
-  // Create the mongoose query
-  let mongooseQuery = Product.find(query);
-
-  // Sorting
+  // sorting
   if (req.query.sort) {
-    const sortBy = req.query.sort;
-    switch (sortBy) {
+    switch (req.query.sort) {
       case "price_low":
         mongooseQuery = mongooseQuery.sort({ price: 1 });
         break;
@@ -191,25 +175,15 @@ exports.getProducts = asyncHandler(async (req, res) => {
     mongooseQuery = mongooseQuery.sort({ createdAt: -1 });
   }
 
-  // Pagination
+  // pagination
   const page = parseInt(req.query.page, 10) || 1;
   const limit = parseInt(req.query.limit, 10) || 12;
-  const startIndex = (page - 1) * limit;
-
-  mongooseQuery = mongooseQuery.skip(startIndex).limit(limit);
-
-  // Populate category
-  mongooseQuery = mongooseQuery.populate("category", "name slug");
+  const skip = (page - 1) * limit;
+  mongooseQuery = mongooseQuery.skip(skip).limit(limit);
 
   try {
-    // Execute query
     const products = await mongooseQuery.lean().exec();
-
-    // Get total count for pagination
     const total = await Product.countDocuments(query);
-
-    console.log(`Found ${products.length} products out of ${total} total`);
-
     res.status(200).json({
       success: true,
       count: products.length,
@@ -225,168 +199,88 @@ exports.getProducts = asyncHandler(async (req, res) => {
     });
   } catch (error) {
     console.error("Product query error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching products",
-    });
+    res
+      .status(500)
+      .json({ success: false, message: "Error fetching products" });
   }
 });
 
-// @desc    Get single product
-// @route   GET /api/products/:id
-// @access  Public
+// --------------------------------------------------------
+// GET SINGLE PRODUCT
+// --------------------------------------------------------
 exports.getProduct = asyncHandler(async (req, res) => {
-  console.log("🔍 [GET PRODUCT] Called for ID:", req.params.id);
-
-  // Add no-cache headers
   addNoCacheHeaders(res);
 
-  // Get the product - DO NOT use lean() so we can save if needed
   const product = await Product.findById(req.params.id).populate(
     "category",
     "name slug"
   );
+  if (!product)
+    return res
+      .status(404)
+      .json({ success: false, message: "Product not found" });
 
-  if (!product) {
-    return res.status(404).json({
-      success: false,
-      message: "Product not found",
-    });
+  // hide non-active products for non-admins
+  if (!(req.user && req.user.role === "admin") && product.status !== "active") {
+    return res
+      .status(404)
+      .json({ success: false, message: "Product not found" });
   }
 
-  // DIAGNOSTIC: Log what we found in the database
-  console.log("📦 [GET PRODUCT] Found product:", product.name);
-  console.log("🖼️  [GET PRODUCT] Images array:", product.images);
-  console.log("🖼️  [GET PRODUCT] Images count:", product.images?.length || 0);
-  if (product.images && product.images.length > 0) {
-    console.log("🖼️  [GET PRODUCT] First image:", product.images[0]);
-  }
-  console.log("📊 [GET PRODUCT] totalStock from DB:", product.totalStock);
-  console.log(
-    "📊 [GET PRODUCT] variants from DB:",
-    product.variants.map((v) => ({
-      size: v.size,
-      color: v.color.name,
-      stock: v.stock,
-    }))
-  );
-
-  // For public users, check if product is active
-  // For admin users, allow viewing any status
-  const isAdmin = req.user && req.user.role === "admin";
-
-  if (!isAdmin && product.status !== "active") {
-    return res.status(404).json({
-      success: false,
-      message: "Product not found",
-    });
-  }
-
-  // Recalculate totalStock from variants to ensure accuracy
-  let needsUpdate = false;
-  if (product.variants && product.variants.length > 0) {
-    const recalculatedTotal = product.variants.reduce((total, variant) => {
-      return total + (variant.stock || 0);
-    }, 0);
-
-    console.log("🔄 [GET PRODUCT] Recalculated totalStock:", recalculatedTotal);
-
-    // Check if totalStock is different
+  // recalc totalStock from variants if needed
+  if (Array.isArray(product.variants) && product.variants.length > 0) {
+    const recalculatedTotal = product.variants.reduce(
+      (t, v) => t + (v.stock || 0),
+      0
+    );
     if (product.totalStock !== recalculatedTotal) {
-      console.log("⚠️  [GET PRODUCT] Stock mismatch detected! Updating...");
-      console.log(
-        `   DB shows: ${product.totalStock}, Should be: ${recalculatedTotal}`
-      );
       product.totalStock = recalculatedTotal;
-      needsUpdate = true;
+      try {
+        await product.save();
+      } catch (e) {
+        console.error("Error saving recalculated stock:", e);
+      }
     }
   }
 
-  // Save if stock was corrected
-  if (needsUpdate) {
-    try {
-      await product.save();
-      console.log("✅ [GET PRODUCT] Stock corrected and saved");
-    } catch (saveError) {
-      console.error(
-        "❌ [GET PRODUCT] Failed to save corrected stock:",
-        saveError
-      );
-      // Don't fail the request, just log the error
-    }
-  }
-
-  // Increment view count asynchronously (don't wait for it)
-  Product.findByIdAndUpdate(
-    req.params.id,
-    { $inc: { views: 1 } },
-    { new: false }
-  )
+  // async increment views
+  Product.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } })
     .exec()
-    .catch((err) => console.error("View increment error:", err));
+    .catch((e) => console.error("View increment error:", e));
 
-  console.log(
-    "📤 [GET PRODUCT] Sending response with totalStock:",
-    product.totalStock
-  );
-  console.log(
-    "📤 [GET PRODUCT] Sending images count:",
-    product.images?.length || 0
-  );
-
-  res.status(200).json({
-    success: true,
-    product,
-  });
+  res.status(200).json({ success: true, product });
 });
 
-// @desc    Get product by slug
-// @route   GET /api/products/slug/:slug
-// @access  Public
+// --------------------------------------------------------
+// GET BY SLUG
+// --------------------------------------------------------
 exports.getProductBySlug = asyncHandler(async (req, res) => {
-  // Add no-cache headers
   addNoCacheHeaders(res);
-
   const product = await Product.findOne({
     slug: req.params.slug,
     status: "active",
   }).populate("category", "name slug");
-
-  if (!product) {
-    return res.status(404).json({
-      success: false,
-      message: "Product not found",
-    });
-  }
-
-  // Increment view count
-  product.views += 1;
+  if (!product)
+    return res
+      .status(404)
+      .json({ success: false, message: "Product not found" });
+  product.views = (product.views || 0) + 1;
   await product.save();
-
-  res.status(200).json({
-    success: true,
-    product,
-  });
+  res.status(200).json({ success: true, product });
 });
 
-// @desc    Get related products
-// @route   GET /api/products/:id/related
-// @access  Public
+// --------------------------------------------------------
+// GET RELATED PRODUCTS
+// --------------------------------------------------------
 exports.getRelatedProducts = asyncHandler(async (req, res) => {
-  // Add no-cache headers
   addNoCacheHeaders(res);
-
   const product = await Product.findById(req.params.id);
+  if (!product)
+    return res
+      .status(404)
+      .json({ success: false, message: "Product not found" });
 
-  if (!product) {
-    return res.status(404).json({
-      success: false,
-      message: "Product not found",
-    });
-  }
-
-  // Find products in same category (exclude current product)
-  const relatedProducts = await Product.find({
+  const related = await Product.find({
     category: product.category,
     _id: { $ne: product._id },
     status: "active",
@@ -395,65 +289,29 @@ exports.getRelatedProducts = asyncHandler(async (req, res) => {
     .limit(4)
     .sort({ averageRating: -1, purchases: -1 });
 
-  res.status(200).json({
-    success: true,
-    count: relatedProducts.length,
-    products: relatedProducts,
-  });
+  res
+    .status(200)
+    .json({ success: true, count: related.length, products: related });
 });
 
-// @desc    Create product (Admin only)
-// @route   POST /api/products
-// @access  Private/Admin
+// --------------------------------------------------------
+// CREATE PRODUCT
+// --------------------------------------------------------
 exports.createProduct = asyncHandler(async (req, res) => {
+  // NOTE: uploadToCloudinary already unlinks the temp file; we rely on that.
+  const uploadedPublicIds = []; // track for cleanup on error
+
   try {
-    console.log("\n========== CREATE PRODUCT START ==========");
-    console.log("📝 Request body keys:", Object.keys(req.body));
-    console.log("📁 Files received:", req.files?.length || 0);
+    // basic logs
+    console.log("CREATE PRODUCT - files:", req.files?.length || 0);
 
-    if (req.files && req.files.length > 0) {
-      console.log("📸 File details:");
-      req.files.forEach((file, index) => {
-        console.log(`   [${index}] ${file.originalname}`);
-        console.log(`       - Size: ${(file.size / 1024).toFixed(2)} KB`);
-        console.log(`       - Cloudinary URL: ${file.path}`);
-        console.log(`       - Public ID: ${file.filename}`);
-      });
-    }
-
-    // Parse variants from JSON
+    // parse variants
     let variants = [];
-    try {
-      if (req.body.variants) {
-        variants = JSON.parse(req.body.variants);
-        console.log("✅ Parsed variants:", variants.length);
-      }
-    } catch (error) {
-      console.error("❌ Error parsing variants:", error);
+    if (req.body.variants) {
+      variants = safeJSONParse(req.body.variants, []);
     }
 
-    // Extract arrays (materials, features, careInstructions)
-    const extractArray = (fieldName) => {
-      const array = [];
-      let index = 0;
-      while (req.body[`${fieldName}[${index}]`]) {
-        const item = req.body[`${fieldName}[${index}]`];
-        if (item && item.trim()) {
-          array.push(item.trim());
-        }
-        index++;
-      }
-      return array;
-    };
-
-    // Extract SEO data
-    const seo = {
-      metaTitle: req.body["seo[metaTitle]"] || "",
-      metaDescription: req.body["seo[metaDescription]"] || "",
-      keywords: req.body["seo[keywords]"] || "",
-    };
-
-    // Validate required fields
+    // required fields
     if (
       !req.body.name ||
       !req.body.description ||
@@ -461,105 +319,68 @@ exports.createProduct = asyncHandler(async (req, res) => {
       !req.body.sku ||
       !req.body.price
     ) {
-      console.log("❌ Validation failed: Missing required fields");
-
-      // Clean up uploaded images
-      if (req.files && req.files.length > 0) {
-        const publicIds = req.files.map((file) => file.filename);
-        await deleteMultipleFromCloudinary(publicIds);
-        console.log("🧹 Cleaned up uploaded images");
-      }
-
-      return res.status(400).json({
-        success: false,
-        message:
-          "Please provide all required fields: name, description, brand, sku, and price",
-      });
+      // cleanup any files that were uploaded by multer (but not yet cloud-uploaded)
+      // req.files might contain temp files; any cloud uploads will be tracked separately
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            "Please provide required fields: name, description, brand, sku, price",
+        });
     }
 
-    // Validate sale price vs regular price
+    // basic validations
     const price = parseFloat(req.body.price);
     const salePrice = req.body.salePrice
       ? parseFloat(req.body.salePrice)
       : null;
-
-    if (salePrice && salePrice >= price) {
-      console.log("❌ Validation failed: Sale price >= regular price");
-
-      if (req.files && req.files.length > 0) {
-        const publicIds = req.files.map((file) => file.filename);
-        await deleteMultipleFromCloudinary(publicIds);
-        console.log("🧹 Cleaned up uploaded images");
-      }
-
-      return res.status(400).json({
-        success: false,
-        message: "Sale price must be less than regular price",
-      });
-    }
-
-    // Check if SKU already exists
-    const existingProduct = await Product.findOne({ sku: req.body.sku });
-    if (existingProduct) {
-      console.log("❌ Validation failed: SKU already exists");
-
-      if (req.files && req.files.length > 0) {
-        const publicIds = req.files.map((file) => file.filename);
-        await deleteMultipleFromCloudinary(publicIds);
-        console.log("🧹 Cleaned up uploaded images");
-      }
-
-      return res.status(400).json({
-        success: false,
-        message: "Product with this SKU already exists",
-      });
-    }
-
-    // Check if slug already exists
-    const existingSlug = await Product.findOne({ slug: req.body.slug });
-    if (existingSlug) {
-      console.log("❌ Validation failed: Slug already exists");
-
-      if (req.files && req.files.length > 0) {
-        const publicIds = req.files.map((file) => file.filename);
-        await deleteMultipleFromCloudinary(publicIds);
-        console.log("🧹 Cleaned up uploaded images");
-      }
-
-      return res.status(400).json({
-        success: false,
-        message: "Product with this slug already exists",
-      });
-    }
-
-    // Validate category exists
-    if (req.body.category) {
-      const categoryExists = await Category.findById(req.body.category);
-      if (!categoryExists) {
-        console.log("❌ Validation failed: Invalid category");
-
-        if (req.files && req.files.length > 0) {
-          const publicIds = req.files.map((file) => file.filename);
-          await deleteMultipleFromCloudinary(publicIds);
-          console.log("🧹 Cleaned up uploaded images");
-        }
-
-        return res.status(400).json({
+    if (salePrice && salePrice >= price)
+      return res
+        .status(400)
+        .json({
           success: false,
-          message: "Invalid category selected",
+          message: "Sale price must be less than regular price",
         });
-      }
+
+    // uniqueness checks
+    const existingSku = await Product.findOne({ sku: req.body.sku });
+    if (existingSku)
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Product with this SKU already exists",
+        });
+    if (req.body.slug) {
+      const existingSlug = await Product.findOne({ slug: req.body.slug });
+      if (existingSlug)
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "Product with this slug already exists",
+          });
     }
 
-    // Create product data
+    // category validation
+    if (req.body.category) {
+      const cat = await Category.findById(req.body.category);
+      if (!cat)
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid category selected" });
+    }
+
+    // assemble product object
     const productData = {
       name: req.body.name,
       description: req.body.description,
       brand: req.body.brand,
       sku: req.body.sku,
-      slug: req.body.slug,
-      price: price,
-      salePrice: salePrice,
+      slug: req.body.slug || undefined,
+      price,
+      salePrice,
       cost: req.body.cost ? parseFloat(req.body.cost) : null,
       category: req.body.category || null,
       status: req.body.status || "active",
@@ -568,10 +389,10 @@ exports.createProduct = asyncHandler(async (req, res) => {
       isNewArrival: req.body.isNewArrival === "true",
       variants:
         variants.length > 0
-          ? variants.map((variant) => ({
-              ...variant,
-              variantSku: `${req.body.sku}-${variant.size}-${variant.color.name
-                .replace(/\s+/g, "")
+          ? variants.map((v) => ({
+              ...v,
+              variantSku: `${req.body.sku}-${v.size}-${v.color?.name
+                ?.replace(/\s+/g, "")
                 .toUpperCase()}`,
             }))
           : [
@@ -582,513 +403,260 @@ exports.createProduct = asyncHandler(async (req, res) => {
                 variantSku: `${req.body.sku}-S-BLACK`,
               },
             ],
-      materials: extractArray("materials"),
-      features: extractArray("features"),
-      careInstructions: extractArray("careInstructions"),
-      seo: seo,
+      materials: extractArrayFromRequest(req, "materials"),
+      features: extractArrayFromRequest(req, "features"),
+      careInstructions: extractArrayFromRequest(req, "careInstructions"),
+      seo: {
+        metaTitle: req.body["seo[metaTitle]"] || "",
+        metaDescription: req.body["seo[metaDescription]"] || "",
+        keywords: req.body["seo[keywords]"] || "",
+      },
     };
 
-    // Calculate total stock
+    // totalStock
     productData.totalStock = productData.variants.reduce(
-      (total, variant) => total + (parseInt(variant.stock) || 0),
+      (t, v) => t + (parseInt(v.stock) || 0),
       0
     );
 
-    console.log("📊 Total stock calculated:", productData.totalStock);
-
-    // Handle images uploaded to Cloudinary
-    console.log("\n🖼️  Processing images...");
+    // handle images: upload each temp file to Cloudinary and collect results
+    productData.images = [];
     if (req.files && req.files.length > 0) {
-      console.log(`📤 Processing ${req.files.length} Cloudinary images...`);
-
-      productData.images = req.files.map((file, index) => {
-        const imageData = {
-          url: file.path, // Cloudinary returns full URL in path
-          publicId: file.filename, // Cloudinary public ID
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+        // uploadToCloudinary will unlink the temp file (per config/cloudinary.js)
+        const result = await uploadToCloudinary(file.path, "lilyth-products");
+        // result.secure_url and result.public_id expected
+        const publicId =
+          result.public_id || result.publicId || result.public_id;
+        const url = result.secure_url || result.url || result.secureUrl;
+        productData.images.push({
+          url,
+          publicId,
           alt: "",
-          isPrimary: index === 0,
-        };
-        console.log(`   [${index}] Created image object:`, imageData);
-        return imageData;
-      });
-
-      console.log("✅ Images array created:", productData.images.length);
-    } else {
-      console.log("⚠️  No images uploaded");
-      productData.images = [];
-    }
-
-    // CRITICAL: Log the complete productData before saving
-    console.log("\n📦 Product data to save:");
-    console.log("   - Name:", productData.name);
-    console.log("   - SKU:", productData.sku);
-    console.log("   - Images count:", productData.images?.length || 0);
-    console.log(
-      "   - Images array:",
-      JSON.stringify(productData.images, null, 2)
-    );
-
-    // Create and save the product
-    console.log("\n💾 Saving product to database...");
-    const product = new Product(productData);
-    await product.save();
-
-    console.log("✅ Product saved with ID:", product._id);
-    console.log("🖼️  Images in saved product:", product.images?.length || 0);
-    console.log(
-      "📋 Saved product images:",
-      JSON.stringify(product.images, null, 2)
-    );
-
-    // Populate category for response
-    await product.populate("category", "name slug");
-
-    console.log("\n📤 Sending response...");
-    console.log("   - Product ID:", product._id);
-    console.log("   - Images count:", product.images?.length || 0);
-    console.log("========== CREATE PRODUCT END ==========\n");
-
-    res.status(201).json({
-      success: true,
-      message: "Product created successfully",
-      product,
-    });
-  } catch (error) {
-    console.error("\n❌ PRODUCT CREATION ERROR:");
-    console.error("   Message:", error.message);
-    console.error("   Stack:", error.stack);
-
-    // Clean up uploaded images if product creation fails
-    if (req.files && req.files.length > 0) {
-      try {
-        const publicIds = req.files.map((file) => file.filename);
-        await deleteMultipleFromCloudinary(publicIds);
-        console.log("🧹 Cleaned up uploaded images after error");
-      } catch (cleanupError) {
-        console.error("❌ Error cleaning up images:", cleanupError);
+          isPrimary: i === 0,
+        });
+        if (publicId) uploadedPublicIds.push(publicId);
       }
     }
 
-    // Handle mongoose validation errors
-    if (error.name === "ValidationError") {
-      const errors = Object.values(error.errors).map((err) => err.message);
-      console.error("   Validation errors:", errors);
-      return res.status(400).json({
-        success: false,
-        message: "Validation Error",
-        errors,
+    // create and save
+    const product = new Product(productData);
+    await product.save();
+    await product.populate("category", "name slug");
+
+    res
+      .status(201)
+      .json({
+        success: true,
+        message: "Product created successfully",
+        product,
       });
+  } catch (error) {
+    console.error("CREATE PRODUCT ERROR:", error);
+
+    // cleanup any cloud uploads done during this request
+    if (uploadedPublicIds.length > 0) {
+      try {
+        await deleteMultipleFromCloudinary(uploadedPublicIds);
+        console.log("Cleaned up uploaded images due to failure");
+      } catch (cleanupErr) {
+        console.error("Error cleaning up uploaded images:", cleanupErr);
+      }
     }
 
-    res.status(500).json({
-      success: false,
-      message: error.message || "Failed to create product",
-    });
+    // mongoose validation errors
+    if (error.name === "ValidationError") {
+      const errors = Object.values(error.errors).map((e) => e.message);
+      return res
+        .status(400)
+        .json({ success: false, message: "Validation Error", errors });
+    }
+
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: error.message || "Failed to create product",
+      });
   }
 });
 
-// @desc    Update product (Admin only)
-// @route   PUT /api/products/:id
-// @access  Private/Admin
+// --------------------------------------------------------
+// UPDATE PRODUCT
+// --------------------------------------------------------
 exports.updateProduct = asyncHandler(async (req, res) => {
+  // Track new uploaded public IDs (cloud) for cleanup on error
+  const newlyUploadedPublicIds = [];
+
   try {
-    console.log("\n========================================");
-    console.log("🔄 UPDATE PRODUCT REQUEST STARTED");
-    console.log("========================================");
-    console.log("📝 Product ID:", req.params.id);
-    console.log("📝 Request method:", req.method);
-    console.log("📝 Content-Type:", req.headers["content-type"]);
     console.log(
-      "📁 Files received by multer:",
-      req.files ? req.files.length : 0
+      "UPDATE PRODUCT - id:",
+      req.params.id,
+      "files:",
+      req.files?.length || 0
     );
-    console.log("📋 Body keys:", Object.keys(req.body));
 
-    // CRITICAL: Log file details
-    if (req.files && req.files.length > 0) {
-      console.log("\n📸 NEW FILES RECEIVED:");
-      req.files.forEach((file, index) => {
-        console.log(`   [${index}] ${file.originalname}`);
-        console.log(`       Cloudinary URL: ${file.path}`);
-        console.log(`       Public ID: ${file.filename}`);
-      });
-    } else {
-      console.log("⚠️  NO NEW FILES received by multer");
-    }
-
-    let product = await Product.findById(req.params.id);
-
+    // fetch product
+    const product = await Product.findById(req.params.id);
     if (!product) {
-      if (req.files && req.files.length > 0) {
-        const publicIds = req.files.map((file) => file.filename);
-        await deleteMultipleFromCloudinary(publicIds);
-      }
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
+      // cleanup any temp multer files are handled by multer; no cloud uploads yet
+      return res
+        .status(404)
+        .json({ success: false, message: "Product not found" });
     }
 
-    console.log("\n📦 CURRENT PRODUCT:");
-    console.log("   Name:", product.name);
-    console.log("   Current images:", product.images?.length || 0);
-
-    // Parse variants
+    // parse variants if provided
     let variants = [];
-    try {
-      if (req.body.variants) {
-        variants =
-          typeof req.body.variants === "string"
-            ? JSON.parse(req.body.variants)
-            : req.body.variants;
-        console.log("✅ Parsed", variants.length, "variants");
-      }
-    } catch (error) {
-      console.error("❌ Error parsing variants:", error);
+    if (req.body.variants) {
+      variants = safeJSONParse(
+        req.body.variants,
+        Array.isArray(req.body.variants) ? req.body.variants : []
+      );
     }
 
-    // Extract arrays with support for both formats
-    const extractArray = (fieldName) => {
-      const array = [];
-      let index = 0;
-
-      console.log(`\n📋 Extracting ${fieldName}:`);
-      console.log(`   Looking for: ${fieldName}[0], ${fieldName}[1], etc.`);
-      console.log(
-        `   Available keys:`,
-        Object.keys(req.body).filter((k) => k.startsWith(fieldName))
-      );
-
-      // First, try to find indexed format: fieldName[0], fieldName[1], etc.
-      while (req.body[`${fieldName}[${index}]`]) {
-        const item = req.body[`${fieldName}[${index}]`];
-        console.log(`   ✅ [${index}] Found: "${item}"`);
-
-        if (item && item.trim()) {
-          array.push(item.trim());
-        }
-        index++;
-      }
-
-      // If no indexed items found, check if there's a direct field with the name
-      // This handles cases where multer might have parsed it differently
-      if (array.length === 0 && req.body[fieldName]) {
-        console.log(
-          `   ⚠️  No indexed format found, checking for direct field...`
-        );
-
-        // Check if it's already an array
-        if (Array.isArray(req.body[fieldName])) {
-          console.log(`   ✅ Found as array:`, req.body[fieldName]);
-          req.body[fieldName].forEach((item, idx) => {
-            if (item && item.trim()) {
-              array.push(item.trim());
-              console.log(`   ✅ [${idx}] Extracted: "${item}"`);
-            }
-          });
-        }
-        // Check if it's a string (single item or comma-separated)
-        else if (typeof req.body[fieldName] === "string") {
-          const value = req.body[fieldName].trim();
-          if (value) {
-            console.log(`   ✅ Found as string: "${value}"`);
-            // If it looks like a comma-separated list, split it
-            if (value.includes(",")) {
-              value.split(",").forEach((item, idx) => {
-                const trimmed = item.trim();
-                if (trimmed) {
-                  array.push(trimmed);
-                  console.log(`   ✅ [${idx}] Split item: "${trimmed}"`);
-                }
-              });
-            } else {
-              array.push(value);
-              console.log(`   ✅ [0] Single item: "${value}"`);
-            }
-          }
-        }
-      }
-
-      console.log(`   📊 Total extracted: ${array.length} items`);
-      console.log(`   📦 Array content:`, array);
-      return array;
-    };
-
-    const seo = {
-      metaTitle: req.body["seo[metaTitle]"] || product.seo?.metaTitle || "",
-      metaDescription:
-        req.body["seo[metaDescription]"] || product.seo?.metaDescription || "",
-      keywords: req.body["seo[keywords]"] || product.seo?.keywords || "",
-    };
-
-    // ===== ADD THIS NEW SECTION =====
-    // Extract arrays ONCE and store in variables
-    console.log("\n🔍 EXTRACTING PRODUCT DETAILS...");
-    const extractedMaterials = extractArray("materials");
-    const extractedFeatures = extractArray("features");
-    const extractedCareInstructions = extractArray("careInstructions");
-
-    console.log("\n📊 EXTRACTION SUMMARY:");
-    console.log(
-      "   Materials:",
-      extractedMaterials.length,
-      "items -",
-      extractedMaterials
+    // parse arrays once
+    const extractedMaterials = extractArrayFromRequest(req, "materials");
+    const extractedFeatures = extractArrayFromRequest(req, "features");
+    const extractedCareInstructions = extractArrayFromRequest(
+      req,
+      "careInstructions"
     );
-    console.log(
-      "   Features:",
-      extractedFeatures.length,
-      "items -",
-      extractedFeatures
-    );
-    console.log(
-      "   Care Instructions:",
-      extractedCareInstructions.length,
-      "items -",
-      extractedCareInstructions
-    );
-    // ===== END NEW SECTION =====
 
-    // Validate sale price - check against the price being updated or existing price
+    // validate sale price if present
+    const priceToCheck = req.body.price
+      ? parseFloat(req.body.price)
+      : product.price;
     if (req.body.salePrice && req.body.salePrice !== "") {
-      const priceToCheck = req.body.price
-        ? parseFloat(req.body.price)
-        : product.price;
       const salePriceToCheck = parseFloat(req.body.salePrice);
-
-      console.log("\n💰 PRICE VALIDATION:");
-      console.log(
-        `   Regular Price: ${priceToCheck} (type: ${typeof priceToCheck})`
-      );
-      console.log(
-        `   Sale Price: ${salePriceToCheck} (type: ${typeof salePriceToCheck})`
-      );
-      console.log(`   Sale >= Regular? ${salePriceToCheck >= priceToCheck}`);
-
       if (
         !isNaN(salePriceToCheck) &&
         !isNaN(priceToCheck) &&
         salePriceToCheck >= priceToCheck
       ) {
-        if (req.files && req.files.length > 0) {
-          const publicIds = req.files.map((file) => file.filename);
-          await deleteMultipleFromCloudinary(publicIds);
-        }
-        return res.status(400).json({
-          success: false,
-          message: `Sale price (${salePriceToCheck}) must be less than regular price (${priceToCheck})`,
-        });
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "Sale price must be less than regular price",
+          });
       }
     }
 
-    // Also validate the final updateData values before saving
-    const finalPrice = req.body.price
-      ? parseFloat(req.body.price)
-      : product.price;
-    const finalSalePrice = req.body.salePrice
-      ? parseFloat(req.body.salePrice)
-      : req.body.salePrice === ""
-      ? null
-      : product.salePrice;
-
-    if (finalSalePrice && finalPrice && finalSalePrice >= finalPrice) {
-      console.error(
-        `❌ Final validation failed: salePrice ${finalSalePrice} >= price ${finalPrice}`
-      );
-      if (req.files && req.files.length > 0) {
-        const publicIds = req.files.map((file) => file.filename);
-        await deleteMultipleFromCloudinary(publicIds);
-      }
-      return res.status(400).json({
-        success: false,
-        message: `Sale price (${finalSalePrice}) must be less than regular price (${finalPrice})`,
-      });
-    }
-
-    // Check SKU conflicts
+    // sku/slug uniqueness checks
     if (req.body.sku && req.body.sku !== product.sku) {
-      const existingProduct = await Product.findOne({
+      const existing = await Product.findOne({
         sku: req.body.sku,
         _id: { $ne: req.params.id },
       });
-      if (existingProduct) {
-        if (req.files && req.files.length > 0) {
-          const publicIds = req.files.map((file) => file.filename);
-          await deleteMultipleFromCloudinary(publicIds);
-        }
-        return res.status(400).json({
-          success: false,
-          message: "Product with this SKU already exists",
-        });
-      }
+      if (existing)
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "Product with this SKU already exists",
+          });
     }
-
-    // Check slug conflicts
     if (req.body.slug && req.body.slug !== product.slug) {
       const existingSlug = await Product.findOne({
         slug: req.body.slug,
         _id: { $ne: req.params.id },
       });
-      if (existingSlug) {
-        if (req.files && req.files.length > 0) {
-          const publicIds = req.files.map((file) => file.filename);
-          await deleteMultipleFromCloudinary(publicIds);
-        }
-        return res.status(400).json({
-          success: false,
-          message: "Product with this slug already exists",
-        });
-      }
+      if (existingSlug)
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "Product with this slug already exists",
+          });
     }
 
-    console.log("\n🖼️  PROCESSING IMAGES...");
-
-    // Handle images update
+    // Build updatedImages starting from existingImages sent by client (keeps order)
     let updatedImages = [];
-
-    // 1. First, check if new images are being uploaded
-    const hasNewImages = req.files && req.files.length > 0;
-    console.log("Has new images to upload:", hasNewImages);
-    console.log("New images count:", req.files?.length || 0);
-
-    // 2. Parse existing images to keep
-    if (req.body.existingImages) {
-      try {
-        const existingImages = JSON.parse(req.body.existingImages);
-        console.log("📸 Existing images to keep:", existingImages.length);
-        updatedImages = existingImages;
-      } catch (e) {
-        console.error("❌ Error parsing existingImages:", e);
-      }
+    const existingImagesFromClient = safeJSONParse(
+      req.body.existingImages,
+      null
+    );
+    if (Array.isArray(existingImagesFromClient)) {
+      // Expecting objects with at least url and publicId (or _id)
+      updatedImages = existingImagesFromClient.map((img) => ({ ...img }));
     } else {
-      console.log("⚠️  No existingImages field in request");
+      // default to product.images (server side) if client didn't send explicit list
+      updatedImages = product.images
+        ? product.images.map((i) => ({ ...i }))
+        : [];
     }
 
-    // 3. Add new uploaded images FIRST (before deletions)
-    if (hasNewImages) {
-      console.log(`✅ Adding ${req.files.length} NEW Cloudinary images`);
-
-      const newImages = req.files.map((file, index) => {
+    // Upload new files to Cloudinary (if any)
+    if (req.files && req.files.length > 0) {
+      for (let i = 0; i < req.files.length; i++) {
+        const file = req.files[i];
+        const result = await uploadToCloudinary(file.path, "lilyth-products");
+        const publicId = result.public_id || result.publicId;
+        const url = result.secure_url || result.url;
         const imageObj = {
-          url: file.path,
-          publicId: file.filename,
+          url,
+          publicId,
           alt: "",
-          isPrimary: updatedImages.length === 0 && index === 0,
+          // Mark primary if none exists yet
+          isPrimary:
+            !updatedImages.some((img) => img.isPrimary) &&
+            updatedImages.length === 0 &&
+            i === 0,
         };
-
-        console.log(`   [${index}] New image:`);
-        console.log(`       URL: ${imageObj.url}`);
-        console.log(`       Public ID: ${imageObj.publicId}`);
-        console.log(`       Primary: ${imageObj.isPrimary}`);
-
-        return imageObj;
-      });
-
-      updatedImages = [...updatedImages, ...newImages];
-      console.log("✅ Total images after adding new:", updatedImages.length);
+        updatedImages.push(imageObj);
+        if (publicId) newlyUploadedPublicIds.push(publicId);
+      }
     }
 
-    // 4. NOW handle deletions (after confirming we have images)
-    if (req.body.imagesToDelete) {
-      try {
-        const imagesToDelete = JSON.parse(req.body.imagesToDelete);
-        console.log("🗑️  Images marked for deletion:", imagesToDelete.length);
-
-        // Only proceed with deletion if we'll have images remaining
-        const existingCount = updatedImages.filter((img) => img._id).length;
-        const newCount = updatedImages.filter((img) => !img._id).length;
-        const toDeleteCount = imagesToDelete.length;
-
-        console.log(
-          `   Current images: ${updatedImages.length} (${existingCount} existing, ${newCount} new)`
+    // Handle deletions requested by client
+    const imagesToDelete = safeJSONParse(req.body.imagesToDelete, []);
+    if (Array.isArray(imagesToDelete) && imagesToDelete.length > 0) {
+      // delete from Cloudinary and filter from updatedImages
+      for (const idOrPublicId of imagesToDelete) {
+        // find by _id (string) or publicId
+        const img = product.images.find(
+          (p) =>
+            p._id?.toString() === idOrPublicId || p.publicId === idOrPublicId
         );
-        console.log(`   To delete: ${toDeleteCount}`);
-
-        // Check if deletion would leave us with no images
-        if (existingCount <= toDeleteCount && newCount === 0) {
-          console.log(
-            "⚠️  WARNING: Deletion would leave no images, checking for new uploads..."
-          );
-          if (!hasNewImages) {
-            console.error("❌ Cannot delete all images without replacements!");
-
-            // Clean up any uploaded files
-            if (req.files && req.files.length > 0) {
-              const publicIds = req.files.map((file) => file.filename);
-              await deleteMultipleFromCloudinary(publicIds);
-            }
-
-            return res.status(400).json({
-              success: false,
-              message: "Product must have at least one image",
-              errors: [
-                "Cannot remove all product images. Please add at least one image.",
-              ],
-            });
+        if (img && img.publicId) {
+          try {
+            await deleteFromCloudinary(img.publicId);
+          } catch (err) {
+            console.error("Error deleting image from Cloudinary:", err);
           }
         }
+      }
 
-        // Delete from Cloudinary
-        for (const imageId of imagesToDelete) {
-          const image = product.images.find(
-            (img) => img._id.toString() === imageId || img.publicId === imageId
-          );
-          if (image && image.publicId) {
-            console.log("   Deleting from Cloudinary:", image.publicId);
-            await deleteFromCloudinary(image.publicId);
-          }
-        }
+      // filter out those images from updatedImages (compare by _id or publicId)
+      updatedImages = updatedImages.filter((img) => {
+        const imgId = img._id ? img._id.toString() : null;
+        if (imgId && imagesToDelete.includes(imgId)) return false;
+        if (img.publicId && imagesToDelete.includes(img.publicId)) return false;
+        return true;
+      });
+    }
 
-        // Filter out deleted images from existing images only
-        updatedImages = updatedImages.filter((img) => {
-          // Keep all new images (they don't have _id yet)
-          if (!img._id) return true;
-
-          // Check if this existing image should be deleted
-          const shouldDelete = imagesToDelete.includes(img._id.toString());
-          if (shouldDelete) {
-            console.log(`   Removing image with _id: ${img._id}`);
-          }
-          return !shouldDelete;
+    // final safety: must have at least one image
+    if (!Array.isArray(updatedImages) || updatedImages.length === 0) {
+      // cleanup newly uploaded cloud files (if any)
+      if (newlyUploadedPublicIds.length > 0) {
+        await deleteMultipleFromCloudinary(newlyUploadedPublicIds);
+      }
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Product must have at least one image",
         });
-
-        console.log(
-          "✅ After deletion, images remaining:",
-          updatedImages.length
-        );
-      } catch (e) {
-        console.error("❌ Error handling image deletion:", e);
-      }
     }
 
-    // 5. Final validation - ensure at least one image exists
-    if (updatedImages.length === 0) {
-      console.error("❌ No images remaining after update!");
-
-      // Clean up any uploaded files
-      if (req.files && req.files.length > 0) {
-        const publicIds = req.files.map((file) => file.filename);
-        await deleteMultipleFromCloudinary(publicIds);
-        console.log("🧹 Cleaned up uploaded images");
-      }
-
-      return res.status(400).json({
-        success: false,
-        message: "Product must have at least one image",
-        errors: ["At least one product image is required"],
-      });
-    }
-
-    // Ensure at least one image is marked as primary
-    if (!updatedImages.some((img) => img.isPrimary)) {
+    // ensure one primary image
+    if (!updatedImages.some((i) => i.isPrimary)) {
       updatedImages[0].isPrimary = true;
-      console.log("✅ Set first image as primary");
     }
 
-    console.log("\n🖼️  FINAL IMAGE COUNT:", updatedImages.length);
-    console.log("   Images array:", JSON.stringify(updatedImages, null, 2));
-
-    // Build update data
+    // Prepare update data
     const updateData = {
       name: req.body.name || product.name,
       description: req.body.description || product.description,
@@ -1096,26 +664,24 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       sku: req.body.sku || product.sku,
       slug: req.body.slug || product.slug,
       price: req.body.price ? parseFloat(req.body.price) : product.price,
-      salePrice: req.body.salePrice
-        ? parseFloat(req.body.salePrice)
-        : req.body.salePrice === ""
-        ? null
-        : product.salePrice,
+      salePrice:
+        req.body.salePrice && req.body.salePrice !== ""
+          ? parseFloat(req.body.salePrice)
+          : req.body.salePrice === ""
+          ? null
+          : product.salePrice,
       cost: req.body.cost ? parseFloat(req.body.cost) : product.cost,
       category: req.body.category || product.category,
       status: req.body.status || product.status,
       isFeatured:
         req.body.featured !== undefined
           ? req.body.featured === "true"
-          : req.body.isFeatured !== undefined
-          ? req.body.isFeatured === "true"
           : product.isFeatured,
       isNewArrival:
         req.body.isNewArrival !== undefined
           ? req.body.isNewArrival === "true"
           : product.isNewArrival,
       variants: variants.length > 0 ? variants : product.variants,
-      // Use extracted variables (not calling extractArray again)
       materials:
         extractedMaterials.length > 0 ? extractedMaterials : product.materials,
       features:
@@ -1124,132 +690,91 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         extractedCareInstructions.length > 0
           ? extractedCareInstructions
           : product.careInstructions,
-      seo: seo,
+      seo: {
+        metaTitle: req.body["seo[metaTitle]"] || product.seo?.metaTitle || "",
+        metaDescription:
+          req.body["seo[metaDescription]"] ||
+          product.seo?.metaDescription ||
+          "",
+        keywords: req.body["seo[keywords]"] || product.seo?.keywords || "",
+      },
       images: updatedImages,
     };
 
-    // Calculate total stock
     updateData.totalStock = updateData.variants.reduce(
-      (total, variant) => total + (parseInt(variant.stock) || 0),
+      (t, v) => t + (parseInt(v.stock) || 0),
       0
     );
 
-    console.log("\n💾 UPDATING DATABASE...");
-    console.log("   Total stock:", updateData.totalStock);
-    console.log("   Images to save:", updateData.images.length);
-    console.log("   Materials to save:", updateData.materials);
-    console.log("   Features to save:", updateData.features);
-    console.log("   Care Instructions to save:", updateData.careInstructions);
-    console.log("   Price:", updateData.price);
-    console.log("   Sale Price:", updateData.salePrice);
-
-    // Instead of findByIdAndUpdate, update the product object directly and save
-    // This ensures the validators have the correct context with both price and salePrice
+    // apply and save
     Object.assign(product, updateData);
-
-    // Save the product with proper validation context
     await product.save();
-
-    // Populate category after saving
     await product.populate("category", "name slug");
 
-    console.log("\n✅ UPDATE COMPLETED");
-    console.log("   Images in updated product:", product.images?.length || 0);
-
-    // Verify
-    const verifyProduct = await Product.findById(req.params.id).lean();
-    console.log("\n🔍 VERIFICATION:");
-    console.log("   Images in database:", verifyProduct.images?.length || 0);
-    console.log("   Materials in database:", verifyProduct.materials);
-    console.log("   Features in database:", verifyProduct.features);
-    console.log(
-      "   Care Instructions in database:",
-      verifyProduct.careInstructions
-    );
-
-    if (verifyProduct.images && verifyProduct.images.length > 0) {
-      console.log("✅ Images successfully saved to database");
-    } else if (updatedImages.length > 0) {
-      console.log("❌ WARNING: We tried to save images but they're not in DB!");
-    }
-
-    console.log("========================================");
-    console.log("✅ UPDATE PRODUCT COMPLETED");
-    console.log("========================================\n");
-
-    res.status(200).json({
-      success: true,
-      message: "Product updated successfully",
-      product,
-    });
-  } catch (error) {
-    console.error("\n========================================");
-    console.error("❌ UPDATE PRODUCT ERROR");
-    console.error("========================================");
-    console.error("Message:", error.message);
-    console.error("Stack:", error.stack);
-
-    if (req.files && req.files.length > 0) {
-      try {
-        const publicIds = req.files.map((file) => file.filename);
-        await deleteMultipleFromCloudinary(publicIds);
-        console.log("🧹 Cleaned up uploaded images");
-      } catch (cleanupError) {
-        console.error("❌ Cleanup error:", cleanupError);
-      }
-    }
-
-    if (error.name === "ValidationError") {
-      const errors = Object.values(error.errors).map((err) => err.message);
-      return res.status(400).json({
-        success: false,
-        message: "Validation Error",
-        errors,
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "Product updated successfully",
+        product,
       });
+  } catch (err) {
+    console.error("UPDATE PRODUCT ERROR:", err);
+
+    // cleanup any newly uploaded cloud images
+    try {
+      if (newlyUploadedPublicIds && newlyUploadedPublicIds.length > 0) {
+        await deleteMultipleFromCloudinary(newlyUploadedPublicIds);
+      }
+    } catch (cleanupErr) {
+      console.error("Error cleaning up newly uploaded images:", cleanupErr);
     }
 
-    res.status(500).json({
-      success: false,
-      message: error.message || "Failed to update product",
-    });
+    if (err.name === "ValidationError") {
+      const errors = Object.values(err.errors).map((e) => e.message);
+      return res
+        .status(400)
+        .json({ success: false, message: "Validation Error", errors });
+    }
+
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: err.message || "Failed to update product",
+      });
   }
 });
 
-// @desc    Delete product (Admin only)
-// @route   DELETE /api/products/:id
-// @access  Private/Admin
+// --------------------------------------------------------
+// DELETE PRODUCT
+// --------------------------------------------------------
 exports.deleteProduct = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
+  if (!product)
+    return res
+      .status(404)
+      .json({ success: false, message: "Product not found" });
 
-  if (!product) {
-    return res.status(404).json({
-      success: false,
-      message: "Product not found",
-    });
-  }
-
-  // Delete all product images from Cloudinary
-  if (product.images && product.images.length > 0) {
-    try {
-      const publicIds = product.images
-        .filter((img) => img.publicId)
-        .map((img) => img.publicId);
-
-      if (publicIds.length > 0) {
-        console.log(`Deleting ${publicIds.length} images from Cloudinary`);
+  // collect publicIds and delete them
+  if (Array.isArray(product.images) && product.images.length > 0) {
+    const publicIds = product.images
+      .filter((i) => i.publicId)
+      .map((i) => i.publicId);
+    if (publicIds.length > 0) {
+      try {
         await deleteMultipleFromCloudinary(publicIds);
-        console.log("Images deleted from Cloudinary successfully");
+      } catch (err) {
+        console.error("Error deleting images from Cloudinary:", err);
       }
-    } catch (error) {
-      console.error("Error deleting images from Cloudinary:", error);
-      // Continue with product deletion even if image deletion fails
     }
   }
 
   await product.deleteOne();
-
-  res.status(200).json({
-    success: true,
-    message: "Product and associated images deleted successfully",
-  });
+  res
+    .status(200)
+    .json({
+      success: true,
+      message: "Product and associated images deleted successfully",
+    });
 });

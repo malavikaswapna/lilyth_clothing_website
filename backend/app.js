@@ -1,10 +1,10 @@
-// app.js
+// backend/app.js
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const mongoose = require("mongoose");
-const path = require("path"); // ✅ ADD THIS
+const path = require("path"); // âœ… ADD THIS
 const errorHandler = require("./middleware/errorHandler");
 const adminRoutes = require("./routes/admin");
 const { sanitizeQuery } = require("./middleware/queryOptimizer");
@@ -37,7 +37,7 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.warn(`⚠️ Blocked CORS request from: ${origin}`);
+      console.warn(`âš ï¸ Blocked CORS request from: ${origin}`);
       callback(new Error("Not allowed by CORS"));
     }
   },
@@ -64,7 +64,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(sanitizeQuery);
 
-// ✅ ADD: Serve static files (for uploaded images)
+// Serve static files (for uploaded images)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // public routes
@@ -82,7 +82,7 @@ app.use("/api/orders", require("./routes/orders"));
 app.use("/api/user", require("./routes/user"));
 app.use("/api/promo-codes", require("./routes/promoCodes"));
 
-// ✅ ADD: Payment routes
+// payment routes
 app.use("/api/payments", require("./routes/payments"));
 
 // admin routes
@@ -108,7 +108,7 @@ app.get("/", (req, res) => {
       user: "/api/user",
       reviews: "/api/reviews",
       pincode: "/api/pincode",
-      payments: "/api/payments", // ✅ ADD THIS
+      payments: "/api/payments",
       promoCodes: "/api/promo-codes",
       newsletter: "/api/newsletter",
     },
@@ -138,7 +138,7 @@ app.get("/health", async (req, res) => {
 
 // 404 handler
 app.use((req, res) => {
-  console.log(`❌ 404 - Route not found: ${req.method} ${req.originalUrl}`);
+  console.log(`âŒ 404 - Route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     success: false,
     message: "Route not found",
@@ -147,7 +147,7 @@ app.use((req, res) => {
   });
 });
 
-// Error handling middleware
+// error handling middleware
 app.use(errorHandler);
 
 module.exports = app;

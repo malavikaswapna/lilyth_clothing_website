@@ -105,22 +105,22 @@ const Footer = () => {
             <h3 className="footer-title">Shop</h3>
             <ul className="footer-links">
               <li>
-                <Link to="/shop?category=dresses">Dresses</Link>
+                <Link to="/shop?category=indo-western">indo-western</Link>
               </li>
               <li>
-                <Link to="/shop?category=tops">Tops</Link>
+                <Link to="/shop?category=dresses">dresses - coming soon</Link>
               </li>
               <li>
-                <Link to="/shop?category=bottoms">Bottoms</Link>
+                <Link to="/shop?category=tops">tops - coming soon</Link>
               </li>
               <li>
-                <Link to="/shop?category=sleepwear">Sleepwear</Link>
+                <Link to="/shop?category=bottoms">bottoms - coming soon</Link>
               </li>
               <li>
-                <Link to="/shop?newArrivals=true">New Arrivals</Link>
+                <Link to="/shop?newArrivals=true">new arrivals</Link>
               </li>
               <li>
-                <Link to="/shop?onSale=true">Sale</Link>
+                <Link to="/shop?onSale=true">sale</Link>
               </li>
             </ul>
           </div>

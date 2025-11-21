@@ -487,16 +487,18 @@ const ProductReviews = ({
                     <button
                       onClick={() => handleEditReview(review)}
                       className="action-btn edit"
+                      title="Edit review"
+                      aria-label="Edit review"
                     >
-                      <Edit size={14} />
-                      Edit
+                      <Edit size={18} />
                     </button>
                     <button
                       onClick={() => handleDeleteReview(review._id)}
                       className="action-btn delete"
+                      title="Delete review"
+                      aria-label="Delete review"
                     >
-                      <Trash2 size={14} />
-                      Delete
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 )}

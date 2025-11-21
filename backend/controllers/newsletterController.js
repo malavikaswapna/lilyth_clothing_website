@@ -3,6 +3,7 @@ const Newsletter = require("../models/Newsletter");
 const asyncHandler = require("../utils/asyncHandler");
 const emailService = require("../utils/emailService");
 const { auditLogger } = require("../utils/auditLogger");
+const { notifyAdminNewSubscriber } = require("./newsletterCampaignController");
 
 // @desc    Subscribe to newsletter
 // @route   POST /api/newsletter/subscribe
@@ -49,6 +50,9 @@ exports.subscribe = asyncHandler(async (req, res) => {
           isReturning: true,
         });
 
+        // ✅ Notify admin about resubscriber
+        await notifyAdminNewSubscriber(subscriber.email);
+
         return res.status(200).json({
           success: true,
           message:
@@ -73,6 +77,9 @@ exports.subscribe = asyncHandler(async (req, res) => {
       email: subscriber.email,
       isReturning: false,
     });
+
+    // ✅ Notify admin about new subscriber
+    await notifyAdminNewSubscriber(subscriber.email);
 
     // Log the subscription
     await auditLogger.log({

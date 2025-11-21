@@ -65,9 +65,29 @@ const Shop = () => {
     loadCategories();
   }, []);
 
+  // Sync filters with URL params whenever they change
+  useEffect(() => {
+    const newFilters = {
+      category: searchParams.get("category") || "",
+      search: searchParams.get("search") || "",
+      sort: searchParams.get("sort") || "newest",
+      minPrice: searchParams.get("minPrice") || "",
+      maxPrice: searchParams.get("maxPrice") || "",
+      size: searchParams.get("size") || "",
+      color: searchParams.get("color") || "",
+      featured: searchParams.get("featured") === "true",
+      newArrivals: searchParams.get("newArrivals") === "true",
+      onSale: searchParams.get("onSale") === "true",
+    };
+    setFilters(newFilters);
+
+    // Scroll to top when URL params change
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [searchParams]);
+
   useEffect(() => {
     loadProducts();
-  }, [filters, searchParams]);
+  }, [filters]);
 
   const loadCategories = async () => {
     try {

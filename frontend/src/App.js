@@ -13,6 +13,7 @@ import { useAuth } from "./context/AuthContext";
 import Layout from "./components/layout/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminRoute from "./components/admin/AdminRoute";
+import ScrollToTop from "./components/common/ScrollToTop";
 
 // Public Pages
 import Home from "./pages/Home";
@@ -185,6 +186,7 @@ const AppRouter = () => {
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <AuthProvider>
         <CartProvider>
           <AppRouter />
