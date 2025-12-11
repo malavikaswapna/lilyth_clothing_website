@@ -1,3 +1,4 @@
+//src/pages/admin/Settings.js
 import React, { useState, useEffect } from "react";
 import {
   Save,
@@ -68,8 +69,6 @@ const Settings = () => {
   const [paymentSettings, setPaymentSettings] = useState({
     razorpayEnabled: true,
     codEnabled: true,
-    razorpayKeyId: "",
-    razorpayKeySecret: "",
     paymentGatewayMode: "test",
   });
 
@@ -100,6 +99,21 @@ const Settings = () => {
         }
       } catch (error) {
         console.log("Using default notification settings");
+      }
+
+      // ✅ NEW: Load payment settings from backend
+      try {
+        const paymentResponse = await adminAPI.getPaymentSettings();
+        if (paymentResponse.data.data) {
+          setPaymentSettings({
+            razorpayEnabled: paymentResponse.data.data.razorpayEnabled,
+            codEnabled: paymentResponse.data.data.codEnabled,
+            paymentGatewayMode:
+              paymentResponse.data.data.paymentGatewayMode || "test",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load payment settings:", error);
       }
 
       // ✅ Load store settings from backend
@@ -222,13 +236,37 @@ const Settings = () => {
 
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate: At least one payment method must be enabled
+    if (!paymentSettings.razorpayEnabled && !paymentSettings.codEnabled) {
+      toast.error("At least one payment method must be enabled");
+      return;
+    }
+
     try {
       setLoading(true);
-      // Save to localStorage for now (in production, this would go to backend securely)
-      localStorage.setItem("paymentSettings", JSON.stringify(paymentSettings));
-      toast.success("Payment settings updated");
+
+      // ✅ Save to backend
+      const response = await adminAPI.updatePaymentSettings({
+        razorpayEnabled: paymentSettings.razorpayEnabled,
+        codEnabled: paymentSettings.codEnabled,
+        paymentGatewayMode: paymentSettings.paymentGatewayMode,
+      });
+
+      if (response.data.success) {
+        toast.success("Payment settings updated successfully");
+
+        // Also save to localStorage as backup
+        localStorage.setItem(
+          "paymentSettings",
+          JSON.stringify(paymentSettings)
+        );
+      }
     } catch (error) {
-      toast.error("Failed to update payment settings");
+      console.error("Failed to update payment settings:", error);
+      toast.error(
+        error.response?.data?.message || "Failed to update payment settings"
+      );
     } finally {
       setLoading(false);
     }
@@ -760,7 +798,7 @@ const Settings = () => {
                       </label>
                     </div>
 
-                    {paymentSettings.razorpayEnabled && (
+                    {/* {paymentSettings.razorpayEnabled && (
                       <div className="method-config">
                         <div className="form-group">
                           <label className="form-label">Razorpay Key ID</label>
@@ -813,7 +851,7 @@ const Settings = () => {
                           </select>
                         </div>
                       </div>
-                    )}
+                    )} */}
                   </div>
 
                   <div className="payment-method">

@@ -5,8 +5,9 @@
 /* Hero Section */
 .about-hero {
   padding: var(--spacing-2xl) 0;
-  background: linear-gradient(135deg, 
-    rgba(74, 74, 74, 0.05) 0%, 
+  background: linear-gradient(
+    135deg,
+    rgba(74, 74, 74, 0.05) 0%,
     rgba(196, 196, 196, 0.1) 100%
   );
 }
@@ -85,7 +86,6 @@
 /* Values Section */
 .our-values {
   padding: var(--spacing-2xl) 0;
-  background-color: var(--bg-light);
 }
 
 .our-values h2 {
@@ -272,31 +272,31 @@
     grid-template-columns: 1fr;
     gap: var(--spacing-xl);
   }
-  
+
   .hero-text h1 {
     font-size: 2.5rem;
     text-align: center;
   }
-  
+
   .hero-subtitle {
     text-align: center;
   }
-  
+
   .hero-image,
   .story-image {
     order: -1;
   }
-  
+
   .values-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .team-grid {
     grid-template-columns: 1fr;
     max-width: 400px;
     margin: 0 auto;
   }
-  
+
   .cta-actions {
     flex-direction: column;
     align-items: center;

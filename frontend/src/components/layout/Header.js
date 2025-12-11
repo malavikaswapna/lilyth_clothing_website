@@ -1,5 +1,5 @@
 // Header.js
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
@@ -13,18 +13,86 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import logo from "../../assets/logo.png";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import TrackOrderButton from "../common/TrackOrderButton";
 import "./Header.css";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.12,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: -12 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.28, ease: "easeOut" },
+  },
+};
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isKebabOpen, setIsKebabOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
   const { isAuthenticated, user, logout } = useAuth();
   const { getCartItemCount } = useCart();
   const navigate = useNavigate();
 
+  // ------------------------------
+  // Refs for outside click closing
+  // ------------------------------
+  const menuRef = useRef(null);
+  const kebabRef = useRef(null);
+  const searchRef = useRef(null);
+
+  // -------------------------------------------
+  // Detect outside clicks for menus & search
+  // -------------------------------------------
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Close hamburger menu
+      if (
+        isMenuOpen &&
+        menuRef.current &&
+        !menuRef.current.contains(event.target)
+      ) {
+        setIsMenuOpen(false);
+      }
+
+      // Close kebab menu
+      if (
+        isKebabOpen &&
+        kebabRef.current &&
+        !kebabRef.current.contains(event.target)
+      ) {
+        setIsKebabOpen(false);
+      }
+
+      // Close search overlay
+      if (
+        isSearchOpen &&
+        searchRef.current &&
+        !searchRef.current.contains(event.target)
+      ) {
+        setIsSearchOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isMenuOpen, isKebabOpen, isSearchOpen]);
+
+  // -------------------------------------------
+  // Search handling
+  // -------------------------------------------
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -36,6 +104,7 @@ const Header = () => {
   };
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
   const toggleSearch = () => {
     setIsSearchOpen(!isSearchOpen);
     setIsKebabOpen(false);
@@ -157,7 +226,7 @@ const Header = () => {
             </div>
 
             {/* Mobile Kebab Menu */}
-            <div className="mobile-icons">
+            <div className="mobile-icons" ref={kebabRef}>
               <button
                 className="action-btn"
                 onClick={() => setIsKebabOpen(!isKebabOpen)}
@@ -221,7 +290,7 @@ const Header = () => {
 
         {/* Search Overlay */}
         {isSearchOpen && (
-          <div className="search-overlay">
+          <div className="search-overlay" ref={searchRef}>
             <form onSubmit={handleSearch}>
               <div className="search-input-wrapper">
                 <Search className="search-icon" size={20} />
@@ -245,152 +314,179 @@ const Header = () => {
           </div>
         )}
 
-        {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <nav className={`mobile-nav ${isMenuOpen ? "open" : ""}`}>
-            <div className="mobile-nav-section">
-              <h3 className="mobile-nav-title">Shop</h3>
-              <Link to="/shop" className="mobile-nav-link" onClick={toggleMenu}>
-                All Items
-              </Link>
-              {/* <Link
-                to="/shop?category=dresses"
-                className="mobile-nav-link"
-                onClick={toggleMenu}
-              >
-                Dresses
-              </Link>
-              <Link
-                to="/shop?category=activewear"
-                className="mobile-nav-link"
-                onClick={toggleMenu}
-              >
-                Activewear
-              </Link> */}
-              <Link
-                to="/shop?category=indo-western"
-                className="mobile-nav-link"
-                onClick={toggleMenu}
-              >
-                Indo-Western
-              </Link>
-              {/* <Link
-                to="/shop?category=tops"
-                className="mobile-nav-link"
-                onClick={toggleMenu}
-              >
-                Tops
-              </Link>
-              <Link
-                to="/shop?category=bottoms"
-                className="mobile-nav-link"
-                onClick={toggleMenu}
-              >
-                Bottoms
-              </Link>
-              <Link
-                to="/shop?category=sleepwear"
-                className="mobile-nav-link"
-                onClick={toggleMenu}
-              >
-                Sleepwear
-              </Link>
-              <Link
-                to="/shop?category=cord-sets"
-                className="mobile-nav-link"
-                onClick={toggleMenu}
-              >
-                Cord Sets
-              </Link> */}
-            </div>
+        {/* ---------------------------- */}
+        {/* CASCADING MENU (NO SLIDE) */}
+        {/* ---------------------------- */}
 
-            {isAuthenticated ? (
-              <div className="mobile-nav-section">
-                <h3 className="mobile-nav-title">Account</h3>
-                <Link
-                  to="/account"
-                  className="mobile-nav-link"
-                  onClick={toggleMenu}
-                >
-                  My Account
-                </Link>
-                <Link
-                  to="/account/orders"
-                  className="mobile-nav-link"
-                  onClick={toggleMenu}
-                >
-                  My Orders
-                </Link>
-                <Link
-                  to="/account/wishlist"
-                  className="mobile-nav-link"
-                  onClick={toggleMenu}
-                >
-                  Wishlist
-                </Link>
-                <button
-                  onClick={() => {
-                    logout();
-                    toggleMenu();
-                  }}
-                  className="mobile-nav-link mobile-nav-button"
-                >
-                  Sign Out
-                </button>
-              </div>
-            ) : (
-              <div className="mobile-nav-section">
-                <h3 className="mobile-nav-title">Account</h3>
-                <Link
-                  to="/login"
-                  className="mobile-nav-link"
-                  onClick={toggleMenu}
-                >
-                  Sign In
-                </Link>
-                <Link
-                  to="/register"
-                  className="mobile-nav-link"
-                  onClick={toggleMenu}
-                >
-                  Create Account
-                </Link>
-              </div>
-            )}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              key="mobile-nav"
+              ref={menuRef}
+              className="mobile-nav open"
+              initial="hidden"
+              animate="show"
+              exit="hidden"
+              variants={containerVariants}
+            >
+              {/* SHOP SECTION */}
+              <motion.div
+                variants={itemVariants}
+                className="mobile-nav-section"
+              >
+                <h3 className="mobile-nav-title">Shop</h3>
 
-            <div className="mobile-nav-section">
-              <h3 className="mobile-nav-title">Customer Care</h3>
-              <Link
-                to="/contact"
-                className="mobile-nav-link"
-                onClick={toggleMenu}
+                <motion.div variants={itemVariants}>
+                  <Link
+                    to="/shop"
+                    className="mobile-nav-link"
+                    onClick={toggleMenu}
+                  >
+                    All Items
+                  </Link>
+                </motion.div>
+
+                <motion.div variants={itemVariants}>
+                  <Link
+                    to="/shop?category=indo-western"
+                    className="mobile-nav-link"
+                    onClick={toggleMenu}
+                  >
+                    Indo-Western
+                  </Link>
+                </motion.div>
+              </motion.div>
+
+              {/* ACCOUNT SECTION */}
+              <motion.div
+                variants={itemVariants}
+                className="mobile-nav-section"
               >
-                Contact Us
-              </Link>
-              <Link
-                to="/help/shipping"
-                className="mobile-nav-link"
-                onClick={toggleMenu}
+                <h3 className="mobile-nav-title">Account</h3>
+
+                {isAuthenticated ? (
+                  <>
+                    <motion.div variants={itemVariants}>
+                      <Link
+                        to="/account"
+                        className="mobile-nav-link"
+                        onClick={toggleMenu}
+                      >
+                        My Account
+                      </Link>
+                    </motion.div>
+
+                    <motion.div variants={itemVariants}>
+                      <Link
+                        to="/account/orders"
+                        className="mobile-nav-link"
+                        onClick={toggleMenu}
+                      >
+                        My Orders
+                      </Link>
+                    </motion.div>
+
+                    <motion.div variants={itemVariants}>
+                      <Link
+                        to="/account/wishlist"
+                        className="mobile-nav-link"
+                        onClick={toggleMenu}
+                      >
+                        Wishlist
+                      </Link>
+                    </motion.div>
+
+                    <motion.div variants={itemVariants}>
+                      <button
+                        onClick={() => {
+                          logout();
+                          toggleMenu();
+                        }}
+                        className="mobile-nav-link mobile-nav-button"
+                      >
+                        Sign Out
+                      </button>
+                    </motion.div>
+                  </>
+                ) : (
+                  <>
+                    <motion.div variants={itemVariants}>
+                      <Link
+                        to="/login"
+                        className="mobile-nav-link"
+                        onClick={toggleMenu}
+                      >
+                        Sign In
+                      </Link>
+                    </motion.div>
+
+                    <motion.div variants={itemVariants}>
+                      <Link
+                        to="/register"
+                        className="mobile-nav-link"
+                        onClick={toggleMenu}
+                      >
+                        Create Account
+                      </Link>
+                    </motion.div>
+                  </>
+                )}
+              </motion.div>
+
+              {/* CUSTOMER CARE */}
+              <motion.div
+                variants={itemVariants}
+                className="mobile-nav-section"
               >
-                Shipping & Returns
-              </Link>
-              <Link
-                to="/help/size-guide"
-                className="mobile-nav-link"
-                onClick={toggleMenu}
-              >
-                Size Guide
-              </Link>
-              <Link
-                to="/help/faq"
-                className="mobile-nav-link"
-                onClick={toggleMenu}
-              >
-                FAQ
-              </Link>
-            </div>
-          </nav>
-        )}
+                <h3 className="mobile-nav-title">Customer Care</h3>
+
+                <motion.div variants={itemVariants}>
+                  <Link
+                    to="/contact"
+                    className="mobile-nav-link"
+                    onClick={toggleMenu}
+                  >
+                    Contact Us
+                  </Link>
+                </motion.div>
+
+                <motion.div variants={itemVariants}>
+                  <Link
+                    to="/help/shipping"
+                    className="mobile-nav-link"
+                    onClick={toggleMenu}
+                  >
+                    Shipping & Returns
+                  </Link>
+                </motion.div>
+
+                <motion.div variants={itemVariants}>
+                  <Link
+                    to="/help/size-guide"
+                    className="mobile-nav-link"
+                    onClick={toggleMenu}
+                  >
+                    Size Guide
+                  </Link>
+                </motion.div>
+
+                <motion.div variants={itemVariants}>
+                  <Link
+                    to="/help/faq"
+                    className="mobile-nav-link"
+                    onClick={toggleMenu}
+                  >
+                    FAQ
+                  </Link>
+                </motion.div>
+              </motion.div>
+
+              <motion.div variants={itemVariants}>
+                <TrackOrderButton variant="outline" onClick={toggleMenu} />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </header>
   );

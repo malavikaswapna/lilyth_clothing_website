@@ -1,27 +1,27 @@
 // middleware/fileValidator.js
-const multer = require('multer');
-const path = require('path');
-const sharp = require('sharp');
-const fs = require('fs').promises;
+const multer = require("multer");
+const path = require("path");
+const sharp = require("sharp");
+const fs = require("fs").promises;
 
-// Allowed file types
+// allowed file types
 const ALLOWED_IMAGE_TYPES = {
-  'image/jpeg': ['.jpg', '.jpeg'],
-  'image/png': ['.png'],
-  'image/webp': ['.webp'],
-  'image/gif': ['.gif']
+  "image/jpeg": [".jpg", ".jpeg"],
+  "image/png": [".png"],
+  "image/webp": [".webp"],
+  "image/gif": [".gif"],
 };
 
-// File size limits (in bytes)
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const MAX_IMAGE_DIMENSION = 4096; // 4096px
+// file size limits (in bytes)
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_IMAGE_DIMENSION = 4096;
 
-// Configure multer storage
+// configure multer storage
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const uploadDir = 'uploads/temp';
-    
-    // Create directory if it doesn't exist
+    const uploadDir = "uploads/temp";
+
+    // create directory if it doesn't exist
     try {
       await fs.mkdir(uploadDir, { recursive: true });
       cb(null, uploadDir);
@@ -30,41 +30,46 @@ const storage = multer.diskStorage({
     }
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
-  }
+    cb(null, file.fieldname + "-" + uniqueSuffix + ext);
+  },
 });
 
-// File filter function
+// file filter function
 const fileFilter = (req, file, cb) => {
-  // Check if file type is allowed
+  // check if file type is allowed
   if (!ALLOWED_IMAGE_TYPES[file.mimetype]) {
-    return cb(new Error('Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.'), false);
+    return cb(
+      new Error(
+        "Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed."
+      ),
+      false
+    );
   }
 
-  // Check file extension matches mimetype
+  // check file extension matches mimetype
   const ext = path.extname(file.originalname).toLowerCase();
   const allowedExtensions = ALLOWED_IMAGE_TYPES[file.mimetype];
-  
+
   if (!allowedExtensions.includes(ext)) {
-    return cb(new Error('File extension does not match file type.'), false);
+    return cb(new Error("File extension does not match file type."), false);
   }
 
   cb(null, true);
 };
 
-// Create multer upload instance
+// create multer upload instance
 const upload = multer({
   storage: storage,
   limits: {
     fileSize: MAX_FILE_SIZE,
-    files: 10 // Maximum 10 files per request
+    files: 10,
   },
-  fileFilter: fileFilter
+  fileFilter: fileFilter,
 });
 
-// Advanced image validation middleware
+// advanced image validation middleware
 const validateImages = async (req, res, next) => {
   if (!req.files || req.files.length === 0) {
     return next();
@@ -76,26 +81,33 @@ const validateImages = async (req, res, next) => {
 
     for (const file of req.files) {
       try {
-        // Read image metadata
+        // read image metadata
         const metadata = await sharp(file.path).metadata();
 
-        // Validate image dimensions
-        if (metadata.width > MAX_IMAGE_DIMENSION || metadata.height > MAX_IMAGE_DIMENSION) {
-          errors.push(`${file.originalname}: Image dimensions exceed ${MAX_IMAGE_DIMENSION}px`);
+        // validate image dimensions
+        if (
+          metadata.width > MAX_IMAGE_DIMENSION ||
+          metadata.height > MAX_IMAGE_DIMENSION
+        ) {
+          errors.push(
+            `${file.originalname}: Image dimensions exceed ${MAX_IMAGE_DIMENSION}px`
+          );
           await fs.unlink(file.path); // Delete invalid file
           continue;
         }
 
-        // Validate image format
-        if (!['jpeg', 'png', 'webp', 'gif'].includes(metadata.format)) {
+        // validate image format
+        if (!["jpeg", "png", "webp", "gif"].includes(metadata.format)) {
           errors.push(`${file.originalname}: Invalid image format`);
           await fs.unlink(file.path);
           continue;
         }
 
-        // Check for potential security issues (very basic check)
-        if (metadata.hasAlpha && metadata.format === 'jpeg') {
-          errors.push(`${file.originalname}: Suspicious file - JPEG with alpha channel`);
+        // check for potential security issues (very basic check)
+        if (metadata.hasAlpha && metadata.format === "jpeg") {
+          errors.push(
+            `${file.originalname}: Suspicious file - JPEG with alpha channel`
+          );
           await fs.unlink(file.path);
           continue;
         }
@@ -103,7 +115,7 @@ const validateImages = async (req, res, next) => {
         validatedFiles.push(file);
       } catch (error) {
         errors.push(`${file.originalname}: ${error.message}`);
-        // Try to delete the file if it exists
+
         try {
           await fs.unlink(file.path);
         } catch {}
@@ -111,25 +123,25 @@ const validateImages = async (req, res, next) => {
     }
 
     if (errors.length > 0) {
-      // Clean up all files if there are errors
+      // clean up all files if there are errors
       for (const file of validatedFiles) {
         try {
           await fs.unlink(file.path);
         } catch {}
       }
-      
+
       return res.status(400).json({
         success: false,
-        message: 'File validation failed',
-        errors
+        message: "File validation failed",
+        errors,
       });
     }
 
-    // Replace req.files with validated files
+    // replace req.files with validated files
     req.files = validatedFiles;
     next();
   } catch (error) {
-    // Clean up files on error
+    // clean up files on error
     if (req.files) {
       for (const file of req.files) {
         try {
@@ -140,13 +152,13 @@ const validateImages = async (req, res, next) => {
 
     return res.status(500).json({
       success: false,
-      message: 'File validation error',
-      error: error.message
+      message: "File validation error",
+      error: error.message,
     });
   }
 };
 
-// Image optimization middleware
+// image optimization middleware
 const optimizeImages = async (req, res, next) => {
   if (!req.files || req.files.length === 0) {
     return next();
@@ -156,28 +168,31 @@ const optimizeImages = async (req, res, next) => {
     const optimizedFiles = [];
 
     for (const file of req.files) {
-      const outputDir = 'uploads/products';
-      const outputFilename = file.filename.replace(path.extname(file.filename), '.webp');
+      const outputDir = "uploads/products";
+      const outputFilename = file.filename.replace(
+        path.extname(file.filename),
+        ".webp"
+      );
       const outputPath = path.join(outputDir, outputFilename);
 
-      // Create output directory if it doesn't exist
+      // create output directory if it doesn't exist
       await fs.mkdir(outputDir, { recursive: true });
 
-      // Optimize and convert to WebP
+      // optimize and convert to WebP
       await sharp(file.path)
-        .resize(2000, 2000, { // Max dimensions
-          fit: 'inside',
-          withoutEnlargement: true
+        .resize(2000, 2000, {
+          fit: "inside",
+          withoutEnlargement: true,
         })
         .webp({ quality: 85 })
         .toFile(outputPath);
 
-      // Create thumbnail
-      const thumbnailPath = path.join(outputDir, 'thumb-' + outputFilename);
+      // create thumbnail
+      const thumbnailPath = path.join(outputDir, "thumb-" + outputFilename);
       await sharp(file.path)
         .resize(400, 400, {
-          fit: 'cover',
-          position: 'center'
+          fit: "cover",
+          position: "center",
         })
         .webp({ quality: 80 })
         .toFile(thumbnailPath);
@@ -186,40 +201,40 @@ const optimizeImages = async (req, res, next) => {
         ...file,
         path: outputPath,
         filename: outputFilename,
-        thumbnail: thumbnailPath
+        thumbnail: thumbnailPath,
       });
 
-      // Delete original file
+      // delete original file
       await fs.unlink(file.path);
     }
 
     req.files = optimizedFiles;
     next();
   } catch (error) {
-    console.error('Image optimization error:', error);
+    console.error("Image optimization error:", error);
     next(error);
   }
 };
 
-// Virus scanning placeholder (integrate with ClamAV or similar)
+// virus scanning placeholder (integrate with ClamAV or similar)
 const scanForVirus = async (req, res, next) => {
   // In production, integrate with antivirus API
   // For now, just pass through
   next();
 };
 
-// Export middleware functions
+// export middleware functions
 module.exports = {
   upload,
   validateImages,
   optimizeImages,
   scanForVirus,
-  
-  // Combined middleware
+
+  // combined middleware
   uploadAndValidate: [
-    upload.array('images', 10),
+    upload.array("images", 10),
     validateImages,
     scanForVirus,
-    optimizeImages
-  ]
+    optimizeImages,
+  ],
 };

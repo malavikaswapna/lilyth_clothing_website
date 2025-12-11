@@ -4,15 +4,28 @@ const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const mongoose = require("mongoose");
-const path = require("path"); // âœ… ADD THIS
+const path = require("path");
 const errorHandler = require("./middleware/errorHandler");
 const adminRoutes = require("./routes/admin");
 const { sanitizeQuery } = require("./middleware/queryOptimizer");
 const apicache = require("apicache");
 const cache = apicache.middleware;
+const swaggerUi = require("swagger-ui-express");
+const swaggerDocument = require("./swagger-output.json");
+const guestRoutes = require("./routes/guest");
 require("dotenv").config();
 
 const app = express();
+
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerDocument, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  })
+);
 
 app.use(helmet());
 
@@ -27,17 +40,18 @@ app.use(limiter);
 const allowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
+  "http://localhost:3001",
+  "http://127.0.0.1:3001",
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
+    // ✅ UPDATED: Allow requests with no origin (like Swagger UI)
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.warn(`âš ï¸ Blocked CORS request from: ${origin}`);
+      console.warn(`⚠️ 🛸 Blocked CORS request from: ${origin}`);
       callback(new Error("Not allowed by CORS"));
     }
   },
@@ -75,12 +89,16 @@ app.use("/api/reviews", require("./routes/reviews"));
 app.use("/api/contact", require("./routes/contact"));
 app.use("/api/pincode", require("./routes/pincode"));
 app.use("/api/newsletter", require("./routes/newsletter"));
+app.use("/api/chat", require("./routes/chat"));
+app.use("/api/returns", require("./routes/returns"));
+app.use("/api/guest", guestRoutes);
 
 // protected routes
 app.use("/api/cart", require("./routes/cart"));
 app.use("/api/orders", require("./routes/orders"));
 app.use("/api/user", require("./routes/user"));
 app.use("/api/promo-codes", require("./routes/promoCodes"));
+app.use("/api/payment-settings", require("./routes/paymentSettings"));
 
 // payment routes
 app.use("/api/payments", require("./routes/payments"));

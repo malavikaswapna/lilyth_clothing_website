@@ -16,7 +16,7 @@ exports.getProductReviews = asyncHandler(async (req, res) => {
   console.log("=== GET PRODUCT REVIEWS ===");
   console.log("Product ID from params:", productId);
 
-  // Validate productId format
+  // validate productId format
   if (!mongoose.Types.ObjectId.isValid(productId)) {
     console.log("Invalid product ID format");
     return res.status(400).json({
@@ -25,14 +25,14 @@ exports.getProductReviews = asyncHandler(async (req, res) => {
     });
   }
 
-  // Convert to ObjectId for proper querying
+  // convert to ObjectId for proper querying
   const productObjectId = new mongoose.Types.ObjectId(productId);
 
   const page = parseInt(req.query.page, 10) || 1;
   const limit = parseInt(req.query.limit, 10) || 10;
   const startIndex = (page - 1) * limit;
 
-  // Build query - use ObjectId for proper matching
+  // build query - use ObjectId for proper matching
   let query = {
     product: productObjectId,
     status: "approved",
@@ -40,17 +40,17 @@ exports.getProductReviews = asyncHandler(async (req, res) => {
 
   console.log("Query:", query);
 
-  // Filter by rating
+  // filter by rating
   if (req.query.rating) {
     query.rating = parseInt(req.query.rating);
   }
 
-  // Filter by verified purchase
+  // filter by verified purchase
   if (req.query.verified === "true") {
     query.isVerifiedPurchase = true;
   }
 
-  // Sort options
+  // sort options
   let sortBy = { createdAt: -1 }; // Default: newest first
   if (req.query.sort === "helpful") {
     sortBy = { helpfulCount: -1 };
@@ -71,7 +71,7 @@ exports.getProductReviews = asyncHandler(async (req, res) => {
   const total = await Review.countDocuments(query);
   console.log("Total reviews:", total);
 
-  // Get rating summary
+  // get rating summary
   const ratingStats = await Review.aggregate([
     { $match: { product: productObjectId, status: "approved" } },
     {
@@ -122,7 +122,7 @@ exports.createReview = asyncHandler(async (req, res) => {
   console.log("Product ID:", productId);
   console.log("User ID:", req.user._id);
 
-  // Validate productId
+  // validate productId
   if (!mongoose.Types.ObjectId.isValid(productId)) {
     return res.status(400).json({
       success: false,
@@ -130,7 +130,7 @@ exports.createReview = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check if product exists
+  // check if product exists
   const product = await Product.findById(productId);
   if (!product) {
     return res.status(404).json({
@@ -139,7 +139,7 @@ exports.createReview = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check if user already reviewed this product
+  // check if user already reviewed this product
   const existingReview = await Review.findOne({
     user: req.user._id,
     product: productId,
@@ -153,7 +153,7 @@ exports.createReview = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check if user purchased this product
+  // check if user purchased this product
   const userOrder = await Order.findOne({
     user: req.user._id,
     "items.product": productId,
@@ -162,7 +162,7 @@ exports.createReview = asyncHandler(async (req, res) => {
 
   console.log("User order found:", !!userOrder);
 
-  // Create the review
+  // create the review
   const review = await Review.create({
     title,
     content,
@@ -180,13 +180,13 @@ exports.createReview = asyncHandler(async (req, res) => {
 
   console.log("Review created:", review._id);
 
-  // Update product rating
+  // update product rating
   await updateProductRating(productId);
 
-  // Populate user info for response
+  // populate user info for response
   await review.populate("user", "firstName lastName");
 
-  // Log audit trail
+  // log audit trail
   if (auditLogger) {
     await auditLogger.log({
       userId: req.user._id,
@@ -225,7 +225,7 @@ exports.updateReview = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check if req.user exists
+  // check if req.user exists
   if (!req.user) {
     return res.status(401).json({
       success: false,
@@ -233,7 +233,7 @@ exports.updateReview = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check ownership
+  // check ownership
   if (review.user.toString() !== req.user._id.toString()) {
     return res.status(403).json({
       success: false,
@@ -243,7 +243,7 @@ exports.updateReview = asyncHandler(async (req, res) => {
 
   const oldRating = review.rating;
 
-  // Update only allowed fields
+  // update only allowed fields
   const allowedUpdates = [
     "title",
     "content",
@@ -268,7 +268,7 @@ exports.updateReview = asyncHandler(async (req, res) => {
 
   console.log("Review updated successfully");
 
-  // Update product rating if rating changed
+  // update product rating if rating changed
   if (oldRating !== review.rating) {
     await updateProductRating(review.product);
   }
@@ -287,7 +287,7 @@ exports.deleteReview = asyncHandler(async (req, res) => {
   console.log("=== DELETE REVIEW START ===");
   console.log("Review ID:", req.params.id);
 
-  // Validate review ID format
+  // validate review ID format
   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
     return res.status(400).json({
       success: false,
@@ -317,7 +317,7 @@ exports.deleteReview = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check ownership or admin
+  // check ownership or admin
   if (
     review.user.toString() !== req.user._id.toString() &&
     req.user.role !== "admin"
@@ -337,7 +337,7 @@ exports.deleteReview = asyncHandler(async (req, res) => {
     await Review.findByIdAndDelete(req.params.id);
     console.log("Review deleted successfully");
 
-    // Update product rating
+    // update product rating
     await updateProductRating(productId);
     console.log("Product rating updated");
 
@@ -371,23 +371,23 @@ exports.markHelpful = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check if user already voted
+  // check if user already voted
   const existingVoteIndex = review.helpfulVotes.findIndex(
     (vote) => vote.user.toString() === req.user._id.toString()
   );
 
   if (existingVoteIndex !== -1) {
-    // Update existing vote
+    // update existing vote
     review.helpfulVotes[existingVoteIndex].isHelpful = isHelpful;
   } else {
-    // Add new vote
+    // add new vote
     review.helpfulVotes.push({
       user: req.user._id,
       isHelpful,
     });
   }
 
-  // Recalculate helpful count
+  // recalculate helpful count
   review.helpfulCount = review.helpfulVotes.filter(
     (vote) => vote.isHelpful
   ).length;
@@ -415,7 +415,7 @@ exports.flagReview = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check if user already flagged
+  // check if user already flagged
   const existingFlag = review.flaggedBy.find(
     (flag) => flag.user.toString() === req.user._id.toString()
   );
@@ -432,7 +432,7 @@ exports.flagReview = asyncHandler(async (req, res) => {
     reason,
   });
 
-  // Auto-flag if multiple reports
+  // auto-flag if multiple reports
   if (review.flaggedBy.length >= 3) {
     review.status = "flagged";
   }
@@ -481,8 +481,6 @@ exports.getUserReviews = asyncHandler(async (req, res) => {
   });
 });
 
-// Admin routes
-
 // @desc    Get all reviews (Admin)
 // @route   GET /api/admin/reviews
 // @access  Private/Admin
@@ -493,17 +491,17 @@ exports.getAllReviews = asyncHandler(async (req, res) => {
 
   let query = {};
 
-  // Filter by status
+  // filter by status
   if (req.query.status) {
     query.status = req.query.status;
   }
 
-  // Filter by rating
+  // filter by rating
   if (req.query.rating) {
     query.rating = parseInt(req.query.rating);
   }
 
-  // Search
+  // search
   if (req.query.search) {
     query.$or = [
       { title: { $regex: req.query.search, $options: "i" } },
@@ -561,12 +559,12 @@ exports.moderateReview = asyncHandler(async (req, res) => {
     });
   }
 
-  // Update product rating if approved/rejected
+  // update product rating if approved/rejected
   if (status === "approved" || status === "rejected") {
     await updateProductRating(review.product._id);
   }
 
-  // Log audit trail
+  // log audit trail
   if (auditLogger) {
     await auditLogger.log({
       userId: req.user._id,
@@ -628,10 +626,10 @@ exports.getReviewStats = asyncHandler(async (req, res) => {
   });
 });
 
-// Helper function to update product rating
+// helper function to update product rating
 const updateProductRating = async (productId) => {
   try {
-    // Validate productId
+    // validate productId
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       console.error(
         "Invalid productId provided to updateProductRating:",

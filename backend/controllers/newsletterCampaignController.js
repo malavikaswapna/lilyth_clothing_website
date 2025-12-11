@@ -10,7 +10,7 @@ const { auditLogger } = require("../utils/auditLogger");
 exports.sendCampaign = asyncHandler(async (req, res) => {
   const { subject, message, campaignType, includedSubscribers } = req.body;
 
-  // Validation
+  // validation
   if (!subject || !message) {
     return res.status(400).json({
       success: false,
@@ -18,10 +18,10 @@ exports.sendCampaign = asyncHandler(async (req, res) => {
     });
   }
 
-  // Get subscribers based on filters
+  // get subscribers based on filters
   let query = { status: "subscribed" };
 
-  // If specific subscriber preferences
+  // if specific subscriber preferences
   if (campaignType === "newArrivals") {
     query["preferences.newArrivals"] = true;
   } else if (campaignType === "sales") {
@@ -30,7 +30,7 @@ exports.sendCampaign = asyncHandler(async (req, res) => {
     query["preferences.exclusiveOffers"] = true;
   }
 
-  // Get all matching subscribers
+  // get all matching subscribers
   const subscribers = await Newsletter.find(query).select("email");
 
   if (subscribers.length === 0) {
@@ -40,10 +40,10 @@ exports.sendCampaign = asyncHandler(async (req, res) => {
     });
   }
 
-  // Send emails (in batches to avoid overwhelming the email server)
+  // send emails (in batches to avoid overwhelming the email server)
   let successCount = 0;
   let failCount = 0;
-  const batchSize = 50; // Send 50 emails at a time
+  const batchSize = 50;
 
   for (let i = 0; i < subscribers.length; i += batchSize) {
     const batch = subscribers.slice(i, i + batchSize);
@@ -65,13 +65,13 @@ exports.sendCampaign = asyncHandler(async (req, res) => {
       })
     );
 
-    // Wait 1 second between batches to avoid rate limits
+    // wait 1 second between batches to avoid rate limits
     if (i + batchSize < subscribers.length) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 
-  // Log the campaign
+  // log the campaign
   await auditLogger.log({
     userId: req.user._id,
     action: "NEWSLETTER_CAMPAIGN_SENT",
@@ -208,7 +208,7 @@ exports.previewCampaign = asyncHandler(async (req, res) => {
     });
   }
 
-  // Send preview to admin's email
+  // send preview to admin's email
   const adminEmail = req.user.email;
 
   await emailService.sendNewsletterCampaign({

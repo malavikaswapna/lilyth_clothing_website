@@ -1,28 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Search, 
-  Filter, 
-  Eye, 
-  UserCheck, 
+import React, { useState, useEffect } from "react";
+import {
+  Search,
+  Filter,
+  Eye,
+  UserCheck,
   UserX,
   Mail,
   Phone,
-  Calendar
-} from 'lucide-react';
-import { adminAPI } from '../../services/api';
-import Loading from '../../components/common/Loading';
-import Button from '../../components/common/Button';
-import toast from 'react-hot-toast';
-import './Users.css';
+  Calendar,
+} from "lucide-react";
+import { adminAPI } from "../../services/api";
+import Loading from "../../components/common/Loading";
+import Button from "../../components/common/Button";
+import toast from "react-hot-toast";
+import "./Users.css";
 
 const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
   const [filters, setFilters] = useState({
-    search: '',
-    active: '',
-    page: 1
+    search: "",
+    active: "",
+    hideDeleted: true, // Hide deleted users by default
+    page: 1,
   });
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -32,25 +33,28 @@ const Users = () => {
   }, [filters]);
 
   const loadUsers = async () => {
-  try {
-    setLoading(true);
-    
-    // Clean up filters - remove empty values
-    const cleanFilters = Object.entries(filters).reduce((acc, [key, value]) => {
-      if (value !== '' && value !== null && value !== undefined) {
-        acc[key] = value;
-      }
-      return acc;
-    }, {});
-    
-    console.log('Sending filters to backend:', cleanFilters); // Debug log
-    
+    try {
+      setLoading(true);
+
+      // Clean up filters - remove empty values
+      const cleanFilters = Object.entries(filters).reduce(
+        (acc, [key, value]) => {
+          if (value !== "" && value !== null && value !== undefined) {
+            acc[key] = value;
+          }
+          return acc;
+        },
+        {}
+      );
+
+      console.log("Sending filters to backend:", cleanFilters); // Debug log
+
       const response = await adminAPI.getAllUsers(filters);
       setUsers(response.data.users);
       setPagination(response.data.pagination);
     } catch (error) {
-      console.error('Failed to load users:', error);
-      toast.error('Failed to load users');
+      console.error("Failed to load users:", error);
+      toast.error("Failed to load users");
     } finally {
       setLoading(false);
     }
@@ -62,22 +66,24 @@ const Users = () => {
 
   const handleFilterChange = (key, value) => {
     const newFilters = { ...filters, [key]: value, page: 1 };
-  
+
     // Remove empty filter values to ensure they don't get sent to backend
-    if (value === '') {
+    if (value === "") {
       delete newFilters[key];
     }
-    
+
     setFilters(newFilters);
   };
 
   const toggleUserStatus = async (userId, currentStatus) => {
     try {
       await adminAPI.updateUserStatus(userId, { isActive: !currentStatus });
-      toast.success(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
+      toast.success(
+        `User ${!currentStatus ? "activated" : "deactivated"} successfully`
+      );
       loadUsers();
     } catch (error) {
-      toast.error('Failed to update user status');
+      toast.error("Failed to update user status");
     }
   };
 
@@ -87,7 +93,7 @@ const Users = () => {
       setSelectedUser(response.data);
       setShowUserModal(true);
     } catch (error) {
-      toast.error('Failed to load user details');
+      toast.error("Failed to load user details");
     }
   };
 
@@ -114,13 +120,24 @@ const Users = () => {
 
         <div className="filter-controls">
           <select
-            value={filters.active || ''}
-            onChange={(e) => handleFilterChange('active', e.target.value)}
+            value={filters.active || ""}
+            onChange={(e) => handleFilterChange("active", e.target.value)}
           >
             <option value="">All Users</option>
             <option value="true">Active Users</option>
             <option value="false">Inactive Users</option>
           </select>
+
+          <label className="checkbox-filter">
+            <input
+              type="checkbox"
+              checked={!filters.hideDeleted}
+              onChange={(e) =>
+                handleFilterChange("hideDeleted", !e.target.checked)
+              }
+            />
+            <span>Show Deleted Users</span>
+          </label>
         </div>
       </div>
 
@@ -143,11 +160,14 @@ const Users = () => {
                 <td>
                   <div className="user-info">
                     <div className="user-avatar">
-                      {user.firstName[0]}{user.lastName[0]}
+                      {user.firstName[0]}
+                      {user.lastName[0]}
                     </div>
                     <div>
-                      <h4>{user.firstName} {user.lastName}</h4>
-                      <p>{user.phone || 'No phone'}</p>
+                      <h4>
+                        {user.firstName} {user.lastName}
+                      </h4>
+                      <p>{user.phone || "No phone"}</p>
                     </div>
                   </div>
                 </td>
@@ -155,8 +175,20 @@ const Users = () => {
                 <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                 <td>{user.totalOrders || 0}</td>
                 <td>
-                  <span className={`status-badge ${user.isActive ? 'active' : 'inactive'}`}>
-                    {user.isActive ? 'Active' : 'Inactive'}
+                  <span
+                    className={`status-badge ${
+                      user.email?.startsWith("deleted_")
+                        ? "deleted"
+                        : user.isActive
+                        ? "active"
+                        : "inactive"
+                    }`}
+                  >
+                    {user.email?.startsWith("deleted_")
+                      ? "Deleted"
+                      : user.isActive
+                      ? "Active"
+                      : "Inactive"}
                   </span>
                 </td>
                 <td>
@@ -170,10 +202,16 @@ const Users = () => {
                     </button>
                     <button
                       onClick={() => toggleUserStatus(user._id, user.isActive)}
-                      className={`action-btn ${user.isActive ? 'deactivate' : 'activate'}`}
-                      title={user.isActive ? 'Deactivate' : 'Activate'}
+                      className={`action-btn ${
+                        user.isActive ? "deactivate" : "activate"
+                      }`}
+                      title={user.isActive ? "Deactivate" : "Activate"}
                     >
-                      {user.isActive ? <UserX size={16} /> : <UserCheck size={16} />}
+                      {user.isActive ? (
+                        <UserX size={16} />
+                      ) : (
+                        <UserCheck size={16} />
+                      )}
                     </button>
                   </div>
                 </td>
@@ -186,15 +224,19 @@ const Users = () => {
       {/* Pagination */}
       {pagination.pages > 1 && (
         <div className="pagination">
-          {Array.from({ length: pagination.pages }, (_, i) => i + 1).map(page => (
-            <button
-              key={page}
-              onClick={() => handleFilterChange('page', page)}
-              className={`page-btn ${pagination.page === page ? 'active' : ''}`}
-            >
-              {page}
-            </button>
-          ))}
+          {Array.from({ length: pagination.pages }, (_, i) => i + 1).map(
+            (page) => (
+              <button
+                key={page}
+                onClick={() => handleFilterChange("page", page)}
+                className={`page-btn ${
+                  pagination.page === page ? "active" : ""
+                }`}
+              >
+                {page}
+              </button>
+            )
+          )}
         </div>
       )}
 
@@ -209,10 +251,13 @@ const Users = () => {
             <div className="modal-body">
               <div className="user-details">
                 <div className="user-avatar large">
-                  {selectedUser.user.firstName[0]}{selectedUser.user.lastName[0]}
+                  {selectedUser.user.firstName[0]}
+                  {selectedUser.user.lastName[0]}
                 </div>
-                <h3>{selectedUser.user.firstName} {selectedUser.user.lastName}</h3>
-                
+                <h3>
+                  {selectedUser.user.firstName} {selectedUser.user.lastName}
+                </h3>
+
                 <div className="detail-grid">
                   <div className="detail-item">
                     <Mail size={16} />
@@ -226,7 +271,12 @@ const Users = () => {
                   )}
                   <div className="detail-item">
                     <Calendar size={16} />
-                    <span>Joined {new Date(selectedUser.user.createdAt).toLocaleDateString()}</span>
+                    <span>
+                      Joined{" "}
+                      {new Date(
+                        selectedUser.user.createdAt
+                      ).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
 

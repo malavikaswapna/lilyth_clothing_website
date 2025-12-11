@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "swagger": "node swagger-autogen.js",
+    "dev:swagger": "node swagger-autogen.js && nodemon server.js",
     "test:schemas": "node scripts/testSchemas.js",
     "seed": "node scripts/seedData.js",
     "cleanup": "node scripts/cleanup.js",
@@ -45,7 +47,10 @@
     "passport-google-oauth20": "^2.0.0",
     "razorpay": "^2.9.6",
     "sharp": "^0.34.4",
-    "stripe": "^18.5.0"
+    "stripe": "^18.5.0",
+    "swagger-autogen": "^2.23.7",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "concurrently": "^9.2.0",

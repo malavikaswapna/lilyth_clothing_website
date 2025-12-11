@@ -23,7 +23,7 @@ const requestLogger = (req, res, next) => {
 
     logStream.write(JSON.stringify(log) + "\n");
 
-    // Log slow requests
+    // log slow requests
     if (duration > 1000) {
       console.warn(
         `⚠️  Slow request: ${req.method} ${req.originalUrl} - ${duration}ms`

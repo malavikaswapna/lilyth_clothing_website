@@ -1,6 +1,7 @@
 import React from "react";
 import BackgroundWrapper from "../components/common/BackgroundWrapper";
 import ScrollReveal from "../components/common/ScrollReveal";
+import WhatsAppChat from "../components/common/WhatsAppChat";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -230,6 +231,9 @@ const Home = () => {
           </ScrollReveal>
         </div>
       </section>
+
+      {/* WhatsApp Chat Widget */}
+      <WhatsAppChat />
     </BackgroundWrapper>
   );
 };

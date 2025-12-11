@@ -63,6 +63,12 @@ export const useRazorpay = () => {
         total,
       });
 
+      // ✅ FIX: Check if user is authenticated
+      const token = localStorage.getItem("token");
+      const isGuest = !token;
+
+      console.log(`👤 User Type: ${isGuest ? "GUEST" : "AUTHENTICATED"}`);
+
       // Step 1: Create Razorpay order via backend
       console.log("📤 Creating payment order on backend...");
       const paymentOrderResponse = await ordersAPI.createPaymentOrder({
@@ -70,10 +76,28 @@ export const useRazorpay = () => {
         currency: "INR",
         receipt: `order_${Date.now()}`,
         notes: {
-          customerName: `${orderData.shippingAddress.firstName} ${orderData.shippingAddress.lastName}`,
-          customerEmail: orderData.shippingAddress.email,
-          items: orderData.items.length,
-          shipping: orderData.shippingAddress.city,
+          // ✅ FIX: Include guest identification and info
+          isGuest: isGuest,
+          firstName:
+            orderData.shippingAddress?.firstName || orderData.firstName,
+          lastName: orderData.shippingAddress?.lastName || orderData.lastName,
+          email: orderData.email || orderData.shippingAddress?.email,
+          phone: orderData.phone || orderData.shippingAddress?.phone,
+
+          // Keep existing notes for compatibility
+          customerName: `${
+            orderData.shippingAddress?.firstName ||
+            orderData.firstName ||
+            "Guest"
+          } ${
+            orderData.shippingAddress?.lastName || orderData.lastName || "User"
+          }`,
+          customerEmail:
+            orderData.email ||
+            orderData.shippingAddress?.email ||
+            "guest@example.com",
+          items: orderData.items?.length || 0,
+          shipping: orderData.shippingAddress?.city || "Unknown",
         },
       });
 
@@ -91,6 +115,7 @@ export const useRazorpay = () => {
       console.log("   Order ID:", order.id);
       console.log("   Amount:", order.amount, "paise");
       console.log("   Key ID:", key);
+      console.log("   Is Guest:", isGuest);
 
       // Step 2: Configure Razorpay checkout options
       const options = {
@@ -109,7 +134,9 @@ export const useRazorpay = () => {
 
           try {
             console.log("🔐 Verifying payment on backend...");
-            const verificationResponse = await ordersAPI.verifyPayment({
+
+            // ✅ FIX: Ensure all guest fields are included
+            const verificationData = {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
@@ -120,8 +147,27 @@ export const useRazorpay = () => {
                 shipping,
                 tax,
                 discount,
+                // ✅ FIX: Ensure these fields are present for guests
+                email: orderData.email || orderData.shippingAddress?.email,
+                firstName:
+                  orderData.firstName || orderData.shippingAddress?.firstName,
+                lastName:
+                  orderData.lastName || orderData.shippingAddress?.lastName,
+                phone: orderData.phone || orderData.shippingAddress?.phone,
+              },
+            };
+
+            console.log("📦 Verification data:", {
+              ...verificationData,
+              orderData: {
+                ...verificationData.orderData,
+                items: `${verificationData.orderData.items?.length} items`,
               },
             });
+
+            const verificationResponse = await ordersAPI.verifyPayment(
+              verificationData
+            );
 
             console.log("📥 Verification response:", verificationResponse.data);
 
@@ -134,6 +180,7 @@ export const useRazorpay = () => {
             }
           } catch (error) {
             console.error("❌ Payment verification error:", error);
+            console.error("   Error details:", error.response?.data);
             toast.error("Payment verification failed. Please contact support.");
             onFailure(error);
           }
@@ -141,14 +188,30 @@ export const useRazorpay = () => {
         prefill: {
           name:
             user?.name ||
-            `${orderData.shippingAddress.firstName} ${orderData.shippingAddress.lastName}`,
-          email: user?.email || orderData.shippingAddress.email,
-          contact: user?.contact || orderData.shippingAddress.phone,
+            `${
+              orderData.shippingAddress?.firstName ||
+              orderData.firstName ||
+              "Guest"
+            } ${
+              orderData.shippingAddress?.lastName ||
+              orderData.lastName ||
+              "User"
+            }`,
+          email:
+            user?.email ||
+            orderData.email ||
+            orderData.shippingAddress?.email ||
+            "guest@example.com",
+          contact:
+            user?.contact ||
+            orderData.phone ||
+            orderData.shippingAddress?.phone ||
+            "",
         },
         notes: {
-          address: orderData.shippingAddress.addressLine1,
-          city: orderData.shippingAddress.city,
-          state: orderData.shippingAddress.state,
+          address: orderData.shippingAddress?.addressLine1 || "",
+          city: orderData.shippingAddress?.city || "",
+          state: orderData.shippingAddress?.state || "",
         },
         theme: {
           color: "#b87049", // Your brand color
@@ -213,7 +276,7 @@ export const useRazorpay = () => {
     } catch (error) {
       console.error("❌ Payment process error:", error);
       console.error("   Error message:", error.message);
-      console.error("   Error stack:", error.stack);
+      console.error("   Error response:", error.response?.data);
 
       toast.error(error.message || "Failed to initiate payment");
       setLoading(false);

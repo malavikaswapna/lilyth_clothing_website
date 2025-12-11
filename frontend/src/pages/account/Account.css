@@ -1,3 +1,10 @@
+/* Account.css */
+
+.customer-orders-page * {
+  all: unset;
+  all: revert;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -821,4 +828,246 @@ button:hover svg,
 .nav-tab:hover svg,
 .action-btn:hover svg {
   transform: scale(1.08) rotate(-2deg);
+}
+
+/* ============================================
+   CLEAN + FIXED LAYOUT FOR MY ORDERS PAGE
+   ============================================ */
+
+/* Return Status Badges - Add to existing status badge styles */
+.return-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: 0.5rem;
+}
+
+.return-requested {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.return-approved {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.return-rejected {
+  background: #fecaca;
+  color: #dc2626;
+}
+
+.return-received {
+  background: #e9d5ff;
+  color: #7c3aed;
+}
+
+.return-processed {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.my-orders-page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Each order card */
+.my-orders-page .order-card {
+  background: #fafafa;
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+}
+
+/* Header row (date + status badges) */
+.my-orders-page .order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+/* Total + items count */
+.my-orders-page .order-summary {
+  margin-bottom: 1.5rem;
+}
+
+.my-orders-page .order-summary p {
+  margin: 0.3rem 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+/* Product item row */
+.my-orders-page .order-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.my-orders-page .item-image img {
+  margin-right: 1rem; /* extra buffer if needed */
+}
+
+.my-orders-page .order-item:last-child {
+  border-bottom: none;
+}
+
+/* Product image */
+.my-orders-page .order-item .item-image img {
+  width: 130px;
+  height: auto;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+/* Product details */
+.my-orders-page .item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.my-orders-page .item-details h4 {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.my-orders-page .item-details p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* View Details button */
+.my-orders-page .order-footer {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.my-orders-page .order-footer .btn {
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+}
+
+/* Badge container (multiple return statuses supported) */
+.my-orders-page .order-status-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+}
+
+/* Responsive layout */
+@media (max-width: 768px) {
+  .my-orders-page .order-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .my-orders-page .order-item {
+    flex-direction: row;
+    gap: 1rem;
+  }
+
+  .my-orders-page .order-item .item-image img {
+    width: 95px;
+  }
+
+  .my-orders-page .order-footer {
+    justify-content: flex-start;
+  }
+}
+
+/* MOBILE FIX — stack product image + details cleanly */
+@media (max-width: 600px) {
+  .my-orders-page .order-item {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .my-orders-page .item-image {
+    display: block !important; /* stop forcing horizontal layout */
+    width: 100% !important;
+  }
+
+  .my-orders-page .item-image img {
+    width: 100% !important;
+    max-width: 320px;
+    border-radius: var(--radius-md);
+    margin-bottom: 0.75rem; /* spacing below image */
+  }
+
+  .my-orders-page .item-details {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+}
+
+/* MOBILE FIX – prevent order card from becoming too tall */
+@media (max-width: 600px) {
+  .my-orders-page .order-item {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center;
+  }
+
+  .my-orders-page .item-image img {
+    width: 100%;
+    max-width: 260px; /* limit width */
+    max-height: 260px; /* limit height */
+    object-fit: cover; /* crops image to stay compact */
+    border-radius: var(--radius-md);
+  }
+
+  .my-orders-page .item-details {
+    margin-top: 0.75rem;
+    text-align: center;
+  }
+
+  /* Reduce spacing so the card isn't huge */
+  .my-orders-page .order-card {
+    padding: 1rem !important;
+  }
+
+  .my-orders-page .order-summary {
+    margin-bottom: 1rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .my-orders-page .order-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .my-orders-page .order-item .item-image img {
+    width: 100%;
+    max-width: 220px;
+  }
+}
+
+/* Fix: Remove huge aspect ratio + full width from item-image */
+.my-orders-page .item-image {
+  width: auto !important;
+  height: auto !important;
+  aspect-ratio: unset !important;
+  display: flex;
+  align-items: flex-start;
 }

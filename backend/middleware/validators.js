@@ -1,6 +1,8 @@
+// middleware/validators.js
+
 const { body, param, query, validationResult } = require("express-validator");
 
-// Validation middleware to check for errors
+// validation middleware to check for errors
 const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -16,7 +18,7 @@ const validate = (req, res, next) => {
   next();
 };
 
-// Product validation
+// product validation
 const validateProduct = [
   body("name")
     .trim()
@@ -63,7 +65,7 @@ const validateProduct = [
   validate,
 ];
 
-// Order validation
+// order validation
 const validateOrder = [
   body("items")
     .isArray({ min: 1 })
@@ -105,7 +107,7 @@ const validateOrder = [
   validate,
 ];
 
-// User registration validation
+// user registration validation
 const validateRegistration = [
   body("firstName")
     .trim()
@@ -140,7 +142,7 @@ const validateRegistration = [
   validate,
 ];
 
-// Review validation
+// review validation
 const validateReview = [
   body("title")
     .trim()

@@ -12,8 +12,10 @@ import {
   LogOut,
   Menu,
   X,
-  Tag, // ✅ Import Tag icon for Promo Codes
-  Mail, // ✅ NEW: Import Mail icon for Newsletter
+  Tag,
+  Mail,
+  MessageSquare,
+  PackageX,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import "./AdminLayout.css";
@@ -38,6 +40,11 @@ const AdminLayout = ({ children }) => {
       label: "Orders",
     },
     {
+      path: "/admin/returns",
+      icon: <PackageX size={20} />,
+      label: "Returns",
+    }, // ✅ NEW: Returns menu item
+    {
       path: "/admin/promo-codes",
       icon: <Tag size={20} />,
       label: "Promo Codes",
@@ -46,7 +53,12 @@ const AdminLayout = ({ children }) => {
       path: "/admin/newsletter",
       icon: <Mail size={20} />,
       label: "Newsletter",
-    }, // ✅ NEW
+    },
+    {
+      path: "/admin/chat",
+      icon: <MessageSquare size={20} />,
+      label: "Chat",
+    }, // ✅ NEW: Chat menu item
     { path: "/admin/reports", icon: <BarChart3 size={20} />, label: "Reports" },
     {
       path: "/admin/settings",

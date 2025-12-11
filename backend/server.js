@@ -1,3 +1,4 @@
+//backend/server.js
 const {
   DEFAULT_EAGER_REFRESH_THRESHOLD_MILLIS,
 } = require("google-auth-library/build/src/auth/authclient");
@@ -9,6 +10,9 @@ const { StandardValidation } = require("express-validator/lib/context-items");
 const { ShaCertificate } = require("firebase-admin/project-management");
 const { youtube } = require("googleapis/build/src/apis/youtube");
 const reportScheduler = require("./utils/reportScheduler");
+const {
+  scheduleNewArrivalsDigest,
+} = require("./utils/productNotificationScheduler");
 const cron = require("node-cron");
 
 const PORT = process.env.PORT || 3001;
@@ -47,6 +51,10 @@ const server = app.listen(PORT, () => {
 });
 
 reportScheduler.scheduleWeeklySalesReport();
+
+// 🔔 Schedule product notifications
+scheduleNewArrivalsDigest();
+console.log("🔔 Product notification scheduler initialized");
 
 // Handle unhandled promise rejections
 process.on("unhandledRejection", (err, promise) => {

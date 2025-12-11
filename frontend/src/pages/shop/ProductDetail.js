@@ -1,3 +1,4 @@
+//src/pages/shop/ProductDetail.js
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+import { useGuest } from "../../context/GuestContext";
 import {
   productsAPI,
   ordersAPI,
@@ -32,6 +34,7 @@ const ProductDetail = () => {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const { addToCart } = useCart();
+  const { addToGuestCart } = useGuest();
   const reviewsSectionRef = useRef(null);
 
   const [product, setProduct] = useState(null);
@@ -271,7 +274,18 @@ const ProductDetail = () => {
 
     try {
       setAddingToCart(true);
-      await addToCart(product._id, selectedSize, selectedColor, quantity);
+
+      // ✅ Use appropriate cart based on authentication status
+      if (isAuthenticated) {
+        await addToCart(product._id, selectedSize, selectedColor, quantity);
+      } else {
+        await addToGuestCart(
+          product._id,
+          selectedSize,
+          selectedColor,
+          quantity
+        );
+      }
     } catch (error) {
       console.error("Failed to add to cart:", error);
     } finally {

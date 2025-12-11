@@ -9,6 +9,9 @@ const crypto = require("crypto");
 const { auditLogger, AuditLog } = require("../utils/auditLogger");
 const inventoryMonitor = require("../utils/inventoryMonitor");
 const StoreSettings = require("../models/StoreSettings");
+const {
+  sendBackInStockNotification,
+} = require("../utils/productNotificationService");
 
 // @desc    Get admin dashboard analytics
 // @route   GET /api/admin/dashboard
@@ -23,13 +26,17 @@ exports.getDashboard = asyncHandler(async (req, res) => {
   const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   // Total counts
-  const totalUsers = await User.countDocuments({ role: "customer" });
+  const totalUsers = await User.countDocuments({
+    role: "customer",
+    email: { $not: /^deleted_/ },
+  });
   const totalProducts = await Product.countDocuments();
   const totalOrders = await Order.countDocuments();
 
   // Recent counts
   const newUsersThisMonth = await User.countDocuments({
     role: "customer",
+    email: { $not: /^deleted_/ },
     createdAt: { $gte: lastMonth },
   });
 
@@ -131,6 +138,11 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
   }
   // If req.query.active is undefined or empty string, don't filter by isActive
 
+  // ⬅️ Hide deleted users filter
+  if (req.query.hideDeleted === "true" || req.query.hideDeleted === true) {
+    query = query.where("email").regex(/^(?!deleted_)/);
+  }
+
   const users = await query
     .sort({ createdAt: -1 })
     .skip(startIndex)
@@ -153,6 +165,11 @@ exports.getAllUsers = asyncHandler(async (req, res) => {
   if (req.query.active !== undefined && req.query.active !== "") {
     const isActive = req.query.active === "true";
     countQuery = countQuery.where("isActive").equals(isActive);
+  }
+
+  // ⬅️ NEW: Also add hideDeleted filter to count query
+  if (req.query.hideDeleted === "true" || req.query.hideDeleted === true) {
+    countQuery = countQuery.where("email").regex(/^(?!deleted_)/);
   }
 
   const total = await countQuery.countDocuments();
@@ -404,6 +421,10 @@ exports.updateProductStock = asyncHandler(async (req, res) => {
     });
   }
 
+  // 🔔 STORE ORIGINAL STOCK FOR NOTIFICATION CHECK
+  const originalTotalStock = product.totalStock;
+  console.log("📋 Original totalStock:", originalTotalStock);
+
   console.log("📦 Current product:", product.name);
   console.log("📦 Current totalStock BEFORE update:", product.totalStock);
   console.log(
@@ -494,6 +515,33 @@ exports.updateProductStock = asyncHandler(async (req, res) => {
     console.error("   Got:", verifyProduct.totalStock);
   } else {
     console.log("✅ Verification passed - database has correct stock");
+  }
+
+  // 🔔 TRIGGER BACK IN STOCK NOTIFICATION
+  // Check if product was out of stock (0) and now has stock
+  const wasOutOfStock = originalTotalStock === 0;
+  const nowInStock = verifyProduct.totalStock > 0;
+
+  if (wasOutOfStock && nowInStock) {
+    console.log(
+      `🔔 Product back in stock: ${product.name} (${originalTotalStock} → ${verifyProduct.totalStock})`
+    );
+
+    // Trigger back in stock notification asynchronously
+    sendBackInStockNotification(product._id)
+      .then((result) => {
+        console.log(
+          `✅ Back in stock notifications sent: ${result.sent} emails`
+        );
+      })
+      .catch((error) => {
+        console.error("❌ Error sending back in stock notifications:", error);
+      });
+  } else {
+    console.log("📊 Stock update check:");
+    console.log("   - Was out of stock?", wasOutOfStock);
+    console.log("   - Now in stock?", nowInStock);
+    console.log("   - Notification triggered? NO");
   }
 
   // Populate category for response
@@ -950,10 +998,11 @@ exports.getAdminProducts = asyncHandler(async (req, res) => {
 // @route   GET /api/admin/orders
 // @access  Private/Admin
 exports.getAllOrders = asyncHandler(async (req, res) => {
-  // Build query
   let query = {};
 
-  // Search by order number, customer name, or email
+  // ------------------------------
+  // 1️⃣ SEARCH FILTER
+  // ------------------------------
   if (req.query.search) {
     const users = await User.find({
       $or: [
@@ -971,17 +1020,20 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
     ];
   }
 
-  // Status filter
-  if (req.query.status) {
+  // ------------------------------
+  // 2️⃣ ORDER STATUS FILTER
+  //------------------------------
+  if (req.query.status && req.query.status !== "all") {
     query.status = req.query.status;
   }
 
-  // Date range filter
+  // ------------------------------
+  // 3️⃣ DATE RANGE FILTER
+  // ------------------------------
   if (req.query.startDate || req.query.endDate) {
     query.createdAt = {};
-    if (req.query.startDate) {
+    if (req.query.startDate)
       query.createdAt.$gte = new Date(req.query.startDate);
-    }
     if (req.query.endDate) {
       const endDate = new Date(req.query.endDate);
       endDate.setDate(endDate.getDate() + 1);
@@ -989,19 +1041,54 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
     }
   }
 
-  // Amount range filter
+  // ------------------------------
+  // 4️⃣ AMOUNT RANGE FILTER
+  // ------------------------------
   if (req.query.minAmount || req.query.maxAmount) {
     query.total = {};
     if (req.query.minAmount) query.total.$gte = Number(req.query.minAmount);
     if (req.query.maxAmount) query.total.$lte = Number(req.query.maxAmount);
   }
 
+  // ------------------------------
+  // 5️⃣ PAYMENT METHOD FILTER (NEW)
+  // ------------------------------
+  if (req.query.paymentMethod && req.query.paymentMethod !== "all") {
+    if (req.query.paymentMethod === "cod") {
+      query.$or = [
+        { paymentMethod: "cod" },
+        { "payment.method": "cash_on_delivery" },
+      ];
+    } else if (req.query.paymentMethod === "razorpay") {
+      query.$or = [
+        { paymentMethod: "razorpay" },
+        { "payment.method": { $ne: "cash_on_delivery" } },
+      ];
+    }
+  }
+
+  // ------------------------------
+  // 6️⃣ RETURN REQUEST FILTER (NEW)
+  // ------------------------------
+  if (req.query.returnStatus && req.query.returnStatus !== "all") {
+    query.returnRequested = true;
+
+    // Example: ?returnStatus=requested
+    if (req.query.returnStatus === "requested") {
+      query.returnStatus = "requested";
+    } else {
+      query.returnStatus = req.query.returnStatus;
+    }
+  }
+
   console.log("Orders query:", JSON.stringify(query, null, 2));
 
-  // Create the mongoose query
+  // ------------------------------
+  // EXECUTE QUERY
+  // ------------------------------
   let mongooseQuery = Order.find(query);
 
-  // Sorting (newest first by default)
+  // Sort newest first
   mongooseQuery = mongooseQuery.sort({ createdAt: -1 });
 
   // Pagination
@@ -1011,20 +1098,15 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
 
   mongooseQuery = mongooseQuery.skip(startIndex).limit(limit);
 
-  // Populate user and basic order info
+  // Populate user info
   mongooseQuery = mongooseQuery.populate(
     "user",
     "firstName lastName email phone"
   );
 
   try {
-    // Execute query
     const orders = await mongooseQuery;
-
-    // Get total count for pagination
     const total = await Order.countDocuments(query);
-
-    console.log(`Found ${orders.length} orders out of ${total} total`);
 
     res.status(200).json({
       success: true,
@@ -1102,6 +1184,9 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
     });
   }
 
+  // ✅ NEW: Store old status to detect changes
+  const oldStatus = order.status;
+
   // Update status
   order.status = status;
 
@@ -1120,6 +1205,20 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
 
   // Populate for response
   await order.populate("user", "firstName lastName email");
+
+  // ✅ NEW: Send status update email to customer
+  if (oldStatus !== status && order.user) {
+    try {
+      const emailService = require("../utils/emailService");
+      await emailService.sendOrderStatusUpdate(order, order.user, status);
+      console.log(
+        `✅ Status update email sent to ${order.user.email} (${oldStatus} → ${status})`
+      );
+    } catch (emailError) {
+      console.error("Failed to send status update email:", emailError);
+      // Don't fail the status update if email fails
+    }
+  }
 
   res.status(200).json({
     success: true,

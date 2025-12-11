@@ -1,49 +1,49 @@
 // controllers/categoryController.js
-const Category = require('../models/Category');
-const Product = require('../models/Product');
-const asyncHandler = require('../utils/asyncHandler');
+const Category = require("../models/Category");
+const Product = require("../models/Product");
+const asyncHandler = require("../utils/asyncHandler");
 
 // @desc    Get all categories
 // @route   GET /api/categories
 // @access  Public
 exports.getCategories = asyncHandler(async (req, res) => {
-  // Get main categories (no parent)
-  const mainCategories = await Category.find({ 
-    parent: null, 
-    isActive: true 
+  // get main categories (no parent)
+  const mainCategories = await Category.find({
+    parent: null,
+    isActive: true,
   })
     .sort({ sortOrder: 1, name: 1 })
-    .populate('subcategories');
+    .populate("subcategories");
 
-  // Get all categories with product counts
+  // get all categories with product counts
   const allCategories = await Category.aggregate([
     { $match: { isActive: true } },
     {
       $lookup: {
-        from: 'products',
-        localField: '_id',
-        foreignField: 'category',
-        as: 'products'
-      }
+        from: "products",
+        localField: "_id",
+        foreignField: "category",
+        as: "products",
+      },
     },
     {
       $addFields: {
-        productCount: { $size: '$products' }
-      }
+        productCount: { $size: "$products" },
+      },
     },
     {
       $project: {
-        products: 0
-      }
+        products: 0,
+      },
     },
-    { $sort: { sortOrder: 1, name: 1 } }
+    { $sort: { sortOrder: 1, name: 1 } },
   ]);
 
   res.status(200).json({
     success: true,
     count: allCategories.length,
     categories: allCategories,
-    mainCategories
+    mainCategories,
   });
 });
 
@@ -52,19 +52,19 @@ exports.getCategories = asyncHandler(async (req, res) => {
 // @access  Public
 exports.getCategory = asyncHandler(async (req, res) => {
   const category = await Category.findById(req.params.id)
-    .populate('subcategories')
-    .populate('parent', 'name slug');
+    .populate("subcategories")
+    .populate("parent", "name slug");
 
   if (!category || !category.isActive) {
     return res.status(404).json({
       success: false,
-      message: 'Category not found'
+      message: "Category not found",
     });
   }
 
   res.status(200).json({
     success: true,
-    category
+    category,
   });
 });
 
@@ -72,23 +72,23 @@ exports.getCategory = asyncHandler(async (req, res) => {
 // @route   GET /api/categories/slug/:slug
 // @access  Public
 exports.getCategoryBySlug = asyncHandler(async (req, res) => {
-  const category = await Category.findOne({ 
+  const category = await Category.findOne({
     slug: req.params.slug,
-    isActive: true 
+    isActive: true,
   })
-    .populate('subcategories')
-    .populate('parent', 'name slug');
+    .populate("subcategories")
+    .populate("parent", "name slug");
 
   if (!category) {
     return res.status(404).json({
       success: false,
-      message: 'Category not found'
+      message: "Category not found",
     });
   }
 
   res.status(200).json({
     success: true,
-    category
+    category,
   });
 });
 
@@ -100,7 +100,7 @@ exports.createCategory = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     success: true,
-    category
+    category,
   });
 });
 
@@ -113,18 +113,18 @@ exports.updateCategory = asyncHandler(async (req, res) => {
   if (!category) {
     return res.status(404).json({
       success: false,
-      message: 'Category not found'
+      message: "Category not found",
     });
   }
 
   category = await Category.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
-    runValidators: true
+    runValidators: true,
   });
 
   res.status(200).json({
     success: true,
-    category
+    category,
   });
 });
 
@@ -137,17 +137,19 @@ exports.deleteCategory = asyncHandler(async (req, res) => {
   if (!category) {
     return res.status(404).json({
       success: false,
-      message: 'Category not found'
+      message: "Category not found",
     });
   }
 
   // Check if category has products
-  const productCount = await Product.countDocuments({ category: req.params.id });
-  
+  const productCount = await Product.countDocuments({
+    category: req.params.id,
+  });
+
   if (productCount > 0) {
     return res.status(400).json({
       success: false,
-      message: 'Cannot delete category with existing products'
+      message: "Cannot delete category with existing products",
     });
   }
 
@@ -155,6 +157,6 @@ exports.deleteCategory = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Category deleted successfully'
+    message: "Category deleted successfully",
   });
 });

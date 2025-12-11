@@ -3,7 +3,7 @@ const cloudinary = require("cloudinary").v2;
 const multer = require("multer");
 const fs = require("fs");
 
-// Debug check
+// debug check
 console.log("Cloudinary Config:", {
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -17,21 +17,18 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// ---------------------------
 // Multer: store TEMPORARILY on disk
-// ---------------------------
+
 const upload = multer({
   dest: "uploads/", // temporary folder
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith("image/")) cb(null, true);
     else cb(new Error("Only image files are allowed!"), false);
   },
 });
 
-// ---------------------------
 // Upload SINGLE file to Cloudinary
-// ---------------------------
 const uploadToCloudinary = async (filePath, folder = "lilyth-products") => {
   try {
     const result = await cloudinary.uploader.upload(filePath, {
@@ -57,9 +54,7 @@ const uploadToCloudinary = async (filePath, folder = "lilyth-products") => {
   }
 };
 
-// ---------------------------
 // Delete a file from Cloudinary
-// ---------------------------
 const deleteFromCloudinary = async (publicId) => {
   try {
     return await cloudinary.uploader.destroy(publicId);
@@ -69,9 +64,8 @@ const deleteFromCloudinary = async (publicId) => {
   }
 };
 
-// ---------------------------
-// Delete multiple files
-// ---------------------------
+//Delete multiple files
+
 const deleteMultipleFromCloudinary = async (publicIds) => {
   try {
     const results = await Promise.all(
@@ -86,7 +80,7 @@ const deleteMultipleFromCloudinary = async (publicIds) => {
 
 module.exports = {
   cloudinary,
-  upload, // multer middleware
+  upload,
   uploadToCloudinary,
   deleteFromCloudinary,
   deleteMultipleFromCloudinary,

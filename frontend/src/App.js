@@ -1,3 +1,4 @@
+//src/App.js
 import React from "react";
 import {
   BrowserRouter as Router,
@@ -8,6 +9,7 @@ import {
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { useAuth } from "./context/AuthContext";
+import { GuestProvider } from "./context/GuestContext";
 
 // Layout Components
 import Layout from "./components/layout/Layout";
@@ -38,6 +40,9 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import VerifyEmail from "./pages/auth/VerifyEmail";
 import PromoCodes from "./pages/admin/PromoCodes";
 import PromoCodeForm from "./pages/admin/PromoCodeForm";
+import GuestCheckout from "./pages/GuestCheckout";
+import GuestOrderTracking from "./pages/GuestOrderTracking";
+import GuestOrderTrackingLookup from "./pages/UniversalOrderTracking";
 
 // Customer Pages
 import Account from "./pages/account/Account";
@@ -52,6 +57,8 @@ import Orders from "./pages/admin/Orders";
 import Reports from "./pages/admin/Reports";
 import Settings from "./pages/admin/Settings";
 import Newsletter from "./pages/admin/Newsletter";
+import Chat from "./pages/admin/Chat"; // ✅ ADDED
+import Returns from "./pages/admin/Returns"; // ✅ NEW: Returns page
 
 // Components
 import Loading from "./components/common/Loading";
@@ -99,6 +106,14 @@ const CustomerRoutes = () => (
       <Route path="/account/*" element={<Account />} />
       <Route path="/order-success/:orderId" element={<OrderSuccess />} />
 
+      {/* Guest Checkout Routes */}
+      <Route path="/guest-checkout" element={<GuestCheckout />} />
+      <Route path="/track-order" element={<GuestOrderTrackingLookup />} />
+      <Route
+        path="/track-order/:trackingToken"
+        element={<GuestOrderTracking />}
+      />
+
       {/* Redirect admin attempts to login */}
       <Route path="/admin/*" element={<Navigate to="/login" replace />} />
 
@@ -122,7 +137,9 @@ const AdminRoutes = () => (
       <Route path="promo-codes/edit/:id" element={<PromoCodeForm />} />
       <Route path="promo-codes/:id" element={<PromoCodeForm />} />
       <Route path="newsletter" element={<Newsletter />} />
-
+      <Route path="chat" element={<Chat />} /> {/* ✅ ADDED */}
+      <Route path="returns" element={<Returns />} />{" "}
+      {/* ✅ NEW: Returns route */}
       {/* Redirect any unmatched admin routes to dashboard */}
       <Route path="*" element={<Navigate to="/admin" replace />} />
     </Routes>
@@ -188,9 +205,11 @@ function App() {
     <Router>
       <ScrollToTop />
       <AuthProvider>
-        <CartProvider>
-          <AppRouter />
-        </CartProvider>
+        <GuestProvider>
+          <CartProvider>
+            <AppRouter />
+          </CartProvider>
+        </GuestProvider>
       </AuthProvider>
     </Router>
   );

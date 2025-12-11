@@ -1,8 +1,10 @@
+// models/Product.js
+
 const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema(
   {
-    // Basic Information
+    // basic Information
     name: {
       type: String,
       required: [true, "Product name is required"],
@@ -19,7 +21,7 @@ const productSchema = new mongoose.Schema(
       maxlength: [500, "Short description cannot exceed 500 characters"],
     },
 
-    // Product Details
+    // product Details
     brand: {
       type: String,
       required: [true, "Brand is required"],
@@ -35,7 +37,7 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Pricing
+    // pricing
     price: {
       type: Number,
       required: [true, "Price is required"],
@@ -56,14 +58,14 @@ const productSchema = new mongoose.Schema(
       min: [0, "Cost price cannot be negative"],
     },
 
-    // Inventory and Variants
+    // inventory and Variants
     sku: {
       type: String,
       required: [true, "SKU is required"],
       uppercase: true,
     },
 
-    // Size and Color Variants
+    // size and color variants
     variants: [
       {
         size: {
@@ -115,13 +117,13 @@ const productSchema = new mongoose.Schema(
       },
     ],
 
-    // Total stock (calculated from variants)
+    // total stock (calculated from variants)
     totalStock: {
       type: Number,
       default: 0,
     },
 
-    // Images
+    // images
     images: [
       {
         url: {
@@ -130,7 +132,7 @@ const productSchema = new mongoose.Schema(
         },
         publicId: {
           type: String,
-          required: false, // Cloudinary public ID for deletion
+          required: false,
         },
         alt: {
           type: String,
@@ -140,16 +142,16 @@ const productSchema = new mongoose.Schema(
           type: Boolean,
           default: false,
         },
-        colorVariant: String, // Which color this image represents
+        colorVariant: String,
       },
     ],
 
-    // Product Specifications
+    // product Specifications
     materials: [String],
     careInstructions: [String],
     features: [String],
 
-    // Measurements (for clothing)
+    // measurements (for clothing)
     measurements: {
       bust: String,
       waist: String,
@@ -158,7 +160,7 @@ const productSchema = new mongoose.Schema(
       sleeves: String,
     },
 
-    // SEO and Marketing
+    // SEO and marketing
     slug: {
       type: String,
       unique: true,
@@ -168,7 +170,7 @@ const productSchema = new mongoose.Schema(
     metaDescription: String,
     tags: [String],
 
-    // Status and Visibility
+    // status and visibility
     status: {
       type: String,
       enum: ["active", "inactive", "draft", "discontinued"],
@@ -183,7 +185,7 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
 
-    // Analytics and Performance
+    // analytics and performance
     views: {
       type: Number,
       default: 0,
@@ -197,7 +199,7 @@ const productSchema = new mongoose.Schema(
       default: 0,
     },
 
-    // Reviews Summary (calculated)
+    // reviews summary (calculated)
     averageRating: {
       type: Number,
       default: 0,
@@ -209,16 +211,16 @@ const productSchema = new mongoose.Schema(
       default: 0,
     },
 
-    // Dates
+    // dates
     launchDate: {
       type: Date,
       default: Date.now,
     },
     discontinuedDate: Date,
 
-    // Weight and Shipping
+    // weight and shipping
     weight: {
-      type: Number, // in pounds
+      type: Number,
       min: 0,
     },
     dimensions: {
@@ -234,7 +236,7 @@ const productSchema = new mongoose.Schema(
   }
 );
 
-// Virtual to handle both 'featured' and 'isFeatured'
+// virtual to handle both 'featured' and 'isFeatured'
 productSchema.virtual("featured").get(function () {
   return this.isFeatured;
 });
@@ -243,7 +245,7 @@ productSchema.virtual("featured").set(function (value) {
   this.isFeatured = value;
 });
 
-// Also add to the toJSON options to include virtuals
+// also add to the toJSON options to include virtuals
 productSchema.set("toJSON", {
   virtuals: true,
   transform: function (doc, ret) {
@@ -253,12 +255,12 @@ productSchema.set("toJSON", {
   },
 });
 
-// Virtual for current price (sale price if available, otherwise regular price)
+// virtual for current price (sale price if available, otherwise regular price)
 productSchema.virtual("currentPrice").get(function () {
   return this.salePrice || this.price;
 });
 
-// Virtual for discount percentage
+// virtual for discount percentage
 productSchema.virtual("discountPercentage").get(function () {
   if (this.salePrice && this.price > this.salePrice) {
     return Math.round(((this.price - this.salePrice) / this.price) * 100);
@@ -266,23 +268,22 @@ productSchema.virtual("discountPercentage").get(function () {
   return 0;
 });
 
-// Virtual for availability
+// virtual for availability
 productSchema.virtual("isAvailable").get(function () {
   return this.status === "active" && this.totalStock > 0;
 });
 
-// Indexes for better performance
+// indexes for better performance
 productSchema.index({ category: 1, status: 1 });
 productSchema.index({ brand: 1 });
 productSchema.index({ price: 1 });
 productSchema.index({ averageRating: -1 });
 productSchema.index({ createdAt: -1 });
-productSchema.index({ slug: 1 });
 productSchema.index({ "variants.size": 1, "variants.color.name": 1 });
 
-// Pre-save middleware to calculate total stock
+// pre-save middleware to calculate total stock
 productSchema.pre("save", function (next) {
-  // Calculate total stock from all variants
+  // calculate total stock from all variants
   if (this.variants && this.variants.length > 0) {
     this.totalStock = this.variants.reduce((total, variant) => {
       return total + (variant.stock || 0);

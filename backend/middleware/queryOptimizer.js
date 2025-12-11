@@ -1,3 +1,5 @@
+// middleware/queryOptimizer.js
+
 //prevent NoSQL injection and optimize queries
 const sanitizeQuery = (req, res, next) => {
   const sanitize = (obj) => {

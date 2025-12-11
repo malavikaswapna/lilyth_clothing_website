@@ -44,6 +44,12 @@ const Checkout = () => {
   const [pincodeAutofilled, setPincodeAutofilled] = useState(false);
   const [deliveryInfo, setDeliveryInfo] = useState(null);
 
+  // ✅ NEW: Payment settings state
+  const [paymentSettings, setPaymentSettings] = useState({
+    razorpayEnabled: true,
+    codEnabled: true,
+  });
+
   // ✅ NEW: Promo code state
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromo, setAppliedPromo] = useState(null);
@@ -81,6 +87,48 @@ const Checkout = () => {
 
     loadUserData();
   }, [isAuthenticated, actualCart]);
+
+  // ✅ NEW: Load payment settings
+  useEffect(() => {
+    loadPaymentSettings();
+  }, []);
+
+  const loadPaymentSettings = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:3001/api/payment-settings"
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        setPaymentSettings({
+          razorpayEnabled: data.data.razorpayEnabled,
+          codEnabled: data.data.codEnabled,
+        });
+
+        // If current selection is disabled, switch to available method
+        if (paymentData.method === "razorpay" && !data.data.razorpayEnabled) {
+          if (data.data.codEnabled) {
+            setPaymentData({ method: "cash_on_delivery" });
+          }
+        } else if (
+          paymentData.method === "cash_on_delivery" &&
+          !data.data.codEnabled
+        ) {
+          if (data.data.razorpayEnabled) {
+            setPaymentData({ method: "razorpay" });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load payment settings:", error);
+      // Fallback: enable both if API fails
+      setPaymentSettings({
+        razorpayEnabled: true,
+        codEnabled: true,
+      });
+    }
+  };
 
   const loadUserData = async () => {
     try {
@@ -814,39 +862,65 @@ const Checkout = () => {
                     className="checkout-form"
                   >
                     <div className="payment-methods">
-                      <label className="payment-method">
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="razorpay"
-                          checked={paymentData.method === "razorpay"}
-                          onChange={(e) =>
-                            setPaymentData({
-                              ...paymentData,
-                              method: e.target.value,
-                            })
-                          }
-                        />
-                        <CreditCard size={20} />
-                        Pay Online (Cards/UPI/Netbanking)
-                      </label>
+                      {/* ✅ Only show Razorpay if enabled */}
+                      {paymentSettings.razorpayEnabled && (
+                        <label className="payment-method">
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value="razorpay"
+                            checked={paymentData.method === "razorpay"}
+                            onChange={(e) =>
+                              setPaymentData({
+                                ...paymentData,
+                                method: e.target.value,
+                              })
+                            }
+                          />
+                          <CreditCard size={20} />
+                          Pay Online (Cards/UPI/Netbanking)
+                        </label>
+                      )}
 
-                      <label className="payment-method">
-                        <input
-                          type="radio"
-                          name="paymentMethod"
-                          value="cash_on_delivery"
-                          checked={paymentData.method === "cash_on_delivery"}
-                          onChange={(e) =>
-                            setPaymentData({
-                              ...paymentData,
-                              method: e.target.value,
-                            })
-                          }
-                        />
-                        <Package size={20} />
-                        Cash on Delivery
-                      </label>
+                      {/* ✅ Only show COD if enabled */}
+                      {paymentSettings.codEnabled && (
+                        <label className="payment-method">
+                          <input
+                            type="radio"
+                            name="paymentMethod"
+                            value="cash_on_delivery"
+                            checked={paymentData.method === "cash_on_delivery"}
+                            onChange={(e) =>
+                              setPaymentData({
+                                ...paymentData,
+                                method: e.target.value,
+                              })
+                            }
+                          />
+                          <Package size={20} />
+                          Cash on Delivery
+                        </label>
+                      )}
+
+                      {/* ✅ Show warning if no payment methods available */}
+                      {!paymentSettings.razorpayEnabled &&
+                        !paymentSettings.codEnabled && (
+                          <div
+                            className="alert warning"
+                            style={{
+                              padding: "15px",
+                              background: "#fff3cd",
+                              border: "1px solid #ffc107",
+                              borderRadius: "8px",
+                              color: "#856404",
+                            }}
+                          >
+                            <strong>⚠️ No payment methods available</strong>
+                            <p style={{ margin: "5px 0 0 0" }}>
+                              Please contact support or try again later.
+                            </p>
+                          </div>
+                        )}
                     </div>
 
                     {paymentData.method === "razorpay" && (
@@ -881,6 +955,77 @@ const Checkout = () => {
                           <span>📱 UPI</span>
                           <span>🏦 Net Banking</span>
                           <span>💰 Wallets</span>
+                        </div>
+
+                        {/* Cancellation Policy Notice */}
+                        <div
+                          style={{
+                            marginTop: "15px",
+                            padding: "12px",
+                            background: "#fff3cd",
+                            border: "1px solid #ffc107",
+                            borderRadius: "6px",
+                          }}
+                        >
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "13px",
+                              color: "#856404",
+                              lineHeight: "1.5",
+                            }}
+                          >
+                            <strong>⏰ Cancellation Policy:</strong> You can
+                            cancel this order within <strong>24 hours</strong>{" "}
+                            of placement for an automatic refund (5-7 business
+                            days). After 24 hours, you can still return the
+                            product within 30 days of delivery.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {paymentData.method === "cash_on_delivery" && (
+                      <div
+                        className="payment-info"
+                        style={{
+                          padding: "20px",
+                          background: "#f0f9ff",
+                          borderRadius: "8px",
+                          marginTop: "20px",
+                          marginBottom: "20px",
+                        }}
+                      >
+                        <h4 style={{ marginBottom: "10px" }}>
+                          Cash on Delivery
+                        </h4>
+                        <p style={{ marginBottom: "10px", color: "#666" }}>
+                          Pay with cash when your order is delivered to your
+                          doorstep.
+                        </p>
+
+                        {/* COD Cancellation Policy Notice */}
+                        <div
+                          style={{
+                            marginTop: "15px",
+                            padding: "12px",
+                            background: "#d1fae5",
+                            border: "1px solid #10b981",
+                            borderRadius: "6px",
+                          }}
+                        >
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "13px",
+                              color: "#065f46",
+                              lineHeight: "1.5",
+                            }}
+                          >
+                            <strong>✓ Flexible Cancellation:</strong> COD orders
+                            can be cancelled anytime before shipping. You'll
+                            receive a confirmation email once cancelled.
+                          </p>
                         </div>
                       </div>
                     )}
@@ -1028,6 +1173,54 @@ const Checkout = () => {
                           </button>
                         </div>
                       )}
+                    </div>
+
+                    {/* Cancellation Policy Reminder */}
+                    <div
+                      style={{
+                        padding: "15px",
+                        background:
+                          paymentData.method === "razorpay"
+                            ? "#fff3cd"
+                            : "#d1fae5",
+                        border: `1px solid ${
+                          paymentData.method === "razorpay"
+                            ? "#ffc107"
+                            : "#10b981"
+                        }`,
+                        borderRadius: "8px",
+                        marginTop: "20px",
+                        marginBottom: "20px",
+                      }}
+                    >
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: "14px",
+                          color:
+                            paymentData.method === "razorpay"
+                              ? "#856404"
+                              : "#065f46",
+                          lineHeight: "1.6",
+                        }}
+                      >
+                        {paymentData.method === "razorpay" ? (
+                          <>
+                            <strong>📋 Cancellation Policy:</strong> By placing
+                            this order, you acknowledge that you can cancel
+                            within <strong>24 hours</strong> of order placement
+                            for an automatic refund. After 24 hours, you may
+                            return the product within 30 days of delivery.
+                          </>
+                        ) : (
+                          <>
+                            <strong>📋 Cancellation Policy:</strong> You can
+                            cancel this Cash on Delivery order anytime before it
+                            is shipped. Once shipped, you may return the product
+                            within 30 days of delivery.
+                          </>
+                        )}
+                      </p>
                     </div>
 
                     <div className="final-actions">

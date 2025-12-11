@@ -10,13 +10,12 @@ const asyncHandler = require("../utils/asyncHandler");
 const emailService = require("../utils/emailService");
 const { auditLogger } = require("../utils/auditLogger");
 
-// @desc    Create Razorpay order
-// @route   POST /api/payments/create-order
-// @access  Private
-const createRazorpayOrder = asyncHandler(async (req, res) => {
-  const { amount, currency = "INR", receipt, notes } = req.body;
+/* ---------------------------------------------------------
+   CREATE RAZORPAY ORDER (GUEST + LOGGED-IN)
+--------------------------------------------------------- */
+exports.createRazorpayOrder = asyncHandler(async (req, res) => {
+  const { amount, currency = "INR", receipt, notes = {} } = req.body;
 
-  // Validate amount
   if (!amount || amount <= 0) {
     return res.status(400).json({
       success: false,
@@ -24,37 +23,55 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
     });
   }
 
+  // ✅ IMPROVED: Better guest user detection and info extraction
+  const isGuest = !req.user;
+  const user = req.user || {
+    id: "guest",
+    firstName: notes.firstName || "Guest",
+    lastName: notes.lastName || "User",
+    email: notes.email || notes.customerEmail || "guest@example.com",
+    phone: notes.phone || "",
+  };
+
+  console.log("👤 Creating Razorpay order for:", {
+    type: isGuest ? "GUEST" : "AUTHENTICATED",
+    userId: user.id || user._id,
+    email: user.email,
+    name: `${user.firstName} ${user.lastName}`,
+  });
+
+  const options = {
+    amount: Math.round(amount * 100),
+    currency,
+    receipt: receipt || `receipt_${Date.now()}_${user.id || user._id}`,
+    notes: {
+      userId: user.id || user._id,
+      userName: `${user.firstName} ${user.lastName}`,
+      userEmail: user.email,
+      isGuest: isGuest, // ✅ ADD: Flag for guest orders
+      ...notes,
+    },
+  };
+
   try {
-    const options = {
-      amount: Math.round(amount * 100), // Amount in paise
-      currency: currency,
-      receipt: receipt || `receipt_${Date.now()}_${req.user.id}`,
-      notes: {
-        userId: req.user.id,
-        userName: `${req.user.firstName} ${req.user.lastName}`,
-        userEmail: req.user.email,
-        ...notes,
-      },
-    };
-
-    console.log("Creating Razorpay order with options:", options);
-
     const razorpayOrder = await razorpay.orders.create(options);
-
-    console.log("âœ… Razorpay order created:", razorpayOrder.id);
+    console.log("✅ Razorpay order created:", razorpayOrder.id);
+    console.log("   Is Guest:", isGuest);
+    console.log("   Email:", user.email);
+    console.log("   Amount:", razorpayOrder.amount, "paise");
 
     res.status(200).json({
       success: true,
       order: razorpayOrder,
       key: process.env.RAZORPAY_KEY_ID,
       user: {
-        name: `${req.user.firstName} ${req.user.lastName}`,
-        email: req.user.email,
-        contact: req.user.phone,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        contact: user.phone,
       },
     });
   } catch (error) {
-    console.error("âŒ Razorpay order creation error:", error);
+    console.error("❌ Razorpay create error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to create payment order",
@@ -63,10 +80,12 @@ const createRazorpayOrder = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Verify Razorpay payment and create order
-// @route   POST /api/payments/verify
-// @access  Private
-const verifyPayment = asyncHandler(async (req, res) => {
+/* ---------------------------------------------------------
+   VERIFY PAYMENT (GUEST + LOGGED-IN)
+--------------------------------------------------------- */
+exports.verifyPayment = asyncHandler(async (req, res) => {
+  let order; // <-- MUST be defined here so it exists after try block
+
   const {
     razorpay_order_id,
     razorpay_payment_id,
@@ -74,93 +93,112 @@ const verifyPayment = asyncHandler(async (req, res) => {
     orderData,
   } = req.body;
 
-  console.log("ðŸ” Verifying payment...");
+  console.log("🔐 Verifying payment...");
+  console.log("🧾 Incoming verify payload:", {
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    hasOrderData: !!orderData,
+    itemCount: orderData?.items?.length,
+  });
 
+  /* ---------------------------------------------------------
+     1️⃣ BASIC VALIDATION
+  --------------------------------------------------------- */
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
     return res.status(400).json({
       success: false,
-      message: "Missing required payment verification parameters",
+      message: "Missing required payment parameters",
     });
   }
 
-  if (!orderData) {
+  if (
+    !orderData ||
+    !Array.isArray(orderData.items) ||
+    orderData.items.length === 0
+  ) {
     return res.status(400).json({
       success: false,
-      message: "Order data is required",
+      message: "Order items missing or invalid",
     });
   }
 
-  // Verify signature
-  const body = razorpay_order_id + "|" + razorpay_payment_id;
+  /* ---------------------------------------------------------
+     2️⃣ SIGNATURE VERIFICATION
+  --------------------------------------------------------- */
+  console.log("🧪 SIGNATURE VERIFICATION");
+  console.log(
+    "   RAZORPAY_KEY_SECRET exists:",
+    !!process.env.RAZORPAY_KEY_SECRET
+  );
+
+  const rawSignature = razorpay_order_id + "|" + razorpay_payment_id;
+
   const expectedSignature = crypto
     .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-    .update(body.toString())
+    .update(rawSignature)
     .digest("hex");
 
-  const isAuthentic = expectedSignature === razorpay_signature;
+  console.log("   Expected signature:", expectedSignature);
+  console.log("   Received signature:", razorpay_signature);
+  console.log("   Match:", expectedSignature === razorpay_signature);
 
-  if (!isAuthentic) {
-    console.error("âŒ Invalid payment signature");
+  if (expectedSignature !== razorpay_signature) {
     return res.status(400).json({
       success: false,
-      message: "Payment verification failed - Invalid signature",
+      message: "Invalid payment signature",
     });
   }
 
-  console.log("âœ… Payment signature verified");
+  console.log("🟢 Signature verified → continuing...");
 
+  /* ---------------------------------------------------------
+     3️⃣ PROCESS ORDER INSIDE TRY/CATCH
+  --------------------------------------------------------- */
   try {
-    // Validate all products and calculate totals
+    // Normalize items
+    orderData.items = orderData.items.map((item) => ({
+      productId: item.productId || item.product || item._id,
+      size: item.size,
+      color: item.color,
+      quantity: item.quantity,
+    }));
+
     let orderItems = [];
-    let subtotal = 0;
-    const stockUpdates = [];
+    let stockUpdates = [];
 
+    /* ---------------------------------------------------------
+       VALIDATE PRODUCTS + BUILD ORDER ITEMS
+    --------------------------------------------------------- */
     for (const item of orderData.items) {
-      const productId = item.product || item.productId;
-
-      if (!productId) {
-        return res.status(400).json({
-          success: false,
-          message: "Product ID is required for all items",
-        });
-      }
-
+      const productId = item.productId;
       const product = await Product.findById(productId);
 
-      if (!product || product.status !== "active") {
+      if (!product) {
         return res.status(404).json({
           success: false,
-          message: `Product ${productId} not found or unavailable`,
+          message: `Product ${productId} not found`,
         });
       }
 
-      // Find variant and check stock
       const variant = product.variants.find(
         (v) => v.size === item.size && v.color.name === item.color
       );
 
-      if (!variant) {
+      if (!variant || variant.stock < item.quantity) {
         return res.status(400).json({
           success: false,
-          message: `Variant not found for product ${product.name}. Size: ${item.size}, Color: ${item.color}`,
+          message: `Insufficient stock for ${product.name}`,
         });
       }
 
-      if (variant.stock < item.quantity) {
-        return res.status(400).json({
-          success: false,
-          message: `Insufficient stock for ${product.name}. Only ${variant.stock} available`,
-        });
-      }
-
-      const unitPrice = product.salePrice || product.price;
-      const totalPrice = unitPrice * item.quantity;
+      const price = product.salePrice || product.price;
 
       orderItems.push({
         product: product._id,
         productName: product.name,
         productImage:
-          product.images.find((img) => img.isPrimary)?.url ||
+          product.images.find((i) => i.isPrimary)?.url ||
           product.images[0]?.url,
         variant: {
           size: item.size,
@@ -171,17 +209,82 @@ const verifyPayment = asyncHandler(async (req, res) => {
           sku: variant.variantSku,
         },
         quantity: item.quantity,
-        unitPrice,
-        totalPrice,
+        unitPrice: price,
+        totalPrice: price * item.quantity,
       });
 
-      subtotal += totalPrice;
       stockUpdates.push({ product, variant, quantity: item.quantity });
     }
 
-    // Create the order with payment completed
-    const order = await Order.create({
-      user: req.user.id,
+    /* ---------------------------------------------------------
+       DETERMINE USER TYPE
+    --------------------------------------------------------- */
+    const isGuest = !req.user;
+    let userId = req.user ? req.user._id : null;
+
+    console.log("👤 Order User Type:", {
+      isGuest,
+      userId,
+      hasEmail: !!orderData.email,
+    });
+
+    // ✅ FIX: Validate guest email
+    if (isGuest && !orderData.email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required for guest orders",
+      });
+    }
+
+    // ✅ NEW: Create guest user if needed
+    if (isGuest) {
+      console.log("📝 Creating guest user for order...");
+      const crypto = require("crypto");
+      const guestId = `guest_${crypto.randomBytes(8).toString("hex")}`;
+
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 30);
+
+      try {
+        const guestUser = await User.create({
+          firstName:
+            orderData.firstName ||
+            orderData.shippingAddress?.firstName ||
+            "Guest",
+          lastName:
+            orderData.lastName || orderData.shippingAddress?.lastName || "User",
+          email: orderData.email,
+          isGuest: true,
+          guestId: guestId,
+          guestSessionExpiry: expiryDate,
+          isActive: true,
+          role: "customer",
+        });
+
+        userId = guestUser._id;
+        console.log("✅ Guest user created:", {
+          userId,
+          email: guestUser.email,
+          guestId,
+        });
+      } catch (error) {
+        console.error("❌ Failed to create guest user:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to create guest user",
+          error: error.message,
+        });
+      }
+    }
+
+    /* ---------------------------------------------------------
+       CREATE ORDER DOCUMENT
+    --------------------------------------------------------- */
+    order = await Order.create({
+      user: userId,
+      isGuestOrder: isGuest,
+      guestEmail: isGuest ? orderData.email : undefined, // ✅ FIX
+
       items: orderItems,
       subtotal: orderData.subtotal,
       shipping: {
@@ -192,11 +295,12 @@ const verifyPayment = asyncHandler(async (req, res) => {
       discount: {
         amount: orderData.discount || 0,
         code: orderData.promoCode || null,
-        type: orderData.discount > 0 ? "fixed" : "none",
       },
       total: orderData.total,
+
       shippingAddress: orderData.shippingAddress,
       billingAddress: orderData.billingAddress || orderData.shippingAddress,
+
       payment: {
         method: "razorpay",
         status: "completed",
@@ -204,159 +308,156 @@ const verifyPayment = asyncHandler(async (req, res) => {
         razorpayOrderId: razorpay_order_id,
         paidAt: new Date(),
       },
+
       status: "confirmed",
       specialInstructions: orderData.specialInstructions,
     });
 
-    // Update product stock
-    for (const { product, variant, quantity } of stockUpdates) {
+    console.log("✅ Order created:", {
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      isGuestOrder: order.isGuestOrder,
+      guestEmail: order.guestEmail,
+      trackingToken: order.trackingToken,
+    });
+
+    /* ---------------------------------------------------------
+       UPDATE STOCK
+    --------------------------------------------------------- */
+    for (const entry of stockUpdates) {
       await Product.findOneAndUpdate(
         {
-          _id: product._id,
-          "variants.size": variant.size,
-          "variants.color.name": variant.color.name,
+          _id: entry.product._id,
+          "variants.size": entry.variant.size,
+          "variants.color.name": entry.variant.color.name,
         },
         {
           $inc: {
-            "variants.$.stock": -quantity,
-            purchases: quantity,
-            revenue: quantity * (product.salePrice || product.price),
+            "variants.$.stock": -entry.quantity,
+            purchases: entry.quantity,
           },
         }
       );
     }
 
-    // Clear user's cart
-    await Cart.findOneAndUpdate({ user: req.user.id }, { $set: { items: [] } });
-
-    // Send order confirmation email
-    try {
-      await emailService.sendOrderConfirmation(req.user.email, order);
-    } catch (emailError) {
-      console.error("Failed to send order confirmation email:", emailError);
+    /* ---------------------------------------------------------
+       CLEAR CART
+    --------------------------------------------------------- */
+    if (isGuest) {
+      console.log("🧹 Clearing guest cart for:", userId);
+      await Cart.findOneAndUpdate(
+        { user: userId }, // Use guest userId
+        { $set: { items: [] } }
+      );
+    } else {
+      await Cart.findOneAndUpdate(
+        { user: req.user._id },
+        { $set: { items: [] } }
+      );
     }
 
-    // Log order creation
-    await auditLogger.log({
-      userId: req.user._id,
-      userName: `${req.user.firstName} ${req.user.lastName}`,
-      userEmail: req.user.email,
-      action: "ORDER_CREATED",
-      resource: "order",
-      resourceId: order._id,
-      details: {
-        orderNumber: order.orderNumber,
-        total: order.total,
-        paymentMethod: "razorpay",
-        razorpayOrderId: razorpay_order_id,
-        razorpayPaymentId: razorpay_payment_id,
-      },
-      ipAddress: req.ip,
-      userAgent: req.headers["user-agent"],
+    /* ---------------------------------------------------------
+       SEND EMAIL
+    --------------------------------------------------------- */
+    try {
+      if (isGuest) {
+        console.log("📧 Sending guest order confirmation to:", orderData.email);
+        await emailService.sendGuestOrderConfirmation(order, {
+          firstName: orderData.firstName || orderData.shippingAddress.firstName,
+          lastName: orderData.lastName || orderData.shippingAddress.lastName,
+          email: orderData.email,
+        });
+      } else {
+        console.log("📧 Sending order confirmation to registered user");
+        await emailService.sendOrderConfirmation(order, req.user);
+      }
+      console.log("✅ Email sent successfully");
+    } catch (emailError) {
+      console.warn("⚠️ Email sending failed:", emailError.message);
+    }
+  } catch (err) {
+    console.error("🔥 BACKEND ORDER CREATION ERROR:", err);
+    console.error("   Error details:", {
+      message: err.message,
+      stack: err.stack,
     });
 
-    console.log("âœ… Order created successfully:", order._id);
-
-    res.status(200).json({
-      success: true,
-      message: "Payment verified and order created successfully",
-      order: await Order.findById(order._id).populate("items.product"),
-      razorpay_payment_id,
-      razorpay_order_id,
-    });
-  } catch (error) {
-    console.error("âŒ Order creation error:", error);
-    res.status(500).json({
+    return res.status(400).json({
       success: false,
-      message: "Payment verified but order creation failed",
-      error: error.message,
+      message: "Order creation failed",
+      error: err.message,
+      details: process.env.NODE_ENV === "development" ? err.stack : undefined,
     });
   }
+
+  /* ---------------------------------------------------------
+     SUCCESS RESPONSE
+  --------------------------------------------------------- */
+  console.log("🎉 Payment verification complete!");
+  return res.status(200).json({
+    success: true,
+    message: "Order created successfully",
+    order: {
+      _id: order._id,
+      orderNumber: order.orderNumber,
+      total: order.total,
+      status: order.status,
+      isGuestOrder: order.isGuestOrder,
+      trackingToken: order.trackingToken,
+      items: order.items,
+      shippingAddress: order.shippingAddress,
+      payment: order.payment,
+    },
+  });
 });
 
-// @desc    Handle payment failure
-// @route   POST /api/payments/failure
-// @access  Private
-const handlePaymentFailure = asyncHandler(async (req, res) => {
-  const { error, razorpay_order_id, razorpay_payment_id } = req.body;
-
-  console.log("âŒ Payment failed:", {
-    error,
-    razorpay_order_id,
-    razorpay_payment_id,
-  });
+/* ---------------------------------------------------------
+   PAYMENT FAILURE
+--------------------------------------------------------- */
+exports.handlePaymentFailure = asyncHandler(async (req, res) => {
+  console.log("❌ Payment failure reported:", req.body);
 
   res.status(200).json({
     success: false,
-    message: "Payment failed. Please try again.",
-    error: error,
+    message: "Payment failed",
+    error: req.body.error || null,
   });
 });
 
-// @desc    Razorpay webhook handler
-// @route   POST /api/payments/webhook
-// @access  Public (with signature verification)
-const razorpayWebhook = asyncHandler(async (req, res) => {
+/* ---------------------------------------------------------
+   RAZORPAY WEBHOOK
+--------------------------------------------------------- */
+exports.razorpayWebhook = asyncHandler(async (req, res) => {
   const signature = req.headers["x-razorpay-signature"];
 
-  console.log("ðŸ“¨ Received Razorpay webhook");
-
   if (!process.env.RAZORPAY_WEBHOOK_SECRET) {
-    console.error("âš ï¸ RAZORPAY_WEBHOOK_SECRET not configured");
-    return res.status(500).json({ error: "Webhook not configured" });
+    console.error("❌ RAZORPAY_WEBHOOK_SECRET not configured");
+    return res.status(500).json({ error: "Webhook secret not configured" });
   }
 
-  const body = JSON.stringify(req.body);
-  const expectedSignature = crypto
+  const expected = crypto
     .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
-    .update(body)
+    .update(JSON.stringify(req.body))
     .digest("hex");
 
-  if (signature !== expectedSignature) {
-    console.warn("âš ï¸ Invalid webhook signature");
+  if (expected !== signature) {
+    console.error("❌ Invalid webhook signature");
     return res.status(400).json({ error: "Invalid signature" });
   }
 
-  const event = req.body;
-  console.log("Webhook event:", event.event);
-
-  try {
-    switch (event.event) {
-      case "payment.captured":
-        console.log("ðŸ’° Payment captured:", event.payload.payment.entity.id);
-        break;
-
-      case "payment.failed":
-        console.log("âŒ Payment failed:", event.payload.payment.entity.id);
-        break;
-
-      case "order.paid":
-        console.log("âœ… Order paid:", event.payload.order.entity.id);
-        break;
-
-      default:
-        console.log(`Unhandled webhook event: ${event.event}`);
-    }
-
-    res.status(200).json({ status: "ok" });
-  } catch (error) {
-    console.error("Webhook handling error:", error);
-    res.status(500).json({ error: "Webhook processing failed" });
-  }
+  console.log("📩 Razorpay webhook:", req.body.event);
+  res.status(200).json({ status: "ok" });
 });
 
-// @desc    Get payment details
-// @route   GET /api/payments/:paymentId
-// @access  Private/Admin
-const getPaymentDetails = asyncHandler(async (req, res) => {
+/* ---------------------------------------------------------
+   ADMIN – GET PAYMENT DETAILS
+--------------------------------------------------------- */
+exports.getPaymentDetails = asyncHandler(async (req, res) => {
   try {
     const payment = await razorpay.payments.fetch(req.params.paymentId);
-
-    res.status(200).json({
-      success: true,
-      payment,
-    });
+    res.status(200).json({ success: true, payment });
   } catch (error) {
+    console.error("❌ Failed to fetch payment:", error);
     res.status(404).json({
       success: false,
       message: "Payment not found",
@@ -365,24 +466,27 @@ const getPaymentDetails = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Refund payment
-// @route   POST /api/payments/:paymentId/refund
-// @access  Private/Admin
-const refundPayment = asyncHandler(async (req, res) => {
+/* ---------------------------------------------------------
+   ADMIN – REFUND
+--------------------------------------------------------- */
+exports.refundPayment = asyncHandler(async (req, res) => {
   const { amount, notes } = req.body;
 
   try {
     const refund = await razorpay.payments.refund(req.params.paymentId, {
-      amount: amount ? Math.round(amount * 100) : undefined,
-      notes: notes,
+      amount: amount ? amount * 100 : undefined,
+      notes,
     });
+
+    console.log("✅ Refund processed:", refund.id);
 
     res.status(200).json({
       success: true,
-      message: "Payment refunded successfully",
+      message: "Refund successful",
       refund,
     });
   } catch (error) {
+    console.error("❌ Refund failed:", error);
     res.status(500).json({
       success: false,
       message: "Refund failed",
@@ -390,13 +494,3 @@ const refundPayment = asyncHandler(async (req, res) => {
     });
   }
 });
-
-//  EXPORT ALL FUNCTIONS
-module.exports = {
-  createRazorpayOrder,
-  verifyPayment,
-  handlePaymentFailure,
-  razorpayWebhook,
-  getPaymentDetails,
-  refundPayment,
-};

@@ -8,7 +8,8 @@ const {
   updatePassword,
   forgotPassword,
   resetPassword,
-  googleAuth,
+  googleRegister,
+  googleLogin,
   verifyEmail,
   resendVerificationEmail,
 } = require("../controllers/authController");
@@ -32,7 +33,10 @@ router.post("/register", authLimiter, register);
 router.post("/login", authLimiter, login);
 router.post("/forgot-password", authLimiter, forgotPassword);
 router.put("/reset-password/:resettoken", resetPassword);
-router.post("/google", googleAuth);
+
+// ⬅️ UPDATED: Separate Google OAuth endpoints for register and login
+router.post("/google/register", authLimiter, googleRegister); // For Register page
+router.post("/google/login", authLimiter, googleLogin); // For Login page
 
 // Email verification routes
 router.get("/verify-email/:token", verifyEmail);

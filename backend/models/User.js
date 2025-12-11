@@ -1,8 +1,24 @@
+// models/User.js
+
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema(
   {
+    // ✅ ADD: Guest user flag
+    isGuest: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    // ✅ ADD: Guest user identifier
+    guestId: {
+      type: String,
+      sparse: true, // Allows null values, unique only when present
+      index: true,
+    },
+
     // personal info
     firstName: {
       type: String,
@@ -35,7 +51,7 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: function () {
-        return this.authProvider !== "google";
+        return !this.isGuest && this.authProvider !== "google";
       },
       minlength: [6, "Password must be at least 6 characters"],
       select: false,
@@ -119,7 +135,7 @@ const userSchema = new mongoose.Schema(
           required: true,
           validate: {
             validator: function (v) {
-              // Kerala PIN codes: 67xxxx-69xxxx, 686xxx
+              // kerala PIN codes: 67xxxx-69xxxx, 686xxx
               return /^\d{6}$/.test(v);
             },
             message: "PIN code must be 6 digits",
@@ -176,7 +192,7 @@ const userSchema = new mongoose.Schema(
       default: 0,
     },
 
-    // Notification Settings
+    // notification Settings
     notificationSettings: {
       emailNotifications: {
         type: Boolean,
@@ -223,6 +239,21 @@ const userSchema = new mongoose.Schema(
         },
       },
     ],
+
+    // ✅ ADD: Guest conversion tracking
+    convertedToRegistered: {
+      type: Boolean,
+      default: false,
+    },
+    convertedAt: {
+      type: Date,
+    },
+
+    // ✅ ADD: Guest session expiry
+    guestSessionExpiry: {
+      type: Date,
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -237,7 +268,6 @@ userSchema.virtual("fullName").get(function () {
 });
 
 // index for query performance
-userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ "addresses.postalCode": 1 });
 
 // pre-save middleware to hash password
@@ -264,11 +294,35 @@ userSchema.methods.getPublicProfile = function () {
   return user;
 };
 
-// instance method to ensure email index exists
-userSchema.index({ email: 1 }, { unique: true });
+// ✅ ADD: Update email index to allow guest duplicates temporarily
+userSchema.index(
+  { email: 1, isGuest: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { isGuest: false },
+  }
+);
 
 // compound indexes for better query performance
 userSchema.index({ role: 1, isActive: 1 });
 userSchema.index({ createdAt: -1 });
+
+// ✅ ADD: Method to check if guest session is expired
+userSchema.methods.isGuestSessionExpired = function () {
+  if (!this.isGuest) return false;
+  return this.guestSessionExpiry && this.guestSessionExpiry < new Date();
+};
+
+// ✅ ADD: Method to convert guest to registered user
+userSchema.methods.convertToRegistered = async function (password) {
+  this.isGuest = false;
+  this.guestId = null;
+  this.password = password;
+  this.convertedToRegistered = true;
+  this.convertedAt = new Date();
+  this.guestSessionExpiry = null;
+  await this.save();
+  return this;
+};
 
 module.exports = mongoose.model("User", userSchema);

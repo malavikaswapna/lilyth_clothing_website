@@ -1,21 +1,16 @@
+//src/pages/Cart.js
 import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  Minus,
-  Plus,
-  Trash2,
-  ArrowLeft,
-  ShoppingBag,
-  ThumbsDownIcon,
-} from "lucide-react";
+import { Minus, Plus, Trash2, ArrowLeft, ShoppingBag } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import { useGuest } from "../context/GuestContext"; // ✅ ADD THIS
 import Loading from "../components/common/Loading";
 import Button from "../components/common/Button";
+import GuestCartPrompt from "../components/cart/GuestCartPrompt";
 import "./Cart.css";
 import BackgroundWrapper from "../components/common/BackgroundWrapper";
 import ScrollReveal from "../components/common/ScrollReveal";
-import { numberValueTypes } from "framer-motion";
 
 const Cart = () => {
   const {
@@ -31,67 +26,69 @@ const Cart = () => {
   } = useCart();
 
   const { isAuthenticated, loading: authLoading, user } = useAuth();
+  const { guestId } = useGuest();
   const navigate = useNavigate();
+  const {
+    guestItems,
+    guestSubtotal,
+    updateGuestCartItem,
+    removeFromGuestCart,
+  } = useGuest();
+  const subtotal = isAuthenticated ? cart?.subtotal || 0 : guestSubtotal || 0;
 
   useEffect(() => {
     console.log("Cart component state:", {
       isAuthenticated,
+      guestId, // ✅ ADD THIS
       user: user?.firstName || "No user",
       cartItems: items?.length || 0,
       cartLoading: loading,
     });
-  }, [isAuthenticated, authLoading, user, items, loading]);
+  }, [isAuthenticated, authLoading, user, items, loading, guestId]); // ✅ ADD guestId
 
   if (authLoading) {
     return <Loading size="lg" text="Loading..." fullScreen />;
   }
 
-  if (!isAuthenticated) {
-    return (
-      <BackgroundWrapper>
-        <div className="cart-page">
-          <div className="container">
-            <ScrollReveal direction="fade">
-              <div className="auth-required">
-                <ShoppingBag size={64} className="auth-icon" />
-                <h2>Sign In Required</h2>
-                <p>Please sign in to view your cart</p>
-                <div className="auth-actions">
-                  <Link to="/login" className="btn btn-primary">
-                    Sign In
-                  </Link>
-                  <Link to="/register" className="btn btn-outline">
-                    Create Account
-                  </Link>
-                </div>
-              </div>
-            </ScrollReveal>
-          </div>
-        </div>
-      </BackgroundWrapper>
-    );
-  }
-
+  // ✅ UPDATED: Show cart for both authenticated and guest users
   if (loading) {
     return <Loading size="lg" text="Loading your cart..." fullScreen />;
   }
 
   const handleQuantityChange = async (item, newQuantity) => {
     if (newQuantity < 1) return;
-    await updateCartItem(
-      item.product._id,
-      item.variant.size,
-      item.variant.color.name,
-      newQuantity
-    );
+
+    if (isAuthenticated) {
+      await updateCartItem(
+        item.product._id,
+        item.variant.size,
+        item.variant.color.name,
+        newQuantity
+      );
+    } else {
+      await updateGuestCartItem(
+        item.product._id,
+        item.variant.size,
+        item.variant.color.name,
+        newQuantity
+      );
+    }
   };
 
   const handleRemoveItem = async (item) => {
-    await removeFromCart(
-      item.product._id,
-      item.variant.size,
-      item.variant.color.name
-    );
+    if (isAuthenticated) {
+      await removeFromCart(
+        item.product._id,
+        item.variant.size,
+        item.variant.color.name
+      );
+    } else {
+      await removeFromGuestCart(
+        item.product._id,
+        item.variant.size,
+        item.variant.color.name
+      );
+    }
   };
 
   const handleMoveToCart = async (item) => {
@@ -102,7 +99,9 @@ const Cart = () => {
     );
   };
 
-  if (!items || items.length === 0) {
+  const cartItems = isAuthenticated ? items : guestItems;
+
+  if (!cartItems || cartItems.length === 0) {
     return (
       <BackgroundWrapper>
         <div className="cart-page">
@@ -187,16 +186,23 @@ const Cart = () => {
                 <ArrowLeft size={20} />
                 Continue Shopping
               </button>
-              <h1 className="cart-title">Shopping Cart ({items.length})</h1>
+              <h1 className="cart-title">Shopping Cart ({cartItems.length})</h1>
               <button onClick={clearCart} className="clear-cart-btn">
                 Clear Cart
               </button>
             </div>
           </ScrollReveal>
 
+          {/* ✅ NEW: Show guest prompt if not authenticated and has items */}
+          {!isAuthenticated && cartItems.length > 0 && (
+            <ScrollReveal direction="up" delay={0.1}>
+              <GuestCartPrompt itemCount={guestItems?.length || 0} />
+            </ScrollReveal>
+          )}
+
           <div className="cart-content">
             <div className="cart-items">
-              {items.map((item, index) => (
+              {cartItems.map((item, index) => (
                 <ScrollReveal
                   key={index}
                   direction="up"
@@ -284,20 +290,20 @@ const Cart = () => {
                   <h3>Order Summary</h3>
 
                   <div className="summary-row">
-                    <span>Subtotal ({items.length} items)</span>
-                    <span>₹{cart?.subtotal?.toFixed(2) || "0.00"}</span>
+                    <span>Subtotal ({cartItems.length} items)</span>
+                    <span>₹{subtotal.toFixed(2)}</span>
                   </div>
 
                   <div className="summary-row">
                     <span>Shipping</span>
                     <span className="free-shipping">
-                      {cart?.subtotal >= 2000 ? "FREE" : "₹99"}
+                      {subtotal >= 2000 ? "FREE" : "₹99"}
                     </span>
                   </div>
 
                   <div className="summary-row">
                     <span>Tax</span>
-                    <span>₹{((cart?.subtotal || 0) * 0.18).toFixed(2)}</span>
+                    <span>₹{(subtotal * 0.18).toFixed(2)}</span>
                   </div>
 
                   <div className="summary-divider"></div>
@@ -307,16 +313,29 @@ const Cart = () => {
                     <span>
                       ₹
                       {(
-                        (cart?.subtotal || 0) +
-                        (cart?.subtotal >= 2000 ? 0 : 99) +
-                        (cart?.subtotal || 0) * 0.18
+                        subtotal +
+                        (subtotal >= 2000 ? 0 : 99) +
+                        subtotal * 0.18
                       ).toFixed(2)}
                     </span>
                   </div>
 
-                  <Link to="/checkout" className="btn btn-primary checkout-btn">
-                    Proceed to Checkout
-                  </Link>
+                  {/* ✅ UPDATED: Different checkout button based on auth status */}
+                  {isAuthenticated ? (
+                    <Link
+                      to="/checkout"
+                      className="btn btn-primary checkout-btn"
+                    >
+                      Proceed to Checkout
+                    </Link>
+                  ) : (
+                    <Link
+                      to="/guest-checkout"
+                      className="btn btn-primary checkout-btn"
+                    >
+                      Continue as Guest
+                    </Link>
+                  )}
 
                   <div className="shipping-info">
                     <p>Free shipping across Kerala on orders over ₹2000</p>

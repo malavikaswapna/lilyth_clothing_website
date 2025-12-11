@@ -5,12 +5,12 @@ const { LoginTicket } = require("google-auth-library");
 const { RemoteConfigFetchResponse } = require("firebase-admin/remote-config");
 const { MongoCryptCreateDataKeyError } = require("mongodb");
 
-// Protect routes - require authentication
+// protect routes - require authentication
 exports.protect = async (req, res, next) => {
   try {
     let token;
 
-    // Get token from heade
+    // get token from heade
     if (
       req.headers.authorization &&
       req.headers.authorization.startsWith("Bearer")
@@ -18,7 +18,7 @@ exports.protect = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
     }
 
-    // Check if token exists
+    // check if token exists
     if (!token) {
       return res.status(401).json({
         success: false,
@@ -35,7 +35,7 @@ exports.protect = async (req, res, next) => {
     }
 
     try {
-      // Verify token
+      // verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       console.log("Decoded token:", decoded); // debug
 
@@ -48,7 +48,7 @@ exports.protect = async (req, res, next) => {
         });
       }
 
-      // Get user from token
+      // get user from token
       req.user = await User.findById(userId);
 
       if (!req.user) {
@@ -78,7 +78,7 @@ exports.protect = async (req, res, next) => {
   }
 };
 
-// Restrict to specific roles
+// restrict to specific roles
 exports.authorize = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
@@ -91,7 +91,7 @@ exports.authorize = (...roles) => {
   };
 };
 
-// Optional authentication (for routes that work with or without auth)
+// optional authentication (for routes that work with or without auth)
 exports.optionalAuth = async (req, res, next) => {
   try {
     let token;
@@ -106,7 +106,6 @@ exports.optionalAuth = async (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = await User.findById(decoded.id);
       } catch (error) {
-        // Token invalid, but continue without user
         req.user = null;
       }
     }

@@ -1,7 +1,7 @@
 // controllers/cartController.js
-const Cart = require('../models/Cart');
-const Product = require('../models/Product');
-const asyncHandler = require('../utils/asyncHandler');
+const Cart = require("../models/Cart");
+const Product = require("../models/Product");
+const asyncHandler = require("../utils/asyncHandler");
 
 // @desc    Get user's cart
 // @route   GET /api/cart
@@ -9,12 +9,12 @@ const asyncHandler = require('../utils/asyncHandler');
 exports.getCart = asyncHandler(async (req, res) => {
   let cart = await Cart.findOne({ user: req.user.id })
     .populate({
-      path: 'items.product',
-      select: 'name price salePrice images slug status variants'
+      path: "items.product",
+      select: "name price salePrice images slug status variants",
     })
     .populate({
-      path: 'savedItems.product',
-      select: 'name price salePrice images slug status'
+      path: "savedItems.product",
+      select: "name price salePrice images slug status",
     });
 
   if (!cart) {
@@ -23,7 +23,7 @@ exports.getCart = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    cart
+    cart,
   });
 });
 
@@ -33,43 +33,43 @@ exports.getCart = asyncHandler(async (req, res) => {
 exports.addToCart = asyncHandler(async (req, res) => {
   const { productId, size, color, quantity = 1 } = req.body;
 
-  // Validate product exists and is active
+  // validate product exists and is active
   const product = await Product.findById(productId);
-  if (!product || product.status !== 'active') {
+  if (!product || product.status !== "active") {
     return res.status(404).json({
       success: false,
-      message: 'Product not found or unavailable'
+      message: "Product not found or unavailable",
     });
   }
 
-  // Check if variant exists and has stock
+  // check if variant exists and has stock
   const variant = product.variants.find(
-    v => v.size === size && v.color.name === color
+    (v) => v.size === size && v.color.name === color
   );
 
   if (!variant) {
     return res.status(400).json({
       success: false,
-      message: 'Product variant not found'
+      message: "Product variant not found",
     });
   }
 
   if (variant.stock < quantity) {
     return res.status(400).json({
       success: false,
-      message: `Only ${variant.stock} items available in stock`
+      message: `Only ${variant.stock} items available in stock`,
     });
   }
 
-  // Get or create cart
+  // get or create cart
   let cart = await Cart.findOne({ user: req.user.id });
   if (!cart) {
     cart = await Cart.create({ user: req.user.id, items: [] });
   }
 
-  // Check if item already exists in cart
+  // check if item already exists in cart
   const existingItemIndex = cart.items.findIndex(
-    item => 
+    (item) =>
       item.product.toString() === productId &&
       item.variant.size === size &&
       item.variant.color.name === color
@@ -78,47 +78,46 @@ exports.addToCart = asyncHandler(async (req, res) => {
   const currentPrice = product.salePrice || product.price;
 
   if (existingItemIndex > -1) {
-    // Update quantity if item exists
+    // update quantity if item exists
     const newQuantity = cart.items[existingItemIndex].quantity + quantity;
-    
+
     if (newQuantity > variant.stock) {
       return res.status(400).json({
         success: false,
-        message: `Cannot add more items. Only ${variant.stock} available in stock`
+        message: `Cannot add more items. Only ${variant.stock} available in stock`,
       });
     }
 
     cart.items[existingItemIndex].quantity = newQuantity;
     cart.items[existingItemIndex].priceAtAdd = currentPrice;
   } else {
-    // Add new item
+    // add new item
     cart.items.push({
       product: productId,
       variant: {
         size,
         color: {
           name: color,
-          hexCode: variant.color.hexCode
-        }
+          hexCode: variant.color.hexCode,
+        },
       },
       quantity,
-      priceAtAdd: currentPrice
+      priceAtAdd: currentPrice,
     });
   }
 
   await cart.save();
 
-  // Populate and return updated cart
-  cart = await Cart.findById(cart._id)
-    .populate({
-      path: 'items.product',
-      select: 'name price salePrice images slug status variants'
-    });
+  // populate and return updated cart
+  cart = await Cart.findById(cart._id).populate({
+    path: "items.product",
+    select: "name price salePrice images slug status variants",
+  });
 
   res.status(200).json({
     success: true,
-    message: 'Item added to cart',
-    cart
+    message: "Item added to cart",
+    cart,
   });
 });
 
@@ -131,7 +130,7 @@ exports.updateCartItem = asyncHandler(async (req, res) => {
   if (quantity < 1) {
     return res.status(400).json({
       success: false,
-      message: 'Quantity must be at least 1'
+      message: "Quantity must be at least 1",
     });
   }
 
@@ -139,13 +138,13 @@ exports.updateCartItem = asyncHandler(async (req, res) => {
   if (!cart) {
     return res.status(404).json({
       success: false,
-      message: 'Cart not found'
+      message: "Cart not found",
     });
   }
 
-  // Find the item in cart
+  // find the item in cart
   const itemIndex = cart.items.findIndex(
-    item => 
+    (item) =>
       item.product.toString() === productId &&
       item.variant.size === size &&
       item.variant.color.name === color
@@ -154,38 +153,37 @@ exports.updateCartItem = asyncHandler(async (req, res) => {
   if (itemIndex === -1) {
     return res.status(404).json({
       success: false,
-      message: 'Item not found in cart'
+      message: "Item not found in cart",
     });
   }
 
-  // Validate stock
+  // validate stock
   const product = await Product.findById(productId);
   const variant = product.variants.find(
-    v => v.size === size && v.color.name === color
+    (v) => v.size === size && v.color.name === color
   );
 
   if (quantity > variant.stock) {
     return res.status(400).json({
       success: false,
-      message: `Only ${variant.stock} items available in stock`
+      message: `Only ${variant.stock} items available in stock`,
     });
   }
 
-  // Update quantity
+  // update quantity
   cart.items[itemIndex].quantity = quantity;
   await cart.save();
 
-  // Populate and return updated cart
-  const updatedCart = await Cart.findById(cart._id)
-    .populate({
-      path: 'items.product',
-      select: 'name price salePrice images slug status variants'
-    });
+  // populate and return updated cart
+  const updatedCart = await Cart.findById(cart._id).populate({
+    path: "items.product",
+    select: "name price salePrice images slug status variants",
+  });
 
   res.status(200).json({
     success: true,
-    message: 'Cart item updated',
-    cart: updatedCart
+    message: "Cart item updated",
+    cart: updatedCart,
   });
 });
 
@@ -199,32 +197,32 @@ exports.removeFromCart = asyncHandler(async (req, res) => {
   if (!cart) {
     return res.status(404).json({
       success: false,
-      message: 'Cart not found'
+      message: "Cart not found",
     });
   }
 
-  // Remove the item
+  // remove the item
   cart.items = cart.items.filter(
-    item => !(
-      item.product.toString() === productId &&
-      item.variant.size === size &&
-      item.variant.color.name === color
-    )
+    (item) =>
+      !(
+        item.product.toString() === productId &&
+        item.variant.size === size &&
+        item.variant.color.name === color
+      )
   );
 
   await cart.save();
 
-  // Populate and return updated cart
-  const updatedCart = await Cart.findById(cart._id)
-    .populate({
-      path: 'items.product',
-      select: 'name price salePrice images slug status variants'
-    });
+  // populate and return updated cart
+  const updatedCart = await Cart.findById(cart._id).populate({
+    path: "items.product",
+    select: "name price salePrice images slug status variants",
+  });
 
   res.status(200).json({
     success: true,
-    message: 'Item removed from cart',
-    cart: updatedCart
+    message: "Item removed from cart",
+    cart: updatedCart,
   });
 });
 
@@ -236,7 +234,7 @@ exports.clearCart = asyncHandler(async (req, res) => {
   if (!cart) {
     return res.status(404).json({
       success: false,
-      message: 'Cart not found'
+      message: "Cart not found",
     });
   }
 
@@ -245,8 +243,8 @@ exports.clearCart = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Cart cleared',
-    cart
+    message: "Cart cleared",
+    cart,
   });
 });
 
@@ -260,13 +258,13 @@ exports.saveForLater = asyncHandler(async (req, res) => {
   if (!cart) {
     return res.status(404).json({
       success: false,
-      message: 'Cart not found'
+      message: "Cart not found",
     });
   }
 
-  // Find item in cart
+  // find item in cart
   const itemIndex = cart.items.findIndex(
-    item => 
+    (item) =>
       item.product.toString() === productId &&
       item.variant.size === size &&
       item.variant.color.name === color
@@ -275,36 +273,36 @@ exports.saveForLater = asyncHandler(async (req, res) => {
   if (itemIndex === -1) {
     return res.status(404).json({
       success: false,
-      message: 'Item not found in cart'
+      message: "Item not found in cart",
     });
   }
 
-  // Move item to saved items
+  // move item to saved items
   const item = cart.items[itemIndex];
   cart.savedItems.push({
     product: item.product,
-    variant: item.variant
+    variant: item.variant,
   });
 
-  // Remove from cart items
+  // remove from cart items
   cart.items.splice(itemIndex, 1);
   await cart.save();
 
-  // Populate and return updated cart
+  // populate and return updated cart
   const updatedCart = await Cart.findById(cart._id)
     .populate({
-      path: 'items.product',
-      select: 'name price salePrice images slug status variants'
+      path: "items.product",
+      select: "name price salePrice images slug status variants",
     })
     .populate({
-      path: 'savedItems.product',
-      select: 'name price salePrice images slug status'
+      path: "savedItems.product",
+      select: "name price salePrice images slug status",
     });
 
   res.status(200).json({
     success: true,
-    message: 'Item saved for later',
-    cart: updatedCart
+    message: "Item saved for later",
+    cart: updatedCart,
   });
 });
 
@@ -318,13 +316,13 @@ exports.moveToCart = asyncHandler(async (req, res) => {
   if (!cart) {
     return res.status(404).json({
       success: false,
-      message: 'Cart not found'
+      message: "Cart not found",
     });
   }
 
-  // Find item in saved items
+  // find item in saved items
   const savedItemIndex = cart.savedItems.findIndex(
-    item => 
+    (item) =>
       item.product.toString() === productId &&
       item.variant.size === size &&
       item.variant.color.name === color
@@ -333,57 +331,57 @@ exports.moveToCart = asyncHandler(async (req, res) => {
   if (savedItemIndex === -1) {
     return res.status(404).json({
       success: false,
-      message: 'Item not found in saved items'
+      message: "Item not found in saved items",
     });
   }
 
-  // Validate product and stock
+  // validate product and stock
   const product = await Product.findById(productId);
-  if (!product || product.status !== 'active') {
+  if (!product || product.status !== "active") {
     return res.status(404).json({
       success: false,
-      message: 'Product not available'
+      message: "Product not available",
     });
   }
 
   const variant = product.variants.find(
-    v => v.size === size && v.color.name === color
+    (v) => v.size === size && v.color.name === color
   );
 
   if (!variant || variant.stock < 1) {
     return res.status(400).json({
       success: false,
-      message: 'Product variant out of stock'
+      message: "Product variant out of stock",
     });
   }
 
-  // Move item back to cart
+  // move item back to cart
   const savedItem = cart.savedItems[savedItemIndex];
   cart.items.push({
     product: savedItem.product,
     variant: savedItem.variant,
     quantity: 1,
-    priceAtAdd: product.salePrice || product.price
+    priceAtAdd: product.salePrice || product.price,
   });
 
-  // Remove from saved items
+  // remove from saved items
   cart.savedItems.splice(savedItemIndex, 1);
   await cart.save();
 
-  // Populate and return updated cart
+  // populate and return updated cart
   const updatedCart = await Cart.findById(cart._id)
     .populate({
-      path: 'items.product',
-      select: 'name price salePrice images slug status variants'
+      path: "items.product",
+      select: "name price salePrice images slug status variants",
     })
     .populate({
-      path: 'savedItems.product',
-      select: 'name price salePrice images slug status'
+      path: "savedItems.product",
+      select: "name price salePrice images slug status",
     });
 
   res.status(200).json({
     success: true,
-    message: 'Item moved to cart',
-    cart: updatedCart
+    message: "Item moved to cart",
+    cart: updatedCart,
   });
 });

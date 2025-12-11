@@ -120,7 +120,7 @@
 }
 
 .tip-content li::before {
-  content: '•';
+  content: "•";
   color: var(--primary-color);
   font-weight: bold;
   position: absolute;
@@ -272,7 +272,6 @@
 .size-faq-section {
   margin-bottom: var(--spacing-2xl);
   padding: var(--spacing-2xl);
-  background-color: var(--bg-light);
   border-radius: var(--radius-lg);
 }
 
@@ -350,28 +349,28 @@
     flex-direction: column;
     text-align: center;
   }
-  
+
   .tip-icon {
     align-self: center;
     margin-bottom: var(--spacing-lg);
   }
-  
+
   .category-tabs {
     flex-direction: column;
     max-width: 300px;
     margin: 0 auto var(--spacing-2xl);
   }
-  
+
   .size-chart {
     padding: var(--spacing-lg);
   }
-  
+
   .size-table th,
   .size-table td {
     padding: var(--spacing-sm);
     font-size: 0.9rem;
   }
-  
+
   .page-header h1 {
     font-size: 2.5rem;
   }

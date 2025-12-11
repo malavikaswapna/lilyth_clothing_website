@@ -136,11 +136,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // NEW: Google authentication method
-  const googleAuth = async (userData) => {
+  // ⬅️ NEW: Google registration method (Register page only)
+  const googleRegister = async (userData) => {
     try {
       dispatch({ type: "AUTH_START" });
-      const response = await authAPI.googleAuth(userData);
+      const response = await authAPI.googleRegister(userData);
       const { user, token } = response.data;
 
       // Store in localStorage
@@ -153,13 +153,44 @@ export const AuthProvider = ({ children }) => {
         payload: { user, token },
       });
 
-      console.log("Google auth successful:", user); // Debug log
+      toast.success(`Welcome to LILYTH, ${user.firstName}!`);
+      console.log("Google registration successful:", user);
       return { success: true };
     } catch (error) {
-      console.error("Google auth error:", error); // Debug log
+      console.error("Google registration error:", error);
       dispatch({ type: "AUTH_FAIL" });
       const message =
-        error.response?.data?.message || "Google authentication failed";
+        error.response?.data?.message || "Google registration failed";
+      toast.error(message);
+      return { success: false, message };
+    }
+  };
+
+  // ⬅️ NEW: Google login method (Login page only)
+  const googleLogin = async (userData) => {
+    try {
+      dispatch({ type: "AUTH_START" });
+      const response = await authAPI.googleLogin(userData);
+      const { user, token } = response.data;
+
+      // Store in localStorage
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      // Update state
+      dispatch({
+        type: "AUTH_SUCCESS",
+        payload: { user, token },
+      });
+
+      toast.success(`Welcome back, ${user.firstName}!`);
+      console.log("Google login successful:", user);
+      return { success: true };
+    } catch (error) {
+      console.error("Google login error:", error);
+      dispatch({ type: "AUTH_FAIL" });
+      const message = error.response?.data?.message || "Google login failed";
+      toast.error(message);
       return { success: false, message };
     }
   };
@@ -181,7 +212,8 @@ export const AuthProvider = ({ children }) => {
     ...state,
     login,
     register,
-    googleAuth, // NEW: Add googleAuth method
+    googleRegister, // ⬅️ NEW: For Register page
+    googleLogin, // ⬅️ NEW: For Login page
     logout,
     updateUser,
   };

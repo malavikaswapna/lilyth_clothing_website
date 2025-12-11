@@ -1,14 +1,17 @@
+//src/components/product/ProductCard.js
 import React from "react";
 import { Link } from "react-router-dom";
 import { Heart, ShoppingBag, Star } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { userAPI } from "../../services/api";
+import { useGuest } from "../../context/GuestContext";
 import "./ProductCard.css";
 
 const ProductCard = ({ product, viewMode = "grid" }) => {
   const { isAuthenticated } = useAuth();
   const { addToCart } = useCart();
+  const { addToGuestCart } = useGuest();
 
   const handleWishlistToggle = async (e) => {
     e.preventDefault();
@@ -24,16 +27,24 @@ const ProductCard = ({ product, viewMode = "grid" }) => {
 
   const handleQuickAdd = async (e) => {
     e.preventDefault();
-    if (product.variants && product.variants.length > 0) {
-      const firstAvailableVariant = product.variants.find((v) => v.stock > 0);
-      if (firstAvailableVariant) {
-        await addToCart(
-          product._id,
-          firstAvailableVariant.size,
-          firstAvailableVariant.color.name,
-          1
-        );
-      }
+
+    const firstAvailableVariant = product.variants?.find((v) => v.stock > 0);
+    if (!firstAvailableVariant) return;
+
+    if (isAuthenticated) {
+      await addToCart(
+        product._id,
+        firstAvailableVariant.size,
+        firstAvailableVariant.color.name,
+        1
+      );
+    } else {
+      await addToGuestCart(
+        product._id,
+        firstAvailableVariant.size,
+        firstAvailableVariant.color.name,
+        1
+      );
     }
   };
 

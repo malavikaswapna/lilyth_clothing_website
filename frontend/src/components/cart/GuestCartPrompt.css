@@ -1,0 +1,158 @@
+/* src/components/cart/GuestCartPrompt.css */
+
+.guest-cart-prompt {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  margin: 2rem 0;
+  border: 2px solid var(--border-color);
+}
+
+.prompt-content {
+  max-width: 500px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.prompt-content svg {
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+}
+
+.prompt-content h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.prompt-content p {
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+}
+
+.checkout-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.guest-checkout-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+}
+
+.or-divider {
+  position: relative;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.or-divider::before,
+.or-divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 45%;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.or-divider::before {
+  left: 0;
+}
+
+.or-divider::after {
+  right: 0;
+}
+
+.or-divider span {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: 0 1rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.auth-buttons button {
+  flex: 1;
+}
+
+.benefits-note {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  text-align: left;
+  border: 1px solid var(--border-color);
+}
+
+.note-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.benefits-note ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.benefits-note li {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.benefits-note li:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .guest-cart-prompt {
+    padding: 1.5rem;
+  }
+
+  .auth-buttons {
+    flex-direction: column;
+  }
+
+  .auth-buttons button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .guest-cart-prompt {
+    padding: 1rem;
+  }
+
+  .prompt-content h3 {
+    font-size: 1.25rem;
+  }
+
+  .guest-checkout-btn {
+    font-size: 1rem;
+    padding: 0.875rem 1.5rem;
+  }
+
+  .benefits-note {
+    padding: 1rem;
+  }
+}

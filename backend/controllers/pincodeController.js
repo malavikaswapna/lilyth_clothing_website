@@ -11,7 +11,7 @@ exports.validatePincode = asyncHandler(async (req, res) => {
 
   const result = await pincodeService.validatePincode(pincode);
 
-  // Log validation attempt
+  // log validation attempt
   await auditLogger.log({
     userId: req.user?._id || null,
     action: "PINCODE_VALIDATED",
@@ -130,7 +130,7 @@ exports.autofillAddress = asyncHandler(async (req, res) => {
     });
   }
 
-  // Return simplified data for form autofill
+  // return simplified data for form autofill
   const autofillData = {
     city: result.data.district,
     state: "Kerala",

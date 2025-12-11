@@ -1,3 +1,4 @@
+//src/pages/account/Account.js
 import React, { useState, useEffect } from "react";
 import {
   Routes,
@@ -15,6 +16,7 @@ import {
   Settings as SettingsIcon,
   ChevronRight,
   Star,
+  PackageX, // ✅ NEW: Import for return icon
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { userAPI, ordersAPI } from "../../services/api";
@@ -26,6 +28,7 @@ import "./Account.css";
 import Settings from "./Settings";
 import UserReviews from "./UserReviews";
 import toast from "react-hot-toast";
+import ReturnRequestModal from "../../components/orders/ReturnRequestModal"; // ✅ NEW: Import return modal
 
 const AccountDashboard = () => {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -186,6 +189,10 @@ const OrdersPage = () => {
   const [pagination, setPagination] = useState({});
   const [cancellingOrder, setCancellingOrder] = useState(null);
 
+  // ✅ NEW: Return modal state
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
   useEffect(() => {
     loadOrders();
   }, []);
@@ -236,10 +243,52 @@ const OrdersPage = () => {
     });
   };
 
+  // ✅ NEW: Return request handler
+  const handleReturnClick = (order) => {
+    setSelectedOrder(order);
+    setShowReturnModal(true);
+  };
+
+  // ✅ NEW: Check if order can be returned
+  const canReturnOrder = (order) => {
+    if (order.status !== "delivered" || order.returnRequested) {
+      return false;
+    }
+
+    const deliveryDate = order.tracking?.deliveredAt || order.updatedAt;
+    const daysSinceDelivery = Math.floor(
+      (Date.now() - new Date(deliveryDate)) / (1000 * 60 * 60 * 24)
+    );
+
+    return daysSinceDelivery <= 7; // 7-day return window
+  };
+
+  // ✅ NEW: Get return status badge
+  const getReturnStatusBadge = (order) => {
+    if (!order.returnRequested) return null;
+
+    const labels = {
+      requested: { text: "Return Requested", className: "return-requested" },
+      approved: { text: "Return Approved", className: "return-approved" },
+      rejected: { text: "Return Rejected", className: "return-rejected" },
+      received: { text: "Return Received", className: "return-received" },
+      processed: { text: "Refund Processed", className: "return-processed" },
+    };
+
+    const badge = labels[order.returnStatus] || labels.requested;
+
+    return (
+      <span className={`return-badge ${badge.className}`}>
+        <PackageX size={14} />
+        {badge.text}
+      </span>
+    );
+  };
+
   if (loading) return <Loading size="lg" text="Loading your orders..." />;
 
   return (
-    <div className="orders-page">
+    <div className="my-orders-page">
       <div className="page-header">
         <h1>My Orders</h1>
         <p>Track and manage your orders</p>
@@ -250,29 +299,33 @@ const OrdersPage = () => {
           {orders.map((order) => (
             <div key={order._id} className="order-card">
               <div className="order-header">
-                <h3>Order #{order.orderNumber}</h3>
-                <span className={`status-badge status-${order.status}`}>
-                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                </span>
+                <div className="order-number">
+                  <h3>Order #{order.orderNumber}</h3>
+                  <p>{new Date(order.createdAt).toLocaleDateString()}</p>
+                </div>
+                <div className="order-status-container">
+                  <span className={`status-badge status-${order.status}`}>
+                    {order.status.charAt(0).toUpperCase() +
+                      order.status.slice(1)}
+                  </span>
+                  {/* ✅ NEW: Show return status badge */}
+                  {getReturnStatusBadge(order)}
+                </div>
               </div>
 
-              <div className="order-details">
+              <div className="order-summary">
                 <p>
-                  <strong>Date:</strong>{" "}
-                  {new Date(order.createdAt).toLocaleDateString()}
+                  <strong>Total:</strong> ₹{order.total.toFixed(2)}
                 </p>
                 <p>
                   <strong>Items:</strong> {order.items.length}
-                </p>
-                <p>
-                  <strong>Total:</strong> ₹{order.total.toFixed(2)}
                 </p>
               </div>
 
               <div className="order-items">
                 {order.items.map((item, index) => (
-                  <div key={index} className="order-item-row">
-                    <div className="order-item">
+                  <div key={index} className="order-item">
+                    <div className="item-image">
                       <img
                         src={item.productImage}
                         alt={item.productName}
@@ -321,6 +374,7 @@ const OrdersPage = () => {
                 >
                   View Details
                 </Button>
+
                 {["pending", "confirmed"].includes(order.status) && (
                   <Button
                     variant="ghost"
@@ -332,6 +386,28 @@ const OrdersPage = () => {
                     Cancel Order
                   </Button>
                 )}
+
+                {/* ✅ NEW: Return Items button */}
+                {canReturnOrder(order) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleReturnClick(order)}
+                    className="return-btn"
+                  >
+                    <PackageX size={14} />
+                    Return Items
+                  </Button>
+                )}
+
+                {/* ✅ NEW: Show return status info */}
+                {order.returnRequested &&
+                  order.returnStatus === "requested" && (
+                    <div className="return-info-text">
+                      <PackageX size={14} />
+                      Return request pending review
+                    </div>
+                  )}
               </div>
             </div>
           ))}
@@ -345,6 +421,20 @@ const OrdersPage = () => {
             Start Shopping
           </Link>
         </div>
+      )}
+
+      {/* ✅ NEW: Return Request Modal */}
+      {showReturnModal && selectedOrder && (
+        <ReturnRequestModal
+          order={selectedOrder}
+          onClose={() => {
+            setShowReturnModal(false);
+            setSelectedOrder(null);
+          }}
+          onSuccess={() => {
+            loadOrders(); // Reload orders to show updated return status
+          }}
+        />
       )}
     </div>
   );

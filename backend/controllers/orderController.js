@@ -25,7 +25,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
     specialInstructions,
     isGift,
     giftMessage,
-    promoCode, // ✅ NEW: Promo code from request
+    promoCode,
   } = req.body;
 
   if (!items || items.length === 0) {
@@ -35,7 +35,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
     });
   }
 
-  // Validate all products and calculate totals
+  // validate all products and calculate totals
   let orderItems = [];
   let subtotal = 0;
   const stockUpdates = [];
@@ -59,7 +59,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
       });
     }
 
-    // Find variant and check stock
+    // find variant and check stock
     const variant = product.variants.find(
       (v) => v.size === item.size && v.color.name === item.color
     );
@@ -98,21 +98,21 @@ exports.createOrder = asyncHandler(async (req, res) => {
       quantity: item.quantity,
       unitPrice,
       totalPrice,
-      categoryId: product.category, // ✅ ADD THIS for promo code applicability check
+      categoryId: product.category,
     });
 
     subtotal += totalPrice;
     stockUpdates.push({ product, variant, quantity: item.quantity });
   }
 
-  // Calculate shipping cost
+  // calculate shipping cost
   const shippingCost =
     req.body.shipping || calculateShippingCost(shippingMethod, subtotal);
 
-  // Calculate tax (18% GST for India)
+  // calculate tax (18% GST for India)
   const tax = req.body.tax || subtotal * 0.18;
 
-  // ✅ NEW: Apply promo code if provided
+  // apply promo code if provided
   let discountAmount = 0;
   let promoCodeDoc = null;
   let promoCodeError = null;
@@ -124,11 +124,11 @@ exports.createOrder = asyncHandler(async (req, res) => {
       });
 
       if (promoCodeDoc) {
-        // Check if promo code is active
+        // check if promo code is active
         if (!promoCodeDoc.isActive) {
           promoCodeError = "This promo code is no longer active";
         }
-        // Check validity period
+        // check validity period
         else {
           const now = new Date();
           if (now < promoCodeDoc.startDate) {
@@ -136,23 +136,23 @@ exports.createOrder = asyncHandler(async (req, res) => {
           } else if (now > promoCodeDoc.endDate) {
             promoCodeError = "This promo code has expired";
           }
-          // Check usage limits
+          // check usage limits
           else if (
             promoCodeDoc.maxUsageCount !== null &&
             promoCodeDoc.currentUsageCount >= promoCodeDoc.maxUsageCount
           ) {
             promoCodeError = "This promo code has reached its usage limit";
           }
-          // Check if user can use this code
+          // check if user can use this code
           else if (!promoCodeDoc.canUserUse(req.user._id)) {
             promoCodeError =
               "You have already used this promo code maximum allowed times";
           }
-          // Check minimum order amount
+          // check minimum order amount
           else if (subtotal < promoCodeDoc.minOrderAmount) {
             promoCodeError = `Minimum order amount of ₹${promoCodeDoc.minOrderAmount} required to use this code`;
           }
-          // Check first order only restriction
+          // check first order only restriction
           else {
             if (promoCodeDoc.firstOrderOnly) {
               const userOrderCount = await Order.countDocuments({
@@ -166,7 +166,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
               }
             }
 
-            // Check product/category applicability
+            // check product/category applicability
             if (
               !promoCodeError &&
               !promoCodeDoc.isApplicableToAll &&
@@ -191,11 +191,11 @@ exports.createOrder = asyncHandler(async (req, res) => {
               }
             }
 
-            // If all checks pass, calculate and apply discount
+            // if all checks pass, calculate and apply discount
             if (!promoCodeError) {
               discountAmount = promoCodeDoc.calculateDiscount(subtotal);
 
-              // Update promo code usage
+              // update promo code usage
               promoCodeDoc.currentUsageCount += 1;
               promoCodeDoc.usedBy.push({
                 user: req.user._id,
@@ -205,7 +205,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
 
               await promoCodeDoc.save();
 
-              // Log promo code application
+              // log promo code application
               await auditLogger.log({
                 userId: req.user._id,
                 userName: `${req.user.firstName} ${req.user.lastName}`,
@@ -233,7 +233,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
     }
   }
 
-  // If there's a promo code error, return it
+  // if there's a promo code error, return it
   if (promoCodeError) {
     return res.status(400).json({
       success: false,
@@ -241,11 +241,11 @@ exports.createOrder = asyncHandler(async (req, res) => {
     });
   }
 
-  // Calculate total with discount
+  // calculate total with discount
   const total =
     req.body.total || subtotal + shippingCost + tax - discountAmount;
 
-  // Create order with promo code discount
+  // create order with promo code discount
   const order = await Order.create({
     user: req.user.id,
     items: orderItems,
@@ -256,7 +256,6 @@ exports.createOrder = asyncHandler(async (req, res) => {
     },
     tax,
     discount: {
-      // ✅ NEW: Discount object
       amount: discountAmount,
       code: promoCode || null,
       promoCode: promoCodeDoc ? promoCodeDoc._id : null,
@@ -274,7 +273,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
     giftMessage,
   });
 
-  // Update product stock and analytics
+  // update product stock and analytics
   for (const { product, variant, quantity } of stockUpdates) {
     await Product.findOneAndUpdate(
       {
@@ -291,19 +290,19 @@ exports.createOrder = asyncHandler(async (req, res) => {
       }
     );
 
-    // Check if stock is low after update
+    // check if stock is low after update
     const updatedProduct = await Product.findById(product._id);
     const updatedVariant = updatedProduct.variants.find(
       (v) => v.size === variant.size && v.color.name === variant.color.name
     );
 
-    // Send low stock alert if needed
+    // send low stock alert if needed
     if (updatedVariant && updatedVariant.stock <= 5) {
       await emailService.sendLowStockAlert(updatedProduct, updatedVariant);
     }
   }
 
-  // Update user analytics
+  // update user analytics
   await User.findByIdAndUpdate(req.user.id, {
     $inc: {
       totalOrders: 1,
@@ -311,26 +310,26 @@ exports.createOrder = asyncHandler(async (req, res) => {
     },
   });
 
-  // Clear user's cart
+  // clear user's cart
   await Cart.findOneAndUpdate({ user: req.user.id }, { $set: { items: [] } });
 
-  // Populate order details
+  // populate order details
   const populatedOrder = await Order.findById(order._id)
     .populate("user", "firstName lastName email")
     .populate("items.product", "name slug images")
     .populate(
       "discount.promoCode",
       "code description discountType discountValue"
-    ); // ✅ NEW: Populate promo code
+    );
 
-  // Send order confirmation email
+  // send order confirmation email
   try {
     await emailService.sendOrderConfirmation(populatedOrder, req.user);
   } catch (emailError) {
     console.error("Failed to send order confirmation email:", emailError);
   }
 
-  // Send admin notification email
+  // send admin notification email
   try {
     await emailService.sendNewOrderNotification(
       process.env.ADMIN_EMAIL,
@@ -340,7 +339,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
     console.error("Failed to send admin order notification:", emailError);
   }
 
-  // Log audit trail
+  // log audit trail
   try {
     await auditLogger.logOrderAction("ORDER_CREATED", req.user, order._id, {
       orderNumber: order.orderNumber,
@@ -367,7 +366,7 @@ exports.createOrder = asyncHandler(async (req, res) => {
   });
 });
 
-// Helper function to calculate shipping cost
+// helper function to calculate shipping cost
 const calculateShippingCost = (method, subtotal) => {
   if (subtotal >= 1000) return 0; // Free shipping over ₹1000
 
@@ -393,10 +392,10 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 10;
   const startIndex = (page - 1) * limit;
 
-  // Build query
+  // build query
   let query = { user: req.user.id };
 
-  // Filter by status if provided
+  // filter by status if provided
   if (req.query.status) {
     query.status = req.query.status;
   }
@@ -406,7 +405,7 @@ exports.getMyOrders = asyncHandler(async (req, res) => {
     .skip(startIndex)
     .limit(limit)
     .populate("items.product", "name slug images")
-    .populate("discount.promoCode", "code description"); // ✅ NEW: Populate promo code
+    .populate("discount.promoCode", "code description");
 
   const total = await Order.countDocuments(query);
 
@@ -435,7 +434,7 @@ exports.getOrder = asyncHandler(async (req, res) => {
     .populate(
       "discount.promoCode",
       "code description discountType discountValue"
-    ); // ✅ NEW
+    );
 
   if (!order) {
     return res.status(404).json({
@@ -444,7 +443,7 @@ exports.getOrder = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check if user owns this order or is admin
+  // check if user owns this order or is admin
   if (order.user._id.toString() !== req.user.id && req.user.role !== "admin") {
     return res.status(403).json({
       success: false,
@@ -478,7 +477,7 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
 
   const oldStatus = order.status;
 
-  // Add status to history
+  // add status to history
   order.statusHistory.push({
     status,
     timestamp: new Date(),
@@ -488,7 +487,7 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
 
   order.status = status;
 
-  // Update specific timestamps based on status
+  // update specific timestamps based on status
   switch (status) {
     case "shipped":
       order.tracking.shippedAt = new Date();
@@ -500,10 +499,41 @@ exports.updateOrderStatus = asyncHandler(async (req, res) => {
 
   await order.save();
 
-  // Send status update email to customer
-  await emailService.sendOrderStatusUpdate(order, order.user, status);
+  // ✅ NEW: Send status update email (guest or registered)
+  try {
+    if (order.isGuestOrder && order.guestEmail) {
+      // Guest order - send guest-friendly email
+      console.log("📧 Sending guest order status update:", {
+        email: order.guestEmail,
+        orderNumber: order.orderNumber,
+        status: status,
+      });
 
-  // Log audit trail
+      await emailService.sendGuestOrderStatusUpdate(
+        order,
+        {
+          firstName: order.shippingAddress.firstName,
+          lastName: order.shippingAddress.lastName,
+          email: order.guestEmail,
+        },
+        status
+      );
+    } else if (order.user) {
+      // Registered user - send normal email
+      console.log("📧 Sending registered user order status update:", {
+        email: order.user.email,
+        orderNumber: order.orderNumber,
+        status: status,
+      });
+
+      await emailService.sendOrderStatusUpdate(order, order.user, status);
+    }
+  } catch (emailError) {
+    console.error("❌ Failed to send status update email:", emailError);
+    // Don't fail the order update if email fails
+  }
+
+  // log audit trail
   await auditLogger.logOrderAction(
     "ORDER_STATUS_CHANGED",
     req.user,
@@ -554,7 +584,7 @@ exports.updateTracking = asyncHandler(async (req, res) => {
   });
 });
 
-// Helper function to generate tracking URL
+// helper function to generate tracking URL
 const generateTrackingUrl = (carrier, trackingNumber) => {
   const carriers = {
     fedex: `https://www.fedex.com/apps/fedextrack/?tracknumbers=${trackingNumber}`,
@@ -582,7 +612,7 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check if user owns this order
+  // check if user owns this order
   if (order.user.toString() !== req.user.id) {
     return res.status(403).json({
       success: false,
@@ -590,15 +620,59 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
     });
   }
 
-  // Can only cancel pending or confirmed orders
-  if (!["pending", "confirmed"].includes(order.status)) {
+  // check if already cancelled
+  if (order.status === "cancelled") {
     return res.status(400).json({
       success: false,
-      message: "Order cannot be cancelled at this stage",
+      message: "Order is already cancelled",
     });
   }
 
-  // Restore product stock
+  // can only cancel pending or confirmed orders (not shipped/delivered)
+  if (!["pending", "confirmed"].includes(order.status)) {
+    return res.status(400).json({
+      success: false,
+      message: `Order cannot be cancelled at this stage. Current status: ${order.status}`,
+      details: {
+        currentStatus: order.status,
+        allowedStatuses: ["pending", "confirmed"],
+        reason:
+          order.status === "shipped"
+            ? "Order has already been shipped. Please contact support if you wish to return it after delivery."
+            : order.status === "delivered"
+            ? "Order has been delivered. Please initiate a return instead."
+            : "Order is in a non-cancellable state",
+      },
+    });
+  }
+
+  // ✅ ENFORCE 24-HOUR WINDOW ONLY FOR RAZORPAY (PAID) ORDERS
+  // COD orders can be cancelled anytime before shipping (already checked above via status)
+  const hoursSinceOrder =
+    (Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60 * 60);
+
+  if (
+    order.payment.method === "razorpay" &&
+    order.payment.status === "completed" &&
+    hoursSinceOrder > 24
+  ) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "Cancellation window has expired. Online payment orders can only be cancelled within 24 hours of placement. Please contact support for assistance.",
+      details: {
+        orderPlacedAt: order.createdAt,
+        cancellationDeadline: new Date(
+          new Date(order.createdAt).getTime() + 24 * 60 * 60 * 1000
+        ),
+        hoursElapsed: Math.floor(hoursSinceOrder),
+        paymentMethod: "razorpay",
+        note: "COD orders can be cancelled anytime before shipping",
+      },
+    });
+  }
+
+  // restore product stock
   for (const item of order.items) {
     await Product.findOneAndUpdate(
       {
@@ -614,18 +688,18 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
     );
   }
 
-  // ✅ NEW: Restore promo code usage if applicable
+  // restore promo code usage if applicable
   if (order.discount && order.discount.promoCode) {
     try {
       const promoCode = await PromoCode.findById(order.discount.promoCode);
       if (promoCode) {
-        // Decrease usage count
+        // decrease usage count
         promoCode.currentUsageCount = Math.max(
           0,
           promoCode.currentUsageCount - 1
         );
 
-        // Remove from usedBy array
+        // remove from usedBy array
         promoCode.usedBy = promoCode.usedBy.filter(
           (usage) =>
             usage.order && usage.order.toString() !== order._id.toString()
@@ -635,11 +709,229 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
       }
     } catch (error) {
       console.error("Error restoring promo code usage:", error);
-      // Don't fail the cancellation if this fails
     }
   }
 
-  // Update order status
+  // process refund ONLY for paid Razorpay orders
+  let refundProcessed = false;
+  let refundDetails = null;
+
+  if (
+    order.payment.method === "razorpay" &&
+    order.payment.status === "completed" &&
+    order.payment.transactionId
+  ) {
+    try {
+      console.log(
+        `💰 Processing refund for order ${order.orderNumber} (Payment ID: ${order.payment.transactionId})`
+      );
+
+      // First, verify the payment exists and is capturable/refundable
+      let paymentInfo;
+      try {
+        paymentInfo = await razorpay.payments.fetch(
+          order.payment.transactionId
+        );
+        console.log(`Payment Status: ${paymentInfo.status}`);
+
+        // Check if payment is in a refundable state
+        if (paymentInfo.status !== "captured") {
+          throw new Error(
+            `Payment is in '${paymentInfo.status}' state and cannot be refunded. Only captured payments can be refunded.`
+          );
+        }
+
+        // Check if already refunded
+        if (paymentInfo.amount_refunded > 0) {
+          throw new Error(
+            `Payment already has ₹${
+              paymentInfo.amount_refunded / 100
+            } refunded. Cannot process automatic refund.`
+          );
+        }
+      } catch (fetchError) {
+        console.error("Error fetching payment:", fetchError);
+        throw new Error(
+          `Unable to verify payment status: ${
+            fetchError.error?.description || fetchError.message
+          }`
+        );
+      }
+
+      // initiate refund via Razorpay
+      const refund = await razorpay.payments.refund(
+        order.payment.transactionId,
+        {
+          amount: Math.round(order.total * 100), // Full refund in paise
+          notes: {
+            order_id: order._id.toString(),
+            order_number: order.orderNumber,
+            cancelled_by: "customer",
+            reason: req.body.reason || "Customer cancelled order",
+          },
+        }
+      );
+
+      console.log("✅ Refund initiated successfully:", refund.id);
+
+      // update order payment status
+      order.payment.status = "refunded";
+      order.payment.refundedAt = new Date();
+      order.payment.refundAmount = order.total;
+      order.payment.refundId = refund.id;
+      order.payment.refundStatus = refund.status; // "processed" or "pending"
+
+      refundProcessed = true;
+      refundDetails = {
+        refundId: refund.id,
+        amount: order.total,
+        status: refund.status,
+        expectedIn: "5-7 business days",
+      };
+
+      // send refund confirmation email using your emailService
+      try {
+        await emailService.sendEmail({
+          to: req.user.email,
+          subject: `Refund Initiated - Order #${order.orderNumber}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: #f4f2eb; color: #b87049; padding: 20px; text-align: center;">
+                <h1>Refund Initiated</h1>
+              </div>
+              <div style="padding: 20px;">
+                <p>Hello ${req.user.firstName},</p>
+                <p>Your order <strong>#${
+                  order.orderNumber
+                }</strong> has been cancelled and a refund has been initiated.</p>
+                
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                  <h3 style="margin-top: 0;">Refund Details:</h3>
+                  <p><strong>Amount:</strong> ₹${order.total.toFixed(2)}</p>
+                  <p><strong>Refund ID:</strong> ${refund.id}</p>
+                  <p><strong>Status:</strong> Processed</p>
+                  <p><strong>Expected in:</strong> 5-7 business days</p>
+                </div>
+
+                <p>The refund will be credited to your original payment method.</p>
+                <p>Depending on your bank, it may take 5-7 business days for the amount to reflect in your account.</p>
+                
+                <p>If you have any questions, please contact us at <a href="mailto:support@lilyth.in">support@lilyth.in</a></p>
+                
+                <br>
+                <p>Best regards,<br>The LILYTH Team</p>
+              </div>
+            </div>
+          `,
+          notificationType: "orderUpdates",
+        });
+      } catch (emailError) {
+        console.error("Failed to send refund confirmation email:", emailError);
+        // Don't fail the cancellation if email fails
+      }
+    } catch (refundError) {
+      console.error("❌ Refund processing failed:", refundError);
+
+      // still cancel the order but flag refund as pending
+      order.payment.status = "refund_pending";
+      order.payment.refundNotes = `Automatic refund failed: ${
+        refundError.error?.description || refundError.message
+      }`;
+      order.notes.push({
+        message: `Automatic refund failed: ${
+          refundError.error?.description || refundError.message
+        }. Manual refund required.`,
+        isCustomerVisible: false,
+        createdBy: req.user.id,
+        createdAt: new Date(),
+      });
+
+      // notify admin about failed refund
+      try {
+        await emailService.sendEmail({
+          to: process.env.ADMIN_EMAIL || "admin@lilyth.in",
+          subject: `⚠️ Refund Failed - Order #${order.orderNumber}`,
+          html: `
+            <h2>Automatic Refund Failed</h2>
+            <p><strong>Order:</strong> #${order.orderNumber}</p>
+            <p><strong>Customer:</strong> ${req.user.firstName} ${
+            req.user.lastName
+          } (${req.user.email})</p>
+            <p><strong>Amount:</strong> ₹${order.total}</p>
+            <p><strong>Payment ID:</strong> ${order.payment.transactionId}</p>
+            <p><strong>Error Code:</strong> ${
+              refundError.error?.code || "UNKNOWN"
+            }</p>
+            <p><strong>Error:</strong> ${
+              refundError.error?.description || refundError.message
+            }</p>
+            <p><strong>Action Required:</strong> Process refund manually via Razorpay dashboard</p>
+            <p><a href="https://dashboard.razorpay.com/app/payments/${
+              order.payment.transactionId
+            }">View Payment in Razorpay Dashboard</a></p>
+            
+            <h3>Common Causes:</h3>
+            <ul>
+              <li>Payment already refunded</li>
+              <li>Payment not captured properly</li>
+              <li>Payment still in pending state</li>
+              <li>Razorpay API issue</li>
+            </ul>
+          `,
+          notificationType: "system",
+        });
+      } catch (error) {
+        console.error("Failed to send admin notification:", error);
+      }
+    }
+  } else if (order.payment.method === "cash_on_delivery") {
+    // COD orders don't need refund (customer hasn't paid yet)
+    refundDetails = {
+      message: "No refund needed for Cash on Delivery orders",
+    };
+
+    // send COD cancellation confirmation email
+    try {
+      await emailService.sendEmail({
+        to: req.user.email,
+        subject: `Order Cancelled - Order #${order.orderNumber}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #f4f2eb; color: #b87049; padding: 20px; text-align: center;">
+              <h1>Order Cancelled</h1>
+            </div>
+            <div style="padding: 20px;">
+              <p>Hello ${req.user.firstName},</p>
+              <p>Your Cash on Delivery order <strong>#${
+                order.orderNumber
+              }</strong> has been successfully cancelled.</p>
+              
+              <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="margin-top: 0;">Cancellation Details:</h3>
+                <p><strong>Order Number:</strong> #${order.orderNumber}</p>
+                <p><strong>Order Total:</strong> ₹${order.total.toFixed(2)}</p>
+                <p><strong>Payment Method:</strong> Cash on Delivery</p>
+                <p><strong>Cancelled On:</strong> ${new Date().toLocaleDateString()}</p>
+              </div>
+
+              <p><strong>No payment was processed for this order,</strong> so no refund is necessary.</p>
+              
+              <p>If you have any questions, please contact us at <a href="mailto:support@lilyth.in">support@lilyth.in</a></p>
+              
+              <br>
+              <p>Best regards,<br>The LILYTH Team</p>
+            </div>
+          </div>
+        `,
+        notificationType: "orderUpdates",
+      });
+    } catch (emailError) {
+      console.error("Failed to send COD cancellation email:", emailError);
+      // Don't fail the cancellation if email fails
+    }
+  }
+
+  // update order status
   order.status = "cancelled";
   order.statusHistory.push({
     status: "cancelled",
@@ -650,11 +942,40 @@ exports.cancelOrder = asyncHandler(async (req, res) => {
 
   await order.save();
 
-  res.status(200).json({
+  // log cancellation in audit trail using your auditLogger
+  await auditLogger.log({
+    userId: req.user._id,
+    userName: `${req.user.firstName} ${req.user.lastName}`,
+    userEmail: req.user.email,
+    action: "ORDER_CANCELLED",
+    resource: "order",
+    resourceId: order._id,
+    details: {
+      orderNumber: order.orderNumber,
+      total: order.total,
+      reason: req.body.reason || "Customer cancelled order",
+      refundProcessed,
+      refundId: refundDetails?.refundId,
+      paymentMethod: order.payment.method,
+      hoursAfterOrder: Math.floor(hoursSinceOrder),
+      cancellationWithin24Hours: hoursSinceOrder <= 24,
+    },
+    ipAddress: req.ip,
+    userAgent: req.headers["user-agent"],
+  });
+
+  const response = {
     success: true,
     message: "Order cancelled successfully",
     order,
-  });
+  };
+
+  // add refund information to response
+  if (refundDetails) {
+    response.refund = refundDetails;
+  }
+
+  res.status(200).json(response);
 });
 
 // @desc    Get all orders (Admin only)
@@ -665,15 +986,15 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 20;
   const startIndex = (page - 1) * limit;
 
-  // Build query
+  // build query
   let query = Order.find();
 
-  // Filter by status
+  // filter by status
   if (req.query.status) {
     query = query.where("status").equals(req.query.status);
   }
 
-  // Filter by date range
+  // filter by date range
   if (req.query.startDate || req.query.endDate) {
     const dateFilter = {};
     if (req.query.startDate) dateFilter.$gte = new Date(req.query.startDate);
@@ -681,17 +1002,17 @@ exports.getAllOrders = asyncHandler(async (req, res) => {
     query = query.where("createdAt").equals(dateFilter);
   }
 
-  // Sort by creation date (newest first)
+  // sort by creation date (newest first)
   query = query.sort({ createdAt: -1 });
 
-  // Pagination
+  // pagination
   query = query.skip(startIndex).limit(limit);
 
-  // Populate user and product details
+  // populate user and product details
   query = query
     .populate("user", "firstName lastName email")
     .populate("items.product", "name slug")
-    .populate("discount.promoCode", "code"); // ✅ NEW
+    .populate("discount.promoCode", "code");
 
   const orders = await query;
   const total = await Order.countDocuments();
@@ -719,7 +1040,7 @@ exports.createPaymentOrder = asyncHandler(async (req, res) => {
 
   try {
     const options = {
-      amount: amount * 100, // Razorpay expects amount in paisa
+      amount: amount * 100,
       currency,
       receipt: `receipt_${Date.now()}`,
     };
@@ -751,7 +1072,7 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
     orderData,
   } = req.body;
 
-  // Verify signature
+  // verify signature
   const body = razorpay_order_id + "|" + razorpay_payment_id;
   const expectedSignature = crypto
     .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
@@ -759,7 +1080,7 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
     .digest("hex");
 
   if (expectedSignature === razorpay_signature) {
-    // Payment is verified, now create the order in database
+    // payment is verified, now create the order in database
     try {
       const {
         items,
@@ -769,10 +1090,10 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
         specialInstructions,
         isGift,
         giftMessage,
-        promoCode, // ✅ NEW: Get promo code from order data
+        promoCode,
       } = orderData;
 
-      // Validate all products and calculate totals
+      // validate all products and calculate totals
       let orderItems = [];
       let subtotal = 0;
 
@@ -842,7 +1163,6 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
       const shippingCost = calculateShippingCost(shippingMethod, subtotal);
       const tax = subtotal * 0.18;
 
-      // ✅ NEW: Apply promo code
       let discountAmount = 0;
       let promoCodeDoc = null;
 
@@ -856,7 +1176,7 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
             if (subtotal >= promoCodeDoc.minOrderAmount) {
               discountAmount = promoCodeDoc.calculateDiscount(subtotal);
 
-              // Update promo code usage
+              // update promo code usage
               promoCodeDoc.currentUsageCount += 1;
               promoCodeDoc.usedBy.push({
                 user: req.user._id,
@@ -872,7 +1192,7 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
 
       const total = subtotal + shippingCost + tax - discountAmount;
 
-      // Create order with payment success
+      // create order with payment success
       const order = await Order.create({
         user: req.user.id,
         items: orderItems,
@@ -883,7 +1203,6 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
         },
         tax,
         discount: {
-          // ✅ NEW
           amount: discountAmount,
           code: promoCode || null,
           promoCode: promoCodeDoc ? promoCodeDoc._id : null,
@@ -905,7 +1224,7 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
         giftMessage,
       });
 
-      // Update product stock
+      // update product stock
       for (const item of orderItems) {
         await Product.findOneAndUpdate(
           {
@@ -923,7 +1242,7 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
         );
       }
 
-      // Update user analytics
+      // update user analytics
       await User.findByIdAndUpdate(req.user.id, {
         $inc: {
           totalOrders: 1,
@@ -931,7 +1250,7 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
         },
       });
 
-      // Clear user's cart
+      // clear user's cart
       await Cart.findOneAndUpdate(
         { user: req.user.id },
         { $set: { items: [] } }
@@ -942,7 +1261,7 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
         .populate("items.product", "name slug images")
         .populate("discount.promoCode", "code description");
 
-      // Send notification to admin if enabled
+      // send notification to admin if enabled
       try {
         const admin = await User.findOne({
           role: "admin",
@@ -981,7 +1300,6 @@ exports.verifyPayment = asyncHandler(async (req, res) => {
         }
       } catch (emailError) {
         console.error("Failed to send order notification:", emailError);
-        // Don't fail the order creation if email fails
       }
 
       res.status(201).json({

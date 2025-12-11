@@ -11,7 +11,7 @@ const { notifyAdminNewSubscriber } = require("./newsletterCampaignController");
 exports.subscribe = asyncHandler(async (req, res) => {
   const { email, source = "footer" } = req.body;
 
-  // Validate email
+  // validate email
   if (!email) {
     return res.status(400).json({
       success: false,
@@ -28,7 +28,7 @@ exports.subscribe = asyncHandler(async (req, res) => {
   }
 
   try {
-    // Check if email already exists
+    // check if email already exists
     let subscriber = await Newsletter.findOne({
       email: email.toLowerCase().trim(),
     });
@@ -41,16 +41,16 @@ exports.subscribe = asyncHandler(async (req, res) => {
           alreadySubscribed: true,
         });
       } else {
-        // Resubscribe
+        // resubscribe
         await subscriber.resubscribe();
 
-        // Send welcome back email
+        // send welcome back email
         await emailService.sendNewsletterWelcome({
           email: subscriber.email,
           isReturning: true,
         });
 
-        // ✅ Notify admin about resubscriber
+        // notify admin about resubscriber
         await notifyAdminNewSubscriber(subscriber.email);
 
         return res.status(200).json({
@@ -61,7 +61,7 @@ exports.subscribe = asyncHandler(async (req, res) => {
       }
     }
 
-    // Create new subscriber
+    // create new subscriber
     subscriber = await Newsletter.create({
       email: email.toLowerCase().trim(),
       source,
@@ -72,16 +72,16 @@ exports.subscribe = asyncHandler(async (req, res) => {
       },
     });
 
-    // Send welcome email
+    // send welcome email
     await emailService.sendNewsletterWelcome({
       email: subscriber.email,
       isReturning: false,
     });
 
-    // ✅ Notify admin about new subscriber
+    // notify admin about new subscriber
     await notifyAdminNewSubscriber(subscriber.email);
 
-    // Log the subscription
+    // log the subscription
     await auditLogger.log({
       userId: null,
       action: "NEWSLETTER_SUBSCRIBE",
@@ -149,7 +149,7 @@ exports.unsubscribe = asyncHandler(async (req, res) => {
 
   await subscriber.unsubscribe();
 
-  // Log the unsubscription
+  // log the unsubscription
   await auditLogger.log({
     userId: null,
     action: "NEWSLETTER_UNSUBSCRIBE",
@@ -187,13 +187,13 @@ exports.getNewsletterStats = asyncHandler(async (req, res) => {
     subscribedAt: { $gte: thisMonth },
   });
 
-  // Get subscribers by source
+  // get subscribers by source
   const bySource = await Newsletter.aggregate([
     { $match: { status: "subscribed" } },
     { $group: { _id: "$source", count: { $sum: 1 } } },
   ]);
 
-  // Get recent subscribers
+  // get recent subscribers
   const recentSubscribers = await Newsletter.find({ status: "subscribed" })
     .sort({ subscribedAt: -1 })
     .limit(10)
@@ -252,7 +252,7 @@ exports.exportSubscribers = asyncHandler(async (req, res) => {
     .select("email status subscribedAt source preferences")
     .sort({ subscribedAt: -1 });
 
-  // Convert to CSV
+  // convert to CSV
   const csvHeader =
     "Email,Status,Subscribed At,Source,New Arrivals,Sales,Exclusive Offers\n";
   const csvRows = subscribers

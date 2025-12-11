@@ -387,7 +387,7 @@ a.action-btn:hover {
 .mobile-nav {
   padding: var(--spacing-lg) 0;
   border-top: 1px solid rgba(74, 74, 74, 0.1);
-  background-color: #f9f9fb;
+  background-color: white !important;
   backdrop-filter: blur(10px);
   max-height: 0;
   opacity: 0;
@@ -533,4 +533,33 @@ a.action-btn:hover {
   .search-input {
     padding: var(--spacing-sm) 2rem var(--spacing-sm) 2.5rem;
   }
+}
+/* Make the entire overlay transparent */
+.mobile-nav-wrapper {
+  position: fixed;
+  inset: 0;
+  background: transparent !important;
+  z-index: 999;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+/* The sliding panel area — now transparent */
+.mobile-nav {
+  width: 100%;
+  max-width: 100%;
+  background: transparent !important;
+  padding: 24px 0;
+  box-shadow: none !important;
+}
+
+/* ⭐ Only the menu content gets the white card */
+.mobile-nav-content {
+  width: 90%;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  margin: 0 auto; /* centers it */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }

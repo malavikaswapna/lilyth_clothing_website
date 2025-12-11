@@ -1,3 +1,4 @@
+//backend/ models/StoreSettings.js
 const mongoose = require("mongoose");
 
 const storeSettingsSchema = new mongoose.Schema(

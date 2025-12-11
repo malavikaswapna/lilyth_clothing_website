@@ -1,5 +1,5 @@
 // utils/cartValidator.js
-// Validates cart items and removes inactive products
+// validates cart items and removes inactive products
 
 const Product = require("../models/Product");
 

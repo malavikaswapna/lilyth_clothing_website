@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Eye,
   Tag,
+  MessageSquare,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { adminAPI } from "../../services/api";
@@ -150,6 +151,19 @@ const Dashboard = () => {
 
       {/* ✅ NEW: Quick Actions */}
       <div className="quick-actions">
+        <div
+          className="quick-action-card"
+          onClick={() => navigate("/admin/chat")}
+        >
+          <div className="quick-action-icon chat">
+            <MessageSquare size={24} />
+          </div>
+          <div className="quick-action-content">
+            <h3>Customer Chat</h3>
+            <p>View and respond to customer messages</p>
+          </div>
+        </div>
+
         <div
           className="quick-action-card"
           onClick={() => navigate("/admin/promo-codes")}

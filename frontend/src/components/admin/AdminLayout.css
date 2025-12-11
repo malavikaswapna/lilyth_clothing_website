@@ -1,3 +1,5 @@
+/* AdminLayout.css */
+
 .admin-layout {
   display: grid;
   grid-template-columns: 280px 1fr;
@@ -10,6 +12,10 @@
   color: white;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+  position: sticky;
+  top: 0;
 }
 
 .admin-logo {
@@ -95,7 +101,7 @@
   .admin-layout {
     grid-template-columns: 1fr;
   }
-  
+
   .admin-sidebar {
     position: fixed;
     top: 0;
@@ -105,13 +111,11 @@
     z-index: 1000;
     transition: left 0.3s;
   }
-  
+
   .admin-sidebar.open {
     left: 0;
   }
 }
-
-/* Add these styles to your existing AdminLayout.css */
 
 /* Mobile Header - Hidden on desktop */
 .mobile-header {
@@ -169,17 +173,17 @@
 @media (max-width: 768px) {
   .admin-layout {
     grid-template-columns: 1fr;
-    padding-top: 80px; /* Account for mobile header */
+    padding-top: 80px;
   }
-  
+
   .mobile-header {
     display: flex;
   }
-  
+
   .mobile-overlay {
     display: block;
   }
-  
+
   .admin-sidebar {
     position: fixed;
     top: 0;
@@ -188,22 +192,21 @@
     height: 100vh;
     z-index: 1000;
     transition: left 0.3s ease;
-    padding-top: 80px; /* Account for mobile header */
+    padding-top: 80px;
   }
-  
+
   .admin-sidebar.mobile-open {
     left: 0;
   }
-  
+
   .admin-main {
     width: 100%;
   }
-  
+
   .admin-content {
     padding: 1rem;
   }
-  
-  /* Hide desktop logo on mobile */
+
   .admin-sidebar .admin-logo {
     display: none;
   }
@@ -213,15 +216,15 @@
   .admin-content {
     padding: 0.75rem;
   }
-  
+
   .mobile-header {
     padding: 0.75rem;
   }
-  
+
   .admin-layout {
     padding-top: 70px;
   }
-  
+
   .admin-sidebar {
     padding-top: 70px;
   }

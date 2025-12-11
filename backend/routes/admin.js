@@ -48,6 +48,7 @@ const {
   getPromoCodeStats,
 } = require("../controllers/promoCodeController");
 
+const notificationTestRoutes = require("./adminNotificationTest");
 const router = express.Router();
 
 // All admin routes need auth and admin role
@@ -136,5 +137,7 @@ router.put("/settings/notifications", updateNotificationSettings);
 // Store settings routes
 router.get("/settings/store", getStoreSettings);
 router.put("/settings/store", updateStoreSettings);
+
+router.use("/test-notifications", notificationTestRoutes);
 
 module.exports = router;

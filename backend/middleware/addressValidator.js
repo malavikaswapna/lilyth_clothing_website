@@ -14,7 +14,7 @@ const validateKeralaAddress = async (req, res, next) => {
       return next();
     }
 
-    //Block non-Kerala addresses immediately
+    //block non-Kerala addresses immediately
     if (address.state && address.state.toLowerCase() !== "kerala") {
       return res.status(400).json({
         success: false,
@@ -24,7 +24,7 @@ const validateKeralaAddress = async (req, res, next) => {
       });
     }
 
-    //Block non-India addresses
+    //block non-India addresses
     if (address.country && address.country.toLowerCase() !== "india") {
       return res.status(400).json({
         success: false,
@@ -33,7 +33,7 @@ const validateKeralaAddress = async (req, res, next) => {
       });
     }
 
-    // Validate Kerala PIN code
+    // validate Kerala PIN code
     const pincodeResult = await pincodeService.validatePincode(
       address.postalCode
     );
@@ -46,7 +46,7 @@ const validateKeralaAddress = async (req, res, next) => {
       });
     }
 
-    // If API is down, log warning but allow through
+    // if API is down, log warning but allow through
     if (pincodeResult.isValid === null) {
       console.warn(
         "⚠️ PIN code validation service unavailable - allowing request"
@@ -54,11 +54,11 @@ const validateKeralaAddress = async (req, res, next) => {
       return next();
     }
 
-    // Auto-correct/fill Kerala address data
+    // auto-correct/fill Kerala address data
     if (pincodeResult.data) {
       const suggestedCity = pincodeResult.data.district;
 
-      // Check city match
+      // check city match
       if (
         address.city &&
         address.city.toLowerCase() !== suggestedCity.toLowerCase()
@@ -75,7 +75,7 @@ const validateKeralaAddress = async (req, res, next) => {
         };
       }
 
-      // Auto-fill Kerala address
+      // auto-fill Kerala address
       address.state = "Kerala";
       address.country = "India";
 
@@ -89,7 +89,7 @@ const validateKeralaAddress = async (req, res, next) => {
   }
 };
 
-//Strict validation for Kerala delivery addresses (orders)
+// strict validation for Kerala delivery addresses (orders)
 const strictValidateKeralaAddress = async (req, res, next) => {
   try {
     const address =
@@ -105,7 +105,7 @@ const strictValidateKeralaAddress = async (req, res, next) => {
       });
     }
 
-    // Must be Kerala
+    // must be Kerala
     if (address.state && address.state.toLowerCase() !== "kerala") {
       return res.status(400).json({
         success: false,
@@ -114,7 +114,7 @@ const strictValidateKeralaAddress = async (req, res, next) => {
       });
     }
 
-    // Must be India
+    // must be India
     if (address.country && address.country.toLowerCase() !== "india") {
       return res.status(400).json({
         success: false,
@@ -127,7 +127,7 @@ const strictValidateKeralaAddress = async (req, res, next) => {
       address.postalCode
     );
 
-    //Block if invalid
+    // block if invalid
     if (pincodeResult.isValid === false) {
       return res.status(400).json({
         success: false,
@@ -136,7 +136,7 @@ const strictValidateKeralaAddress = async (req, res, next) => {
       });
     }
 
-    //Block if API is down (for orders)
+    // block if API is down (for orders)
     if (pincodeResult.isValid === null) {
       return res.status(503).json({
         success: false,
@@ -145,7 +145,7 @@ const strictValidateKeralaAddress = async (req, res, next) => {
       });
     }
 
-    // Verify city matches
+    // verify city matches
     if (address.city) {
       const verifyResult = await pincodeService.verifyAddress(
         address.postalCode,
@@ -172,7 +172,7 @@ const strictValidateKeralaAddress = async (req, res, next) => {
       }
     }
 
-    // Auto-set Kerala and India
+    // auto-set Kerala and India
     address.state = "Kerala";
     address.country = "India";
 

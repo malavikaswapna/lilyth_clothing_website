@@ -3,6 +3,9 @@ const User = require("../models/User");
 const Product = require("../models/Product");
 const asyncHandler = require("../utils/asyncHandler");
 const Order = require("../models/Order");
+const Cart = require("../models/Cart");
+const emailService = require("../utils/emailService");
+const { auditLogger } = require("../utils/auditLogger");
 
 // @desc    Add address to user profile
 // @route   POST /api/user/addresses
@@ -54,13 +57,13 @@ exports.updateAddress = asyncHandler(async (req, res) => {
     });
   }
 
-  // If setting as default, remove default from other addresses
+  // if setting as default, remove default from other addresses
   if (req.body.isDefault) {
     user.addresses.forEach((addr) => {
       addr.isDefault = false;
     });
   }
-  // Update address fields
+  // update address fields
   Object.assign(address, req.body);
   await user.save();
 
@@ -88,7 +91,7 @@ exports.deleteAddress = asyncHandler(async (req, res) => {
   const wasDefault = address.isDefault;
   address.deleteOne();
 
-  // If deleted address was default, make first remaining address default
+  // if deleted address was default, make first remaining address default
   if (wasDefault && user.addresses.length > 0) {
     user.addresses[0].isDefault = true;
   }
@@ -135,7 +138,7 @@ exports.addToWishlist = asyncHandler(async (req, res) => {
 
   const user = await User.findById(req.user.id);
 
-  // Check if product already in wishlist
+  // check if product already in wishlist
   if (user.wishlist.includes(req.params.productId)) {
     return res.status(400).json({
       success: false,
@@ -207,13 +210,13 @@ exports.getAddresses = asyncHandler(async (req, res) => {
 exports.getUserAnalytics = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id);
 
-  // Get recent orders (last 5)
+  // get recent orders (last 5)
   const recentOrders = await Order.find({ user: req.user.id })
     .sort({ createdAt: -1 })
     .limit(5)
     .populate("items.product", "name images");
 
-  // Get wishlist count
+  // get wishlist count
   const wishlistCount = user.wishlist.length;
 
   const analytics = {
@@ -252,7 +255,7 @@ exports.getUserAnalytics = asyncHandler(async (req, res) => {
 exports.updateNotificationSettings = asyncHandler(async (req, res) => {
   const { notificationSettings } = req.body;
 
-  // Validate notification settings structure
+  // validate notification settings structure
   const allowedSettings = [
     "emailNotifications",
     "orderUpdates",
@@ -262,7 +265,7 @@ exports.updateNotificationSettings = asyncHandler(async (req, res) => {
     "systemUpdates",
   ];
 
-  // Filter out any invalid keys
+  // filter out any invalid keys
   const validSettings = {};
   if (notificationSettings) {
     Object.keys(notificationSettings).forEach((key) => {
@@ -302,4 +305,192 @@ exports.getNotificationSettings = asyncHandler(async (req, res) => {
       systemUpdates: true,
     },
   });
+});
+
+// @desc    Delete user account
+// @route   DELETE /api/user/account
+// @access  Private
+exports.deleteAccount = asyncHandler(async (req, res) => {
+  const { password, confirmText } = req.body;
+
+  // For Google OAuth users, password is not required
+  if (req.user.authProvider !== "google") {
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: "Password is required to delete your account",
+      });
+    }
+
+    // Verify password
+    const user = await User.findById(req.user.id).select("+password");
+    const isPasswordCorrect = await user.comparePassword(password);
+
+    if (!isPasswordCorrect) {
+      return res.status(401).json({
+        success: false,
+        message: "Incorrect password",
+      });
+    }
+  }
+
+  // Verify confirmation text
+  if (confirmText !== "DELETE MY ACCOUNT") {
+    return res.status(400).json({
+      success: false,
+      message: "Please type 'DELETE MY ACCOUNT' to confirm",
+    });
+  }
+
+  try {
+    // Get user details before deletion for logging
+    const userEmail = req.user.email;
+    const userName = `${req.user.firstName} ${req.user.lastName}`;
+    const userId = req.user.id;
+
+    // Check for pending/active orders
+    const activeOrders = await Order.find({
+      user: req.user.id,
+      status: { $in: ["pending", "confirmed", "processing", "shipped"] },
+    });
+
+    if (activeOrders.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `You have ${activeOrders.length} active order(s). Please wait until they are delivered or cancel them before deleting your account.`,
+        activeOrders: activeOrders.map((order) => ({
+          orderNumber: order.orderNumber,
+          status: order.status,
+          total: order.total,
+        })),
+      });
+    }
+
+    // Anonymize user data instead of hard delete (GDPR compliant approach)
+    // This preserves order history while removing personal information
+    const anonymizedEmail = `deleted_${Date.now()}@deleted.com`;
+
+    // Anonymized address object for orders
+    const anonymizedAddress = {
+      firstName: "Deleted",
+      lastName: "User",
+      company: null,
+      addressLine1: "[Address Removed]",
+      addressLine2: null,
+      city: "Kerala",
+      state: "Kerala",
+      postalCode: "000000",
+      country: "India",
+    };
+
+    // Anonymize addresses in all user's orders (GDPR compliance)
+    await Order.updateMany(
+      { user: req.user.id },
+      {
+        $set: {
+          shippingAddress: anonymizedAddress,
+          billingAddress: anonymizedAddress,
+        },
+      }
+    );
+
+    await User.findByIdAndUpdate(req.user.id, {
+      firstName: "Deleted",
+      lastName: "User",
+      email: anonymizedEmail,
+      phone: null,
+      dateOfBirth: null,
+      avatar: null,
+      addresses: [],
+      wishlist: [],
+      preferredSizes: [],
+      isActive: false,
+      emailVerificationToken: null,
+      passwordResetToken: null,
+      password: null, // Remove password
+      firebaseUid: null,
+      notificationSettings: {
+        emailNotifications: false,
+        orderUpdates: false,
+        newUsers: false,
+        lowStock: false,
+        salesReports: false,
+        systemUpdates: false,
+      },
+      notes: [
+        ...req.user.notes,
+        {
+          content: "Account deleted by user",
+          addedBy: req.user.id,
+          addedAt: new Date(),
+        },
+      ],
+    });
+
+    // Clear cart
+    await Cart.findOneAndDelete({ user: req.user.id });
+
+    // Log account deletion
+    await auditLogger.log({
+      userId: userId,
+      userName: userName,
+      userEmail: userEmail,
+      action: "ACCOUNT_DELETED",
+      resource: "user",
+      resourceId: userId,
+      details: {
+        method: req.user.authProvider,
+        activeOrdersCount: 0,
+        addressesAnonymized: true,
+        ordersAnonymized: true,
+      },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+
+    // Send account deletion confirmation email
+    try {
+      await emailService.sendEmail({
+        to: userEmail, // Send to original email before anonymization
+        subject: "Account Deleted - LILYTH",
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #f4f2eb; color: #b87049; padding: 20px; text-align: center;">
+              <h1>Account Deleted</h1>
+            </div>
+            <div style="padding: 20px;">
+              <p>Hello ${userName},</p>
+              <p>Your LILYTH account has been successfully deleted as per your request.</p>
+              <p><strong>What this means:</strong></p>
+              <ul>
+                <li>Your personal information has been removed</li>
+                <li>Your addresses have been anonymized in order records</li>
+                <li>You can no longer log in to this account</li>
+                <li>Your order history has been anonymized but preserved for legal compliance</li>
+                <li>You will no longer receive emails from us</li>
+              </ul>
+              <p>If you didn't request this deletion, please contact us immediately at <a href="mailto:support@lilyth.in">support@lilyth.in</a></p>
+              <p>We're sorry to see you go! If you change your mind, you're always welcome to create a new account.</p>
+              <br>
+              <p>Best regards,<br>The LILYTH Team</p>
+            </div>
+          </div>
+        `,
+      });
+    } catch (emailError) {
+      console.error("Failed to send account deletion email:", emailError);
+      // Don't fail the deletion if email fails
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Your account has been successfully deleted",
+    });
+  } catch (error) {
+    console.error("Error deleting account:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete account. Please try again later.",
+    });
+  }
 });

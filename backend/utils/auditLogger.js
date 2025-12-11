@@ -19,7 +19,9 @@ const auditLogSchema = new mongoose.Schema(
         "USER_CREATED",
         "USER_UPDATED",
         "USER_DELETED",
+        "ACCOUNT_DELETED",
         "USER_STATUS_CHANGED",
+        "GUEST_CONVERTED_TO_REGISTERED",
         // Product actions
         "PRODUCT_CREATED",
         "PRODUCT_UPDATED",
@@ -28,6 +30,7 @@ const auditLogSchema = new mongoose.Schema(
         "STOCK_UPDATED",
         "BULK_UPDATE",
         // Order actions
+        "ORDER_CREATED",
         "ORDER_STATUS_CHANGED",
         "ORDER_CANCELLED",
         "REFUND_ISSUED",
@@ -50,7 +53,7 @@ const auditLogSchema = new mongoose.Schema(
         "CONTACT_FORM_SUBMITTED",
         "CONTACT_FORM_ERROR",
         //PIN code validation
-        "PINCODE_VALIADTED",
+        "PINCODE_VALIDATED",
         "PINCODE_VERIFIED",
         "ADDRESS_AUTOCORRECTED",
         // Promo Code actions
@@ -69,6 +72,10 @@ const auditLogSchema = new mongoose.Schema(
         "NEWSLETTER_UNSUBSCRIBE",
         "NEWSLETTER_CAMPAIGN_SENT",
         "NEWSLETTER_PREVIEW_SENT",
+        // Return actions
+        "RETURN_REQUESTED",
+        "RETURN_STATUS_UPDATED",
+        "REFUND_PROCESSED",
         // Other
         "DATA_EXPORT",
         "SETTINGS_CHANGED",
@@ -76,7 +83,7 @@ const auditLogSchema = new mongoose.Schema(
       ],
     },
     resource: {
-      type: String, // 'user', 'product', 'order', 'category', etc.
+      type: String,
       required: true,
     },
     resourceId: mongoose.Schema.ObjectId,

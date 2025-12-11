@@ -8,6 +8,9 @@ const {
   deleteFromCloudinary,
   deleteMultipleFromCloudinary,
 } = require("../config/cloudinary");
+const {
+  triggerProductNotifications,
+} = require("../middleware/productNotificationMiddleware");
 
 // Helper function to add no-cache headers
 const addNoCacheHeaders = (res) => {
@@ -321,13 +324,11 @@ exports.createProduct = asyncHandler(async (req, res) => {
     ) {
       // cleanup any files that were uploaded by multer (but not yet cloud-uploaded)
       // req.files might contain temp files; any cloud uploads will be tracked separately
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "Please provide required fields: name, description, brand, sku, price",
-        });
+      return res.status(400).json({
+        success: false,
+        message:
+          "Please provide required fields: name, description, brand, sku, price",
+      });
     }
 
     // basic validations
@@ -336,31 +337,25 @@ exports.createProduct = asyncHandler(async (req, res) => {
       ? parseFloat(req.body.salePrice)
       : null;
     if (salePrice && salePrice >= price)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Sale price must be less than regular price",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Sale price must be less than regular price",
+      });
 
     // uniqueness checks
     const existingSku = await Product.findOne({ sku: req.body.sku });
     if (existingSku)
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Product with this SKU already exists",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Product with this SKU already exists",
+      });
     if (req.body.slug) {
       const existingSlug = await Product.findOne({ slug: req.body.slug });
       if (existingSlug)
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "Product with this slug already exists",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "Product with this slug already exists",
+        });
     }
 
     // category validation
@@ -445,13 +440,11 @@ exports.createProduct = asyncHandler(async (req, res) => {
     await product.save();
     await product.populate("category", "name slug");
 
-    res
-      .status(201)
-      .json({
-        success: true,
-        message: "Product created successfully",
-        product,
-      });
+    res.status(201).json({
+      success: true,
+      message: "Product created successfully",
+      product,
+    });
   } catch (error) {
     console.error("CREATE PRODUCT ERROR:", error);
 
@@ -473,12 +466,10 @@ exports.createProduct = asyncHandler(async (req, res) => {
         .json({ success: false, message: "Validation Error", errors });
     }
 
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: error.message || "Failed to create product",
-      });
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to create product",
+    });
   }
 });
 
@@ -505,6 +496,19 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         .status(404)
         .json({ success: false, message: "Product not found" });
     }
+
+    // 🔔 STORE ORIGINAL PRODUCT DATA FOR NOTIFICATIONS
+    const originalProduct = {
+      _id: product._id,
+      name: product.name,
+      totalStock: product.totalStock,
+      price: product.price,
+      salePrice: product.salePrice,
+    };
+    console.log("📋 Original product data stored for notifications");
+    console.log("   Stock:", originalProduct.totalStock);
+    console.log("   Price:", originalProduct.price);
+    console.log("   Sale Price:", originalProduct.salePrice);
 
     // parse variants if provided
     let variants = [];
@@ -534,12 +538,10 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         !isNaN(priceToCheck) &&
         salePriceToCheck >= priceToCheck
       ) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "Sale price must be less than regular price",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "Sale price must be less than regular price",
+        });
       }
     }
 
@@ -550,12 +552,10 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         _id: { $ne: req.params.id },
       });
       if (existing)
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "Product with this SKU already exists",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "Product with this SKU already exists",
+        });
     }
     if (req.body.slug && req.body.slug !== product.slug) {
       const existingSlug = await Product.findOne({
@@ -563,12 +563,10 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         _id: { $ne: req.params.id },
       });
       if (existingSlug)
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "Product with this slug already exists",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "Product with this slug already exists",
+        });
     }
 
     // Build updatedImages starting from existingImages sent by client (keeps order)
@@ -643,12 +641,10 @@ exports.updateProduct = asyncHandler(async (req, res) => {
       if (newlyUploadedPublicIds.length > 0) {
         await deleteMultipleFromCloudinary(newlyUploadedPublicIds);
       }
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Product must have at least one image",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Product must have at least one image",
+      });
     }
 
     // ensure one primary image
@@ -711,13 +707,30 @@ exports.updateProduct = asyncHandler(async (req, res) => {
     await product.save();
     await product.populate("category", "name slug");
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Product updated successfully",
-        product,
-      });
+    // 🔔 TRIGGER PRODUCT NOTIFICATIONS (async, non-blocking)
+    // Create updated product data object for comparison
+    const updatedProduct = {
+      _id: product._id,
+      name: product.name,
+      totalStock: updateData.totalStock,
+      price: updateData.price,
+      salePrice: updateData.salePrice,
+    };
+
+    // Trigger notifications asynchronously (won't block response)
+    triggerProductNotifications(
+      { body: updatedProduct },
+      res,
+      originalProduct
+    ).catch((err) => {
+      console.error("⚠️ Non-critical: Notification trigger failed:", err);
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Product updated successfully",
+      product,
+    });
   } catch (err) {
     console.error("UPDATE PRODUCT ERROR:", err);
 
@@ -737,12 +750,10 @@ exports.updateProduct = asyncHandler(async (req, res) => {
         .json({ success: false, message: "Validation Error", errors });
     }
 
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: err.message || "Failed to update product",
-      });
+    res.status(500).json({
+      success: false,
+      message: err.message || "Failed to update product",
+    });
   }
 });
 
@@ -771,10 +782,8 @@ exports.deleteProduct = asyncHandler(async (req, res) => {
   }
 
   await product.deleteOne();
-  res
-    .status(200)
-    .json({
-      success: true,
-      message: "Product and associated images deleted successfully",
-    });
+  res.status(200).json({
+    success: true,
+    message: "Product and associated images deleted successfully",
+  });
 });

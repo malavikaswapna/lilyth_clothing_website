@@ -355,6 +355,10 @@
   background: linear-gradient(135deg, #8b5cf6, #ec4899);
 }
 
+.quick-action-icon.chat {
+  background: linear-gradient(135deg, #25d366, #128c7e);
+}
+
 .quick-action-icon.products-action {
   background: linear-gradient(135deg, #10b981, #059669);
 }

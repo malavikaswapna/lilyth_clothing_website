@@ -8,7 +8,7 @@ const {
   getPaymentDetails,
   refundPayment,
 } = require("../controllers/paymentController");
-const { protect, authorize } = require("../middleware/auth");
+const { protect, authorize, optionalAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -37,19 +37,22 @@ router.use((req, res, next) => {
   next();
 });
 
-// Customer routes - ORDER MATTERS!
-router.post("/create-order", protect, (req, res, next) => {
-  console.log("🎯 Hit /create-order route");
+// ✅ FIXED: Customer routes with optionalAuth for guest support
+router.post("/create-order", optionalAuth, (req, res, next) => {
+  console.log("🎯 Hit /create-order");
+  console.log("   User authenticated:", !!req.user);
   createRazorpayOrder(req, res, next);
 });
 
-router.post("/verify", protect, (req, res, next) => {
+// ✅ CRITICAL FIX: Add optionalAuth middleware for guest payment verification
+router.post("/verify", optionalAuth, (req, res, next) => {
   console.log("🎯 Hit /verify route");
+  console.log("   User authenticated:", !!req.user);
   console.log("   Request body keys:", Object.keys(req.body));
   verifyPayment(req, res, next);
 });
 
-router.post("/failure", protect, (req, res, next) => {
+router.post("/failure", optionalAuth, (req, res, next) => {
   console.log("🎯 Hit /failure route");
   handlePaymentFailure(req, res, next);
 });
@@ -78,9 +81,9 @@ router.post(
 
 console.log("✅ Payment routes configured:");
 console.log("   - GET /test");
-console.log("   - POST /create-order");
-console.log("   - POST /verify");
-console.log("   - POST /failure");
+console.log("   - POST /create-order (optionalAuth)");
+console.log("   - POST /verify (optionalAuth) ← FIXED FOR GUEST");
+console.log("   - POST /failure (optionalAuth)");
 console.log("   - POST /webhook");
 console.log("   - GET /:paymentId");
 console.log("   - POST /:paymentId/refund");

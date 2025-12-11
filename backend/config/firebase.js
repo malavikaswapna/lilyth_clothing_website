@@ -1,7 +1,7 @@
 // config/firebase.js
 const admin = require("firebase-admin");
 
-// Initialize Firebase Admin SDK
+// initialize Firebase Admin SDK
 const initializeFirebase = () => {
   if (!admin.apps.length) {
     const serviceAccount = {
@@ -72,19 +72,19 @@ const sendPasswordResetEmail = async (email, resetUrl, userName) => {
       <body>
         <div class="container">
           <div class="header">
-            <h1>AMOURA</h1>
+            <h1>LILYTH</h1>
             <p>Password Reset Request</p>
           </div>
           <div class="content">
             <h2>Hi ${userName},</h2>
-            <p>You requested a password reset for your AMOURA account.</p>
+            <p>You requested a password reset for your LILYTH account.</p>
             <p>Click the button below to reset your password:</p>
             <a href="${resetUrl}" class="button">Reset Password</a>
             <p>This link will expire in 15 minutes for security reasons.</p>
             <p>If you didn't request this password reset, please ignore this email or contact our support team if you have concerns.</p>
           </div>
           <div class="footer">
-            <p>© 2024 AMOURA. All rights reserved.</p>
+            <p>© 2024 LILYTH. All rights reserved.</p>
             <p>This is an automated email, please do not reply.</p>
           </div>
         </div>
@@ -96,7 +96,7 @@ const sendPasswordResetEmail = async (email, resetUrl, userName) => {
       'Content-Type: text/html; charset="UTF-8"',
       "MIME-Version: 1.0",
       `To: ${email}`,
-      `Subject: Reset Your AMOURA Password`,
+      `Subject: Reset Your LILYTH Password`,
       "",
       emailContent,
     ].join("\n");

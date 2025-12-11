@@ -12,6 +12,7 @@ const {
   getUserAnalytics,
   updateNotificationSettings,
   getNotificationSettings,
+  deleteAccount,
 } = require("../controllers/userController");
 const { protect } = require("../middleware/auth");
 const { getUserReviews } = require("../controllers/reviewController");
@@ -45,5 +46,8 @@ router.get("/analytics", getUserAnalytics);
 
 // Reviews
 router.get("/reviews", getUserReviews);
+
+// Account Deletion
+router.delete("/account", deleteAccount);
 
 module.exports = router;

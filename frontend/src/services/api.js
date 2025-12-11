@@ -1,3 +1,5 @@
+//frontend/src/services/api.js
+
 import axios from "axios";
 
 // Create axios instance with base configuration
@@ -64,7 +66,11 @@ export const authAPI = {
   forgotPassword: (email) => api.post("/auth/forgot-password", { email }),
   resetPassword: (token, password) =>
     api.put(`/auth/reset-password/${token}`, { password }),
-  googleAuth: (data) => api.post("/auth/google", data),
+  // Google OAuth - SEPARATE endpoints for register and login
+  googleRegister: (data) => api.post("/auth/google/register", data), // ⬅️ For Register page
+  googleLogin: (data) => api.post("/auth/google/login", data), // ⬅️ For Login page
+  updateNotificationSettings: (settings) =>
+    api.put("/user/notifications", settings),
 };
 
 // Products API calls
@@ -204,6 +210,10 @@ export const ordersAPI = {
   createPaymentOrder: (data) => api.post("/payments/create-order", data),
   verifyPayment: (data) => api.post("/payments/verify", data),
   handlePaymentFailure: (data) => api.post("/payments/failure", data),
+
+  // Return management
+  requestReturn: (orderId, data) =>
+    api.post(`/returns/${orderId}/return`, data),
 };
 
 // User API calls
@@ -224,6 +234,9 @@ export const userAPI = {
   updateAddress: (addressId, addressData) =>
     api.put(`/user/addresses/${addressId}`, addressData),
   deleteAddress: (addressId) => api.delete(`/user/addresses/${addressId}`),
+
+  // Account deletion
+  deleteAccount: (data) => api.delete("/user/account", { data }),
 };
 
 // Contact API calls
@@ -395,6 +408,55 @@ export const adminAPI = {
   // Store Settings  ← ADD THESE TWO LINES
   getStoreSettings: () => api.get("/admin/settings/store"),
   updateStoreSettings: (data) => api.put("/admin/settings/store", data),
+
+  // Return Management
+  getAllReturns: (params) => api.get("/returns/admin/all", { params }),
+  updateReturnStatus: (orderId, data) =>
+    api.put(`/returns/admin/${orderId}`, data),
+  getReturnStats: () => api.get("/returns/admin/stats"),
+
+  // Payment Settings
+  getPaymentSettings: () => api.get("/payment-settings"),
+  updatePaymentSettings: (data) => api.put("/payment-settings", data),
+  getAvailablePaymentMethods: () =>
+    api.get("/payment-settings/available-methods"),
+};
+
+export const paymentAPI = {
+  getAvailablePaymentMethods: () =>
+    api.get("/payment-settings/available-methods"),
+  getPaymentSettings: () => api.get("/payment-settings"),
+};
+
+// Guest Checkout API calls
+export const guestAPI = {
+  // Initialize guest session
+  initGuestSession: () => api.post("/guest/init"),
+  // Get guest cart
+  getGuestCart: (guestId) => api.get(`/guest/${guestId}/cart`),
+  // Add to guest cart
+  addToGuestCart: (guestId, data) =>
+    api.post(`/guest/${guestId}/cart/add`, data),
+  // Guest checkout
+  guestCheckout: (guestId, data) =>
+    api.post(`/guest/${guestId}/checkout`, data),
+  // Track guest order by email and order number
+  trackOrderByEmail: (data) => api.post(`/guest/track-by-email`, data),
+  // Track guest order by tracking token
+  trackGuestOrder: (trackingToken) => api.get(`/guest/track/${trackingToken}`),
+  // Convert guest to registered user
+  convertGuestToRegistered: (guestId, data) =>
+    api.post(`/guest/${guestId}/convert`, data),
+
+  // Update quantity in guest cart
+  updateGuestCartItem: (guestId, data) =>
+    api.put(`/guest/${guestId}/cart/update`, data),
+
+  // Remove product from guest cart
+  removeFromGuestCart: (guestId, data) =>
+    api.post(`/guest/${guestId}/cart/remove`, data),
+
+  clearGuestCartDB: (guestId) => api.delete(`/guest/${guestId}/cart/clear`),
 };
 
 export default api;

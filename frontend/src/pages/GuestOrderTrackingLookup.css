@@ -1,0 +1,546 @@
+/* src/pages/GuestOrderTrackingLookup.css */
+
+.guest-tracking-lookup-page {
+  padding: var(--spacing-xl) 0;
+  min-height: 100vh;
+  background: inherit;
+}
+
+.tracking-lookup-header {
+  margin-bottom: 2rem;
+}
+
+.tracking-lookup-header .back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+  font-size: 0.95rem;
+}
+
+.tracking-lookup-header .back-btn:hover {
+  background-color: rgba(184, 112, 73, 0.1);
+}
+
+.tracking-lookup-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 3rem;
+  align-items: start;
+}
+
+/* Main Card */
+.tracking-lookup-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 3rem;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+}
+
+.card-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(
+    135deg,
+    var(--primary-color),
+    var(--primary-dark)
+  );
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  margin: 0 auto 2rem;
+}
+
+.tracking-lookup-card h1 {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.tracking-lookup-card .subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  margin-bottom: 2.5rem;
+  font-size: 1rem;
+}
+
+/* Form Styles */
+.tracking-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.form-group label svg {
+  color: var(--primary-color);
+}
+
+.form-group input {
+  padding: 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  transition: all var(--transition-fast);
+  background: white;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(184, 112, 73, 0.1);
+}
+
+.form-group input::placeholder {
+  color: var(--text-light);
+}
+
+.form-help {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  margin-top: -0.25rem;
+}
+
+/* Error Message */
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  color: #dc2626;
+  font-size: 0.9rem;
+}
+
+.error-message svg {
+  flex-shrink: 0;
+}
+
+/* Track Button */
+.track-btn {
+  width: 100%;
+  padding: 1.25rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.track-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Help Section */
+.help-section {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.help-section h3 {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+}
+
+.help-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.help-item {
+  padding: 1.25rem;
+  background: var(--bg-light);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--primary-color);
+}
+
+.help-item strong {
+  display: block;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.help-item p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.help-item a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.help-item a:hover {
+  text-decoration: underline;
+}
+
+/* Create Account Note */
+.create-account-note {
+  margin-top: 2rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: var(--radius-md);
+  text-align: center;
+  border: 1px solid var(--border-color);
+}
+
+.create-account-note p {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.create-account-note strong {
+  color: var(--text-primary);
+}
+
+.create-account-note .register-btn {
+  margin-top: 1rem;
+  min-width: 200px;
+}
+
+/* Info Cards */
+.info-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  position: sticky;
+  top: var(--spacing-xl);
+}
+
+.info-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  text-align: center;
+  transition: transform var(--transition-normal),
+    box-shadow var(--transition-normal);
+}
+
+.info-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.info-icon {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(
+    135deg,
+    var(--primary-color),
+    var(--primary-dark)
+  );
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  margin: 0 auto 1.5rem;
+}
+
+.info-card h4 {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.info-card p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .tracking-lookup-container {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .info-cards {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .tracking-lookup-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .card-icon {
+    width: 64px;
+    height: 64px;
+  }
+
+  .card-icon svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .tracking-lookup-card h1 {
+    font-size: 1.75rem;
+  }
+
+  .tracking-lookup-card .subtitle {
+    font-size: 0.95rem;
+  }
+
+  .info-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .help-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .guest-tracking-lookup-page {
+    padding: var(--spacing-md) 0;
+  }
+
+  .tracking-lookup-card {
+    padding: 1.5rem 1rem;
+  }
+
+  .card-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .tracking-lookup-card h1 {
+    font-size: 1.5rem;
+  }
+
+  .tracking-lookup-card .subtitle {
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+  }
+
+  .form-group input {
+    padding: 0.875rem;
+    font-size: 0.95rem;
+  }
+
+  .track-btn {
+    padding: 1rem;
+    font-size: 1rem;
+  }
+
+  .help-item {
+    padding: 1rem;
+  }
+
+  .help-item strong {
+    font-size: 0.9rem;
+  }
+
+  .help-item p {
+    font-size: 0.85rem;
+  }
+
+  .create-account-note {
+    padding: 1.5rem 1rem;
+  }
+
+  .create-account-note p {
+    font-size: 0.9rem;
+  }
+
+  .info-card {
+    padding: 1.5rem 1rem;
+  }
+
+  .info-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .info-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .info-card h4 {
+    font-size: 1rem;
+  }
+
+  .info-card p {
+    font-size: 0.85rem;
+  }
+}
+
+/* Additional CSS for Universal Order Tracking */
+/* Registered User Prompt */
+.registered-user-prompt {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #3b82f6;
+  border-radius: var(--radius-lg);
+  padding: 2.5rem;
+  text-align: center;
+  margin-bottom: 2rem;
+  animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.registered-user-prompt .prompt-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  margin: 0 auto 1.5rem;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.registered-user-prompt h3 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.registered-user-prompt .order-info {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.registered-user-prompt .order-info strong {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.registered-user-prompt .prompt-message {
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.registered-user-prompt .prompt-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.registered-user-prompt .login-redirect-btn {
+  min-width: 200px;
+}
+
+.registered-user-prompt .back-search-btn {
+  min-width: 180px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .registered-user-prompt {
+    padding: 2rem 1.5rem;
+  }
+
+  .registered-user-prompt .prompt-icon {
+    width: 64px;
+    height: 64px;
+  }
+
+  .registered-user-prompt h3 {
+    font-size: 1.5rem;
+  }
+
+  .registered-user-prompt .order-info {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .registered-user-prompt {
+    padding: 1.5rem 1rem;
+  }
+
+  .registered-user-prompt .prompt-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .registered-user-prompt .login-redirect-btn,
+  .registered-user-prompt .back-search-btn {
+    width: 100%;
+    min-width: auto;
+  }
+}

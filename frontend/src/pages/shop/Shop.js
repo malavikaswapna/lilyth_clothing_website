@@ -1,4 +1,4 @@
-// Shop.js
+//src/pages/shop/Shop.js
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Filter, Grid, List, ChevronDown, X } from "lucide-react";

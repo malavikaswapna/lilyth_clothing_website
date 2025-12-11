@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 
 const promoCodeSchema = new mongoose.Schema(
   {
-    // Basic Information
+    // basic information
     code: {
       type: String,
       required: [true, "Promo code is required"],
@@ -19,7 +19,7 @@ const promoCodeSchema = new mongoose.Schema(
       maxlength: [200, "Description cannot exceed 200 characters"],
     },
 
-    // Discount Details
+    // discount details
     discountType: {
       type: String,
       enum: ["percentage", "fixed"],
@@ -32,10 +32,10 @@ const promoCodeSchema = new mongoose.Schema(
       min: [0, "Discount value cannot be negative"],
     },
 
-    // Usage Limits
+    // usage limits
     maxUsageCount: {
       type: Number,
-      default: null, // null = unlimited
+      default: null,
       min: [1, "Max usage must be at least 1"],
     },
     currentUsageCount: {
@@ -48,21 +48,21 @@ const promoCodeSchema = new mongoose.Schema(
       min: [1, "Max usage per user must be at least 1"],
     },
 
-    // Minimum Order Requirements
+    // minimum order requirements
     minOrderAmount: {
       type: Number,
       default: 0,
       min: [0, "Minimum order amount cannot be negative"],
     },
 
-    // Maximum Discount Cap (for percentage discounts)
+    // maximum discount cap (for percentage discounts)
     maxDiscountAmount: {
       type: Number,
-      default: null, // null = no cap
+      default: null,
       min: [0, "Max discount amount cannot be negative"],
     },
 
-    // Validity Period
+    // validity period
     startDate: {
       type: Date,
       required: [true, "Start date is required"],
@@ -78,13 +78,13 @@ const promoCodeSchema = new mongoose.Schema(
       },
     },
 
-    // Status
+    // status
     isActive: {
       type: Boolean,
       default: true,
     },
 
-    // Applicable Products/Categories
+    // applicable Products/Categories
     applicableProducts: [
       {
         type: mongoose.Schema.ObjectId,
@@ -102,7 +102,7 @@ const promoCodeSchema = new mongoose.Schema(
       default: true,
     },
 
-    // User Restrictions
+    // user Restrictions
     applicableUsers: [
       {
         type: mongoose.Schema.ObjectId,
@@ -114,13 +114,13 @@ const promoCodeSchema = new mongoose.Schema(
       default: true,
     },
 
-    // First Order Only
+    // first Order Only
     firstOrderOnly: {
       type: Boolean,
       default: false,
     },
 
-    // Usage Tracking
+    // usage Tracking
     usedBy: [
       {
         user: {
@@ -139,7 +139,7 @@ const promoCodeSchema = new mongoose.Schema(
       },
     ],
 
-    // Creator
+    // creator
     createdBy: {
       type: mongoose.Schema.ObjectId,
       ref: "User",
@@ -153,18 +153,17 @@ const promoCodeSchema = new mongoose.Schema(
   }
 );
 
-// Indexes
-promoCodeSchema.index({ code: 1 });
+// indexes
 promoCodeSchema.index({ isActive: 1, startDate: 1, endDate: 1 });
 promoCodeSchema.index({ createdAt: -1 });
 
-// Virtual for remaining usage count
+// virtual for remaining usage count
 promoCodeSchema.virtual("remainingUsageCount").get(function () {
   if (this.maxUsageCount === null) return Infinity;
   return this.maxUsageCount - this.currentUsageCount;
 });
 
-// Virtual for validity status
+// virtual for validity status
 promoCodeSchema.virtual("isValid").get(function () {
   const now = new Date();
   return (
@@ -175,9 +174,9 @@ promoCodeSchema.virtual("isValid").get(function () {
   );
 });
 
-// Method to check if user can use this promo code
+// method to check if user can use this promo code
 promoCodeSchema.methods.canUserUse = function (userId) {
-  // Check if applicable to all users
+  // check if applicable to all users
   if (!this.isApplicableToAllUsers) {
     const isApplicable = this.applicableUsers.some(
       (id) => id.toString() === userId.toString()
@@ -185,7 +184,7 @@ promoCodeSchema.methods.canUserUse = function (userId) {
     if (!isApplicable) return false;
   }
 
-  // Check per-user usage limit
+  // check per-user usage limit
   const userUsageCount = this.usedBy.filter(
     (usage) => usage.user.toString() === userId.toString()
   ).length;
@@ -193,23 +192,23 @@ promoCodeSchema.methods.canUserUse = function (userId) {
   return userUsageCount < this.maxUsagePerUser;
 };
 
-// Method to calculate discount
+// method to calculate discount
 promoCodeSchema.methods.calculateDiscount = function (orderAmount) {
   let discount = 0;
 
   if (this.discountType === "percentage") {
     discount = (orderAmount * this.discountValue) / 100;
 
-    // Apply max discount cap if exists
+    // apply max discount cap if exists
     if (this.maxDiscountAmount && discount > this.maxDiscountAmount) {
       discount = this.maxDiscountAmount;
     }
   } else {
-    // Fixed discount
+    // fixed discount
     discount = this.discountValue;
   }
 
-  // Discount cannot exceed order amount
+  // discount cannot exceed order amount
   return Math.min(discount, orderAmount);
 };
 

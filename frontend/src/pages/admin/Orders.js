@@ -36,6 +36,8 @@ const Orders = () => {
     dateRange: { start: "", end: "" },
     minAmount: "",
     maxAmount: "",
+    paymentMethod: "all",
+    returnStatus: "all",
     page: 1,
     limit: 20,
   });
@@ -68,6 +70,11 @@ const Orders = () => {
       if (filters.dateRange.end) queryParams.endDate = filters.dateRange.end;
       if (filters.minAmount) queryParams.minAmount = filters.minAmount;
       if (filters.maxAmount) queryParams.maxAmount = filters.maxAmount;
+      if (filters.paymentMethod && filters.paymentMethod !== "all")
+        queryParams.paymentMethod = filters.paymentMethod;
+
+      if (filters.returnStatus && filters.returnStatus !== "all")
+        queryParams.returnStatus = filters.returnStatus;
       queryParams.page = filters.page;
       queryParams.limit = filters.limit;
 
@@ -101,8 +108,17 @@ const Orders = () => {
 
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
+      // Optimistically update UI immediately
+      setOrders((prev) =>
+        prev.map((order) =>
+          order._id === orderId ? { ...order, status: newStatus } : order
+        )
+      );
+
       await adminAPI.updateOrderStatus(orderId, { status: newStatus });
       toast.success("Order status updated successfully");
+
+      // Then refresh actual data
       loadOrders();
       loadOrderStats();
     } catch (error) {
@@ -340,6 +356,37 @@ const Orders = () => {
               value={filters.maxAmount}
               onChange={(e) => handleFilterChange("maxAmount", e.target.value)}
             />
+
+            <select
+              value={filters.paymentMethod}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  paymentMethod: e.target.value,
+                }))
+              }
+            >
+              <option value="all">All Payment Methods</option>
+              <option value="cod">Cash on Delivery</option>
+              <option value="razorpay">Online Payment</option>
+            </select>
+
+            <select
+              value={filters.returnStatus}
+              onChange={(e) =>
+                setFilters((prev) => ({
+                  ...prev,
+                  returnStatus: e.target.value,
+                }))
+              }
+            >
+              <option value="all">All Orders</option>
+              <option value="requested">Return Requested</option>
+              <option value="approved">Return Approved</option>
+              <option value="rejected">Return Rejected</option>
+              <option value="received">Return Received</option>
+              <option value="processed">Return Processed</option>
+            </select>
 
             <select
               value={filters.limit}

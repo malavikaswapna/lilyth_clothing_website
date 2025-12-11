@@ -25,7 +25,7 @@ exports.validatePromoCode = asyncHandler(async (req, res) => {
     });
   }
 
-  // Find promo code (case-insensitive)
+  // find promo code (case-insensitive)
   const promoCode = await PromoCode.findOne({
     code: code.toUpperCase(),
   });
@@ -37,7 +37,7 @@ exports.validatePromoCode = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check if promo code is active
+  // check if promo code is active
   if (!promoCode.isActive) {
     return res.status(400).json({
       success: false,
@@ -45,7 +45,7 @@ exports.validatePromoCode = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check validity period
+  // check validity period
   const now = new Date();
   if (now < promoCode.startDate) {
     return res.status(400).json({
@@ -61,7 +61,7 @@ exports.validatePromoCode = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check usage limits
+  // check usage limits
   if (
     promoCode.maxUsageCount !== null &&
     promoCode.currentUsageCount >= promoCode.maxUsageCount
@@ -72,7 +72,7 @@ exports.validatePromoCode = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check if user can use this code
+  // check if user can use this code
   if (!promoCode.canUserUse(req.user._id)) {
     return res.status(400).json({
       success: false,
@@ -80,7 +80,7 @@ exports.validatePromoCode = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check minimum order amount
+  // check minimum order amount
   if (orderAmount < promoCode.minOrderAmount) {
     return res.status(400).json({
       success: false,
@@ -89,7 +89,7 @@ exports.validatePromoCode = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check first order only restriction
+  // check first order only restriction
   if (promoCode.firstOrderOnly) {
     const userOrderCount = await Order.countDocuments({
       user: req.user._id,
@@ -104,7 +104,7 @@ exports.validatePromoCode = asyncHandler(async (req, res) => {
     }
   }
 
-  // Check product/category applicability
+  // check product/category applicability
   if (!promoCode.isApplicableToAll && items) {
     const applicableProductIds = promoCode.applicableProducts.map((id) =>
       id.toString()
@@ -128,11 +128,11 @@ exports.validatePromoCode = asyncHandler(async (req, res) => {
     }
   }
 
-  // Calculate discount
+  // calculate discount
   const discountAmount = promoCode.calculateDiscount(orderAmount);
   const finalAmount = Math.max(0, orderAmount - discountAmount);
 
-  // Log validation
+  // log validation
   await auditLogger.log({
     userId: req.user._id,
     userName: `${req.user.firstName} ${req.user.lastName}`,
@@ -178,17 +178,17 @@ exports.getAllPromoCodes = asyncHandler(async (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 20;
   const startIndex = (page - 1) * limit;
 
-  // Build query
+  // build query
   let query = {};
 
-  // Filter by status
+  // filter by status
   if (req.query.status === "active") {
     query.isActive = true;
   } else if (req.query.status === "inactive") {
     query.isActive = false;
   }
 
-  // Filter by validity
+  // filter by validity
   if (req.query.validity === "valid") {
     const now = new Date();
     query.isActive = true;
@@ -198,7 +198,7 @@ exports.getAllPromoCodes = asyncHandler(async (req, res) => {
     query.endDate = { $lt: new Date() };
   }
 
-  // Search by code
+  // search by code
   if (req.query.search) {
     query.code = { $regex: req.query.search, $options: "i" };
   }
@@ -270,7 +270,7 @@ exports.createPromoCode = asyncHandler(async (req, res) => {
     firstOrderOnly,
   } = req.body;
 
-  // Validate required fields
+  // validate required fields
   if (
     !code ||
     !description ||
@@ -285,7 +285,7 @@ exports.createPromoCode = asyncHandler(async (req, res) => {
     });
   }
 
-  // Check if code already exists
+  // check if code already exists
   const existingCode = await PromoCode.findOne({
     code: code.toUpperCase(),
   });
@@ -297,7 +297,7 @@ exports.createPromoCode = asyncHandler(async (req, res) => {
     });
   }
 
-  // Validate discount value
+  // validate discount value
   if (
     discountType === "percentage" &&
     (discountValue < 0 || discountValue > 100)
@@ -308,7 +308,7 @@ exports.createPromoCode = asyncHandler(async (req, res) => {
     });
   }
 
-  // Validate dates
+  // validate dates
   const start = new Date(startDate);
   const end = new Date(endDate);
 
@@ -319,7 +319,7 @@ exports.createPromoCode = asyncHandler(async (req, res) => {
     });
   }
 
-  // Create promo code
+  // create promo code
   const promoCode = await PromoCode.create({
     code: code.toUpperCase(),
     description, //
@@ -338,7 +338,7 @@ exports.createPromoCode = asyncHandler(async (req, res) => {
     createdBy: req.user._id,
   });
 
-  // Log creation
+  // log creation
   try {
     await auditLogger.log({
       userId: req.user._id,
@@ -353,7 +353,6 @@ exports.createPromoCode = asyncHandler(async (req, res) => {
     });
   } catch (auditError) {
     console.error("Audit log error:", auditError);
-    // Don't fail the creation if audit logging fails
   }
 
   res.status(201).json({
@@ -376,7 +375,7 @@ exports.updatePromoCode = asyncHandler(async (req, res) => {
     });
   }
 
-  // Don't allow changing code if already used
+  // don't allow changing code if already used
   if (
     req.body.code &&
     req.body.code !== promoCode.code &&
@@ -388,7 +387,7 @@ exports.updatePromoCode = asyncHandler(async (req, res) => {
     });
   }
 
-  //Validate dates BEFORE updating
+  // validate dates BEFORE updating
   let startDateToCheck = req.body.startDate
     ? new Date(req.body.startDate)
     : promoCode.startDate;
@@ -411,7 +410,7 @@ exports.updatePromoCode = asyncHandler(async (req, res) => {
 
   const oldData = { ...promoCode.toObject() };
 
-  // Update fields manually to avoid validation issues
+  // update fields manually to avoid validation issues
   Object.keys(req.body).forEach((key) => {
     if (key === "startDate" || key === "endDate") {
       promoCode[key] = new Date(req.body[key]);
@@ -420,10 +419,10 @@ exports.updatePromoCode = asyncHandler(async (req, res) => {
     }
   });
 
-  // Save the document (this will run validators on the instance)
-  await promoCode.save({ validateBeforeSave: false }); // Skip validation since we already validated
+  // save the document
+  await promoCode.save({ validateBeforeSave: false });
 
-  // Log update
+  // log update
   try {
     await auditLogger.log({
       userId: req.user._id,
@@ -440,10 +439,9 @@ exports.updatePromoCode = asyncHandler(async (req, res) => {
     });
   } catch (auditError) {
     console.error("Audit log error:", auditError);
-    // Don't fail the update if audit logging fails
   }
 
-  // Re-fetch to get populated data
+  // re-fetch to get populated data
   promoCode = await PromoCode.findById(promoCode._id)
     .populate("createdBy", "firstName lastName email")
     .populate("applicableProducts", "name images")
@@ -472,7 +470,7 @@ exports.togglePromoCodeStatus = asyncHandler(async (req, res) => {
   promoCode.isActive = !promoCode.isActive;
   await promoCode.save();
 
-  // Log toggle
+  // log toggle
   await auditLogger.log({
     userId: req.user._id,
     userName: `${req.user.firstName} ${req.user.lastName}`,
@@ -510,7 +508,7 @@ exports.deletePromoCode = asyncHandler(async (req, res) => {
     });
   }
 
-  // Don't allow deletion if already used
+  // don't allow deletion if already used
   if (promoCode.currentUsageCount > 0) {
     return res.status(400).json({
       success: false,
@@ -521,7 +519,7 @@ exports.deletePromoCode = asyncHandler(async (req, res) => {
 
   await promoCode.deleteOne();
 
-  // Log deletion
+  // log deletion
   await auditLogger.log({
     userId: req.user._id,
     userName: `${req.user.firstName} ${req.user.lastName}`,
@@ -556,7 +554,7 @@ exports.getPromoCodeStats = asyncHandler(async (req, res) => {
     endDate: { $lt: now },
   });
 
-  // Usage statistics
+  // usage statistics
   const usageStats = await PromoCode.aggregate([
     {
       $group: {
@@ -567,7 +565,7 @@ exports.getPromoCodeStats = asyncHandler(async (req, res) => {
     },
   ]);
 
-  // Top performing codes
+  // top performing codes
   const topCodes = await PromoCode.find()
     .sort({ currentUsageCount: -1 })
     .limit(5)
