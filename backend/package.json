@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "production": "NODE_ENV=production node server.js",
     "swagger": "node swagger-autogen.js",
     "dev:swagger": "node swagger-autogen.js && nodemon server.js",
     "test:schemas": "node scripts/testSchemas.js",
@@ -17,6 +18,10 @@
     "db:fix-categories": "node scripts/fixCategories.js",
     "create-indexes": "node scripts/createIndexes.js",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": "18.x",
+    "npm": "9.x"
   },
   "keywords": [],
   "author": "",
